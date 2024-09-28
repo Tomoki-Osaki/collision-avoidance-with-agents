@@ -1,8 +1,8 @@
 # control, urgent, nonurgent, omoiyari
-import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import seaborn as sns
 
 def show_all(obj):
@@ -73,7 +73,7 @@ tmp = df_all_participants["ID_5"]["omoiyari"]["agents10_tri1"]
 # df_id_conditions_NumOfAgents_Trialnumber
 # df1omoiyari51 = df_all_participants["ID_1"]["omoiyari"]["agents5_tri1"]
 
-def plot_all_trials(ID, conditions, num_agents):
+def plot_traj_per_trials(ID, conditions, num_agents):
     fig = plt.figure(figsize=(12, 6))
     for trial in range(1, 9):
         df = df_all_participants[f"ID_{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
@@ -84,7 +84,36 @@ def plot_all_trials(ID, conditions, num_agents):
     plt.suptitle(f"ID_{ID}_{conditions}_agents{num_agents}")
     plt.show()
 
-plot_all_trials(10, "omoiyari", 20)
-plot_all_trials(10, "urgent", 20)
-plot_all_trials(10, "nonurgent", 20)
-plot_all_trials(29, "omoiyari", 20)
+plot_traj_per_trials(15, "urgent", 5)
+plot_traj_per_trials(15, "nonurgent", 5)
+plot_traj_per_trials(15, "omoiyari", 5)
+
+def plot_traj_all_trials(ID, conditions, num_agents):
+    fig, ax = plt.subplots(figsize=(12, 8))
+    for trial, color in zip(range(1, 9), mcolors.BASE_COLORS):
+        df = df_all_participants[f"ID_{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
+        for x, y in zip(df['posX'], df['posY']):
+            ax.scatter(x, y, color=color, alpha=.5)
+    ax.set_title(f"ID_{ID}_{conditions}_agents{num_agents}")
+    plt.show()
+
+plot_traj_all_trials(25, "urgent", 20)
+plot_traj_all_trials(25, "nonurgent", 20)
+plot_traj_all_trials(25, "omoiyari", 20)
+
+
+def plot_traj_compare_conds(ID, num_agents):
+    assert num_agents in [5, 10, 20], "num_agents must be 5, 10, or 20"
+    fig = plt.figure(figsize=(12, 6))
+    conditions = ["urgent", "nonurgent", "omoiyari"]
+    for i, condition in enumerate(conditions):
+        ax = fig.add_subplot(1, 3, i+1)
+        for trial, color in zip(range(1, 9), mcolors.BASE_COLORS):
+            df = df_all_participants[f"ID_{ID}"][condition][f"agents{num_agents}_tri{trial}"]
+            for x, y in zip(df['posX'], df['posY']):
+                ax.scatter(x, y, color=color, alpha=.4)
+        ax.set_title(f"ID{ID}_{condition}_agents{num_agents}")
+    plt.show()
+
+plot_traj_compare_conds(7, 20)
+
