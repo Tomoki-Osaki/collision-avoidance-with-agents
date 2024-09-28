@@ -1,12 +1,11 @@
 # control, urgent, nonurgent, omoiyari
 import os
-os.chdir("C:/Users/ootmo/OneDrive/Desktop/修論/共同P_論文/松林さん/04_RawData")
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-df = pd.read_csv('20_omoiyari.csv')
+df = pd.read_csv('04_RawData/20_omoiyari.csv')
 df
 
 def show_all(obj):
@@ -45,10 +44,4 @@ for i, (x, y) in enumerate(zip(df['myNextX'], df['myNextY'])):
     distance = np.linalg.norm(p_o - a)
     plt.scatter(i, distance)
 plt.show()
-
-for i in range(1, 30):
-    os.rename(f'{i}_b.csv', f'{i}_practice.csv')
-    os.rename(f'{i}_i.csv', f'{i}_urgent.csv')
-    os.rename(f'{i}_o.csv', f'{i}_omoiyari.csv')
-    os.rename(f'{i}_s.csv', f'{i}_nonurgent.csv')
 
