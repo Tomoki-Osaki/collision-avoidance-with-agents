@@ -51,11 +51,11 @@ def make_dict_containing_all_info():
             
             dfs_per_trials = {}
             for j in range(len(agents5)):
-                df_5_tri = df_5.query("trial == @tri_num_5[@j]")
+                df_5_tri = df_5.query("trial == @agents5[@j]")
                 df_5_tri = make_start_from_UL(df_5_tri)
-                df_10_tri = df_10.query("trial == @tri_num_10[@j]")
+                df_10_tri = df_10.query("trial == @agents10[@j]")
                 df_10_tri = make_start_from_UL(df_10_tri)
-                df_20_tri = df_20.query("trial == @tri_num_20[@j]")
+                df_20_tri = df_20.query("trial == @agents20[@j]")
                 df_20_tri = make_start_from_UL(df_20_tri)
                 
                 dfs_per_trials[f"agents5_tri{j+1}"] = df_5_tri
@@ -71,7 +71,7 @@ df_all_participants = make_dict_containing_all_info()
 tmp = df_all_participants["ID_5"]["omoiyari"]["agents10_tri1"]
 
 # df_id_conditions_NumOfAgents_Trialnumber
-df1omoiyari51 = df_all_participants["ID_1"]["omoiyari"]["agents5_tri1"]
+# df1omoiyari51 = df_all_participants["ID_1"]["omoiyari"]["agents5_tri1"]
 
 def plot_all_trials(ID, conditions, num_agents):
     fig = plt.figure(figsize=(12, 6))
@@ -88,5 +88,3 @@ plot_all_trials(10, "omoiyari", 20)
 plot_all_trials(10, "urgent", 20)
 plot_all_trials(10, "nonurgent", 20)
 plot_all_trials(29, "omoiyari", 20)
-
-###
