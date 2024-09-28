@@ -68,6 +68,8 @@ def make_dict_containing_all_info():
 
 df_all_participants = make_dict_containing_all_info()
 
+tmp = df_all_participants["ID_5"]["omoiyari"]["agents10_tri1"]
+
 # df_id_conditions_NumOfAgents_Trialnumber
 df1omoiyari51 = df_all_participants["ID_1"]["omoiyari"]["agents5_tri1"]
 
