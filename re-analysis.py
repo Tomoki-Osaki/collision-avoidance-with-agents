@@ -44,13 +44,13 @@ def make_dict_containing_all_info():
             df_10 = df.query('type.str.contains("10")')
             df_20 = df.query('type.str.contains("20")')
             
-            tri_num_5 = list(set(df_5['trial']))
-            tri_num_10 = list(set(df_10['trial']))
-            tri_num_20 = list(set(df_20['trial']))
-            assert len(tri_num_5) == len(tri_num_10) == len(tri_num_20), "all trials must have same lengths"
+            agents5 = list(set(df_5['trial']))
+            agents10 = list(set(df_10['trial']))
+            agents20 = list(set(df_20['trial']))
+            assert len(agents5) == len(agents10) == len(agents20), "all trials must have same lengths"
             
             dfs_per_trials = {}
-            for j in range(len(tri_num_5)):
+            for j in range(len(agents5)):
                 df_5_tri = df_5.query("trial == @tri_num_5[@j]")
                 df_5_tri = make_start_from_UL(df_5_tri)
                 df_10_tri = df_10.query("trial == @tri_num_10[@j]")
@@ -71,17 +71,19 @@ df_all_participants = make_dict_containing_all_info()
 # df_id_conditions_NumOfAgents_Trialnumber
 df1omoiyari51 = df_all_participants["ID_1"]["omoiyari"]["agents5_tri1"]
 
-def plot_all_trials(ID, conditions, num_of_agents):
-    fig = plt.figure(figsize=(12, 8))
+def plot_all_trials(ID, conditions, num_agents):
+    fig = plt.figure(figsize=(12, 6))
     for trial in range(1, 9):
-        df = df_all_participants[f"ID_{ID}"][conditions][f"agents{num_of_agents}_tri{trial}"]
+        df = df_all_participants[f"ID_{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
         ax = fig.add_subplot(2, 4, trial)
         for x, y in zip(df['posX'], df['posY']):
             ax.scatter(x, y, color="blue", alpha=.5)
         ax.set_title(f"tri{trial}")
-    plt.suptitle(f"ID_{ID}_{conditions}_agents{num_of_agents}")
+    plt.suptitle(f"ID_{ID}_{conditions}_agents{num_agents}")
     plt.show()
 
-plot_all_trials(1, "omoiyari", 20)
-plot_all_trials(1, "urgent", 20)
+plot_all_trials(10, "omoiyari", 20)
+plot_all_trials(10, "urgent", 20)
+plot_all_trials(10, "nonurgent", 20)
+plot_all_trials(29, "omoiyari", 20)
 
