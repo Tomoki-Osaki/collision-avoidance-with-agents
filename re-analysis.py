@@ -45,17 +45,14 @@ for i in range(len(tri_num_20)):
     df_20_tri.myNextX.plot(); df_20_tri.myNextY.plot() 
     plt.show()
     
-for x, y in zip(df_5_tri.myNextX, df_5_tri.myNextY):
-    plt.scatter(x, y)
-plt.show()
-
-for x, y in zip(df_10_tri.myNextX, df_10_tri.myNextY):
-    plt.scatter(x, y)
-plt.show()
-
-for x, y in zip(df_20_tri.myNextX, df_20_tri.myNextY):
-    plt.scatter(x, y)
-plt.show()
-
+    
+def plot_traj(df):
+    for x, y in zip(df['myNextX'], df['myNextY']):
+        plt.scatter(x, y)
+    plt.show()
+    
+plot_traj(df_5_tri)
+plot_traj(df_10_tri)
+plot_traj(df_20_tri)
 
 
