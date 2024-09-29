@@ -9,7 +9,7 @@ from gc import collect as gc
 
 df_all = mf.make_dict_containing_all_info()
 
-df_small = df_all["ID5"]["urgent"]["agents5_tri1"]
+df_small = df_all["ID5"]["nonurgent"]["agents20_tri1"]
 
 # df_id_conditions_NumOfAgents_Trialnumber
 # df1omoiyari51 = df_all_participants["ID1"]["omoiyari"]["agents5_tri1"]
@@ -30,9 +30,10 @@ tmp['idealX'] = idealX
 tmp['idealY'] = idealY
 
 dists = []
-for ix, iy, rx, ry in zip(tmp.idealX[1:], tmp.idealY[1:], tmp.posX[:-1], tmp.posY[:-1]):
+for ix, iy, rx, ry in zip(tmp.idealX[:-1], tmp.idealY[:-1], tmp.posX[1:], tmp.posY[1:]):
     c = np.array([ix, iy])
     d = np.array([rx, ry])
     dists.append(np.linalg.norm(c - d))
     
 plt.plot(dists)    
+np.sum(dists)
