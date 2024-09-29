@@ -127,3 +127,17 @@ def plot_traj_compare_conds(df_all_participants, ID, num_agents):
         ax.set_title(f"ID{ID}_{condition}_agents{num_agents}")
     plt.show()
 
+
+def line_equation(x1, y1, x2=880, y2=880):
+    xmin, xmax = x1-20, x1+20
+    ymin, ymax = y1-20, y1+20
+    
+    slope = (y2- y1) / (x2 - x1)
+    y = slope * (xmax - x1) + y1
+    x = (ymax - y1) / slope + x1
+    y, x = np.round(y, 3), np.round(x, 3)
+    
+    if y <= ymax and y >= ymin:
+        return xmax, y
+    else: 
+        return x, ymax
