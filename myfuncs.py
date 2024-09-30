@@ -33,7 +33,7 @@ def make_start_from_UL(df):
     return df
 
 
-def make_dict_containing_all_info():
+def make_dict_containing_all_info(num_of_participants):
     """
     Make a dictionary that contains all participants' records.
     The dictionary's hierarchy is: 
@@ -47,7 +47,7 @@ def make_dict_containing_all_info():
     
     exp_conditions = ["omoiyari", "urgent", "nonurgent", "control"]
     df_all_participants = {}
-    for subjectID in range(1, 30):
+    for subjectID in range(1, num_of_participants+1):
         df_all_participants[f"ID{subjectID}"] = {}
         
     for condition in exp_conditions:
@@ -127,8 +127,7 @@ def plot_traj_compare_conds(df_all_participants, ID, num_agents):
         ax.set_title(f"ID{ID}_{condition}_agents{num_agents}")
     plt.show()
 
-
-def line_equation(x1, y1, x2=880, y2=880):
+def line_equation_to_goal(x1, y1, x2=880, y2=880):
     xmin, xmax = x1-20, x1+20
     ymin, ymax = y1-20, y1+20
     
@@ -141,3 +140,98 @@ def line_equation(x1, y1, x2=880, y2=880):
         return xmax, y
     else: 
         return x, ymax
+    
+#-------------------------------------------------------------------------------    
+    
+def calc_ideal_positions(df):
+    posIdeal = df.apply(lambda df: line_equation_debug(df["posX"], df["posY"]), axis=1)
+    posIdeal.reset_index(drop=True, inplace=True)
+    idealX, idealY = [], []
+    for i, _ in enumerate(posIdeal):
+        idealX.append(posIdeal[i][0])
+        idealY.append(posIdeal[i][1])
+    df['idealNextX'] = idealX
+    df['idealNextY'] = idealY
+    
+    return df
+
+    
+
+def line_equation_debug(x1, y1, x2=880, y2=880):
+    xmin, xmax = x1-20, x1+20
+    ymin, ymax = y1-20, y1+20
+    
+    try:
+        deltaX = x2 - x1
+        deltaY = y2 - y1
+        
+        slope = deltaY / deltaX
+        y = slope * (xmax - x1) + y1
+        x = (ymax - y1) / slope + x1
+        y, x = np.round(y, 3), np.round(x, 3)
+    except ZeroDivisionError:
+        print("x1, y1", x1, y2)
+        print("deltaX, deltaY", deltaX, deltaY)
+        print("condition, ID, trial", condition, ID, trial)
+        return None
+    
+    if y <= ymax and y >= ymin:
+        return xmax, y
+    else: 
+        return x, ymax
+    
+def make_all_debug(num_of_participants):
+    """
+    Make a dictionary that contains all participants' records.
+    The dictionary's hierarchy is: 
+        participant's ID:
+            experiment conditions (control, urgent, nonurgent, omoiyari):
+                trial (trial number and number of agents)
+                
+    ex. df_1_omoiyari_5_1 = df_all_participants["ID1"]["omoiyari"]["agents5_tri1"]
+    """
+    pd.options.mode.chained_assignment = None # otherwise there'll be many warnings
+    
+    exp_conditions = ["omoiyari", "urgent", "nonurgent", "control"]
+    
+    df_all_participants = {}
+    for subjectID in range(1, num_of_participants+1):
+        df_all_participants[f"ID{subjectID}"] = {}
+    
+    global condition, ID, trial
+    for condition in exp_conditions:
+        for ID in range(1, 30):
+        
+            df = pd.read_csv(f'04_RawData/{ID}_{condition}.csv')
+            
+            df_5 = df.query('type.str.contains("05")')
+            df_10 = df.query('type.str.contains("10")')
+            df_20 = df.query('type.str.contains("20")')
+            
+            pd.set_option('display.max_columns', None)
+            
+            trialnum5 = list(set(df_5['trial']))
+            trialnum10 = list(set(df_10['trial']))
+            trialnum20 = list(set(df_20['trial']))
+            assert len(trialnum5) == len(trialnum10) == len(trialnum20), "all trials must have same lengths"
+            
+            dfs_per_trials = {}
+            for trial in range(len(trialnum5)):
+                df_5_tri = df_5.query("trial == @trialnum5[@trial]")
+                df_5_tri = make_start_from_UL(df_5_tri)
+                df_5_tri = calc_ideal_positions(df_5_tri)
+                df_10_tri = df_10.query("trial == @trialnum10[@trial]")
+                df_10_tri = make_start_from_UL(df_10_tri)
+                df_10_tri = calc_ideal_positions(df_10_tri)
+                df_20_tri = df_20.query("trial == @trialnum20[@trial]")
+                df_20_tri = make_start_from_UL(df_20_tri)
+                df_20_tri = calc_ideal_positions(df_20_tri)
+                
+                dfs_per_trials[f"agents5_tri{trial+1}"] = df_5_tri
+                dfs_per_trials[f"agents10_tri{trial+1}"] = df_10_tri
+                dfs_per_trials[f"agents20_tri{trial+1}"] = df_20_tri
+                
+            df_all_participants[f"ID{ID}"][f"{condition}"] = dfs_per_trials
+
+
+    return df_all_participants
