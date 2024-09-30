@@ -142,7 +142,8 @@ def line_equation_to_goal(x1, y1, x2=880, y2=880):
         return x, ymax
     
 #-------------------------------------------------------------------------------    
-    
+##### debugging the followings    
+
 def calc_ideal_positions(df):
     posIdeal = df.apply(lambda df: line_equation_debug(df["posX"], df["posY"]), axis=1)
     posIdeal.reset_index(drop=True, inplace=True)
