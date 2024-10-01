@@ -10,9 +10,18 @@ from gc import collect as gc
 df_all = mf.make_dict_containing_all_info(29)
 
 df_small = df_all["ID3"]["omoiyari"]
+df_part = df_small["agents20_tri1"]
+
+columns = df_part.columns
+
+for x, y in zip(df_part.other2NextX, df_part.other2NextY):
+    plt.scatter(x, y)
+plt.show()
 
 # df_id_conditions_NumOfAgents_Trialnumber
 # df1omoiyari51 = df_all_participants["ID1"]["omoiyari"]["agents5_tri1"]
+
+mf.plot_traj_per_trials(df_all, 2, "urgent", 20)
 
 cols = [my for my in df_small.columns if 'my' in my]
 cols.extend(['timerTrial', 'posX', 'posY'])
