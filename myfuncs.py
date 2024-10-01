@@ -1,4 +1,3 @@
-# %%
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -35,10 +34,15 @@ def _make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # %%
-def _line_equation_to_goal(x1: int, 
-                           y1: int, 
-                           goalx: int = 880, 
-                           goaly: int = 880) -> tuple[int, int]:
+def _calc_ideal_positions(x1: int, 
+                          y1: int, 
+                          goalx: int = 880, 
+                          goaly: int = 880) -> tuple[int, int]:
+    """
+    Return the ideal next XY positions by calculating the intercation points between
+    the straight line to the goal from the current position and the maximum movable 
+    areas.
+    """
     xmin, xmax = x1-20, x1+20
     ymin, ymax = y1-20, y1+20
     
@@ -58,9 +62,11 @@ def _line_equation_to_goal(x1: int,
         return x, ymax
     
 # %%
-def _calc_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
-    posIdeal = df.apply(lambda df: _line_equation_to_goal(df["posX"], df["posY"]), axis=1)
-    posIdeal.reset_index(drop=True, inplace=True)
+def _add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add 'idealNextX' and 'idealNextY' columns to the dataframe.
+    """
+    posIdeal = df.apply(lambda df: _calc_ideal_positions(df["posX"], df["posY"]), axis=1)
     idealX, idealY = [], []
     for i in range(len(posIdeal)):
         idealX.append(posIdeal[i][0])
@@ -71,25 +77,25 @@ def _calc_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # %%
-def make_dict_containing_all_info(num_of_participants: int) -> pd.DataFrame:
+def make_dict_containing_all_info(num_subjects: int) -> pd.DataFrame:
     """
-    Make a dictionary that contains all participants' records.
+    Make a dictionary that contains all subjects' records.
     The dictionary's hierarchy is: 
         participant's ID:
             experiment conditions (control, urgent, nonurgent, omoiyari):
                 trial (trial number and number of agents)
                 
-    ex. df_1_omoiyari_5_1 = df_all_participants["ID1"]["omoiyari"]["agents5_tri1"]
+    ex. df_1_omoiyari_5_1 = df_all_subjects["ID1"]["omoiyari"]["agents5_tri1"]
     """
     pd.options.mode.chained_assignment = None # otherwise there'll be many warnings
     
     exp_conditions = ["control", "urgent", "nonurgent", "omoiyari"]
     
-    df_all_participants = {}
-    for subjectID in range(1, num_of_participants+1):
-        df_all_participants[f"ID{subjectID}"] = {}
+    df_all_subjects = {}
+    for subjectID in range(1, num_subjects+1):
+        df_all_subjects[f"ID{subjectID}"] = {}
     
-    with tqdm(total=len(exp_conditions)*num_of_participants) as pbar:
+    with tqdm(total=len(exp_conditions)*num_subjects) as pbar:
         for condition in exp_conditions:
             for ID in range(1, 30):
             
@@ -108,28 +114,31 @@ def make_dict_containing_all_info(num_of_participants: int) -> pd.DataFrame:
                 for trial in range(len(trialnum5)):
                     
                     df_5_tri = df_5.query("trial == @trialnum5[@trial]")
+                    df_5_tri.reset_index(drop=True, inplace=True)
                     df_5_tri = _make_start_from_UL(df_5_tri)
-                    df_5_tri = _calc_ideal_positions(df_5_tri)
+                    df_5_tri = _add_cols_ideal_positions(df_5_tri)
                     
                     df_10_tri = df_10.query("trial == @trialnum10[@trial]")
+                    df_10_tri.reset_index(drop=True, inplace=True)
                     df_10_tri = _make_start_from_UL(df_10_tri)
-                    df_10_tri = _calc_ideal_positions(df_10_tri)
+                    df_10_tri = _add_cols_ideal_positions(df_10_tri)
                     
                     df_20_tri = df_20.query("trial == @trialnum20[@trial]")
+                    df_20_tri.reset_index(drop=True, inplace=True)
                     df_20_tri = _make_start_from_UL(df_20_tri)
-                    df_20_tri = _calc_ideal_positions(df_20_tri)
+                    df_20_tri = _add_cols_ideal_positions(df_20_tri)
                     
                     dfs_per_trials[f"agents5_tri{trial+1}"] = df_5_tri
                     dfs_per_trials[f"agents10_tri{trial+1}"] = df_10_tri
                     dfs_per_trials[f"agents20_tri{trial+1}"] = df_20_tri
                                     
-                df_all_participants[f"ID{ID}"][f"{condition}"] = dfs_per_trials
+                df_all_subjects[f"ID{ID}"][f"{condition}"] = dfs_per_trials
                 pbar.update(1)
 
-    return df_all_participants
+    return df_all_subjects
 
 # %%
-def plot_traj_per_trials(df_all_participants: pd.DataFrame, 
+def plot_traj_per_trials(df_all_subjects: pd.DataFrame, 
                          ID: int, 
                          conditions: Literal["control", "urgent", "nonurgent", "omoiyari"], 
                          num_agents: Literal[5, 10, 20]) -> None:
@@ -138,7 +147,7 @@ def plot_traj_per_trials(df_all_participants: pd.DataFrame,
     """
     fig = plt.figure(figsize=(12, 6))
     for trial in range(1, 9):
-        df = df_all_participants[f"ID{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
+        df = df_all_subjects[f"ID{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
         ax = fig.add_subplot(2, 4, trial)
         for x, y in zip(df['posX'], df['posY']):
             ax.scatter(x, y, color="blue", alpha=.5)
@@ -147,7 +156,7 @@ def plot_traj_per_trials(df_all_participants: pd.DataFrame,
     plt.show()
     
 # %%
-def plot_traj_all_trials(df_all_participants: pd.DataFrame, 
+def plot_traj_all_trials(df_all_subjects: pd.DataFrame, 
                          ID: int, 
                          conditions: Literal["control", "urgent", "nonurgent", "omoiyari"], 
                          num_agents: Literal[5, 10, 20]) -> None:
@@ -157,14 +166,14 @@ def plot_traj_all_trials(df_all_participants: pd.DataFrame,
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(1, 1, 1)
     for trial, color in zip(range(1, 9), mcolors.BASE_COLORS):
-        df = df_all_participants[f"ID{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
+        df = df_all_subjects[f"ID{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
         for x, y in zip(df['posX'], df['posY']):
             ax.scatter(x, y, color=color, alpha=.5)
     ax.set_title(f"ID{ID}_{conditions}_agents{num_agents}")
     plt.show()
     
 # %%
-def plot_traj_compare_conds(df_all_participants: pd.DataFrame, 
+def plot_traj_compare_conds(df_all_subjects: pd.DataFrame, 
                             ID: int, 
                             num_agents: Literal[5, 10, 20]) -> None:
     """
@@ -176,7 +185,7 @@ def plot_traj_compare_conds(df_all_participants: pd.DataFrame,
     for i, condition in enumerate(conditions):
         ax = fig.add_subplot(1, 3, i+1)
         for trial, color in zip(range(1, 9), mcolors.BASE_COLORS):
-            df = df_all_participants[f"ID{ID}"][condition][f"agents{num_agents}_tri{trial}"]
+            df = df_all_subjects[f"ID{ID}"][condition][f"agents{num_agents}_tri{trial}"]
             for x, y in zip(df['posX'], df['posY']):
                 ax.scatter(x, y, color=color, alpha=.4)
         ax.set_title(f"ID{ID}_{condition}_agents{num_agents}")

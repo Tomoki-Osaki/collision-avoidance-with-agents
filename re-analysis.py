@@ -10,37 +10,32 @@ from gc import collect as gc
 df_all = mf.make_dict_containing_all_info(29)
 
 df_small = df_all["ID3"]["omoiyari"]
-df_part = df_small["agents20_tri1"]
-
-columns = df_part.columns
-
-for x, y in zip(df_part.other2NextX, df_part.other2NextY):
-    plt.scatter(x, y)
-plt.show()
-
-# df_id_conditions_NumOfAgents_Trialnumber
-# df1omoiyari51 = df_all_participants["ID1"]["omoiyari"]["agents5_tri1"]
-
-mf.plot_traj_per_trials(df_all, 2, "urgent", 20)
-
-cols = [my for my in df_small.columns if 'my' in my]
-cols.extend(['timerTrial', 'posX', 'posY'])
-tmp = df_small[cols]
-tmp.reset_index(drop=True, inplace=True)
-#tmp.drop(tmp.index[:3], inplace=True)
-tmp.reset_index(drop=True, inplace=True)
+df_part = df_small["agents5_tri1"]
 
 dists = []
-for ix, iy, rx, ry in zip(tmp.idealX[:-1], tmp.idealY[:-1], tmp.posX[1:], tmp.posY[1:]):
-    c = np.array([ix, iy])
-    d = np.array([rx, ry])
-    dists.append(np.linalg.norm(c - d))
-    
-plt.plot(dists)    
-print(np.sum(dists))
-plt.show()
+for i in range(len(df_part.index)):
+    other = np.array([df_part.other1NextX[i], df_part.other1NextY[i]])
+    own = np.array([df_part.myNextX[i], df_part.myNextY[i]])
+    dists.append(np.linalg.norm(other - own))
 
-diff = []
-for i in range(1, len(tmp.posX)):
-    dif = tmp.posX[i] - tmp.posX[i-1]
-    diff.append(dif)
+def calc_distance(myX, myY, otherX, otherY):
+    mypos = np.array([myX, myY])
+    otherpos = np.array([otherX, otherY])
+    distance = np.linalg.norm(mypos - otherpos)
+    
+    return distance
+    
+dic = pd.DataFrame(columns=([i for i in range(1, 6)]))
+for i in range(1, 6):
+     tmp = df_part.apply(lambda df: calc_distance(
+        df["myNextX"], df["myNextY"], df[f"other{i}NextX"], df[f"other{i}NextY"]
+        ), axis=1)
+     dic[i] = tmp
+
+# might should consider the closest points to the nearest other agent at each moment?
+
+# mf.plot_traj_per_trials(df_all_subjects, ID, conditions, num_agents)
+# mf.plot_traj_all_trials(df_all_subjects, ID, conditions, num_agents)
+# mf.plot_traj_compare_conds(df_all_subjects, ID, num_agents)
+
+
