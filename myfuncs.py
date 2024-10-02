@@ -5,6 +5,22 @@ import matplotlib.colors as mcolors
 from tqdm import tqdm
 from typing import Literal
 
+"""
+1. show_all
+2. make_start_from_UL
+3. _calc_ideal_positions
+4. add_cols_ideal_positions
+5. calc_dist_real_ideal
+6. drop_unnecessary_cols
+7. _calc_distance
+8. add_cols_dist_others
+9. calc_closest_others
+10. preprocess
+11. make_dict_containing_all_info
+12. plot_traj_per_trials
+13. plot_traj_compare_conds
+"""
+
 # %%
 def show_all(obj):
     for i in obj: print(i)
@@ -138,6 +154,14 @@ def add_cols_dist_others(df):
     return newdf
 
 # %%
+def calc_closest_others(df):
+    df_others = df.filter(like="distOther")
+    closest_dists = df_others.apply(min, axis=1)
+    df['closest_dists'] = closest_dists
+    
+    return df
+
+# %%
 def preprocess(df):
     df.reset_index(drop=True, inplace=True)
     df = make_start_from_UL(df)
@@ -145,6 +169,7 @@ def preprocess(df):
     df = calc_dist_real_ideal(df)
     df = drop_unnecessary_cols(df)
     df = add_cols_dist_others(df)
+    df = calc_closest_others(df)
     
     return df
 
@@ -162,7 +187,7 @@ def make_dict_containing_all_info(num_subjects: int,
     """
     pd.options.mode.chained_assignment = None # otherwise there'll be many warnings
     
-    exp_conditions = ["control", "urgent", "nonurgent", "omoiyari"]
+    exp_conditions = ["urgent", "nonurgent", "omoiyari"] #, "control"]
     
     df_all_subjects = {}
     for subjectID in range(1, num_subjects+1):
@@ -207,36 +232,19 @@ def make_dict_containing_all_info(num_subjects: int,
 # %%
 def plot_traj_per_trials(df_all_subjects: pd.DataFrame, 
                          ID: int, 
-                         conditions: Literal["control", "urgent", "nonurgent", "omoiyari"], 
+                         conditions: Literal["urgent", "nonurgent", "omoiyari"], 
                          num_agents: Literal[5, 10, 20]) -> None:
     """
     Plot each trial's trajectory in different axes(2x4).
     """
     fig = plt.figure(figsize=(12, 6))
-    for trial in range(1, 9):
+    for trial, color in zip(range(1, 9), mcolors.TABLEAU_COLORS):
         df = df_all_subjects[f"ID{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
         ax = fig.add_subplot(2, 4, trial)
         for x, y in zip(df['posX'], df['posY']):
-            ax.scatter(x, y, color="blue", alpha=.5)
+            ax.scatter(x, y, color=color, alpha=.5)
         ax.set_title(f"tri{trial}")
     plt.suptitle(f"ID{ID}_{conditions}_agents{num_agents}")
-    plt.show()
-    
-# %%
-def plot_traj_all_trials(df_all_subjects: pd.DataFrame, 
-                         ID: int, 
-                         conditions: Literal["control", "urgent", "nonurgent", "omoiyari"], 
-                         num_agents: Literal[5, 10, 20]) -> None:
-    """
-    Plot each trial's trajectory in one axes.
-    """
-    fig = plt.figure(figsize=(12, 8))
-    ax = fig.add_subplot(1, 1, 1)
-    for trial, color in zip(range(1, 9), mcolors.BASE_COLORS):
-        df = df_all_subjects[f"ID{ID}"][conditions][f"agents{num_agents}_tri{trial}"]
-        for x, y in zip(df['posX'], df['posY']):
-            ax.scatter(x, y, color=color, alpha=.5)
-    ax.set_title(f"ID{ID}_{conditions}_agents{num_agents}")
     plt.show()
     
 # %%
@@ -253,10 +261,10 @@ def plot_traj_compare_conds(df_all_subjects: pd.DataFrame,
     with tqdm(total=len(conditions)*num_all_trials) as pbar:
         for i, condition in enumerate(conditions):
             ax = fig.add_subplot(1, 3, i+1)
-            for trial, color in zip(range(1, num_all_trials+1), mcolors.BASE_COLORS):
+            for trial, color in zip(range(1, num_all_trials+1), mcolors.TABLEAU_COLORS):
                 df = df_all_subjects[f"ID{ID}"][condition][f"agents{num_agents}_tri{trial}"]
                 for x, y in zip(df['posX'], df['posY']):
-                    ax.scatter(x, y, color=color, alpha=.4)
+                    ax.scatter(x, y, color=color, alpha=.5)
                 pbar.update(1)
             ax.set_title(f"ID{ID}_{condition}_agents{num_agents}")
     print("plotting...")
