@@ -77,7 +77,8 @@ def _add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # %%
-def make_dict_containing_all_info(num_subjects: int) -> pd.DataFrame:
+def make_dict_containing_all_info(num_subjects: int,
+                                  folder_path: str = "04_RawData") -> pd.DataFrame:
     """
     Make a dictionary that contains all subjects' records.
     The dictionary's hierarchy is: 
@@ -99,7 +100,7 @@ def make_dict_containing_all_info(num_subjects: int) -> pd.DataFrame:
         for condition in exp_conditions:
             for ID in range(1, 30):
             
-                df = pd.read_csv(f'04_RawData/{ID}_{condition}.csv')
+                df = pd.read_csv(f'{folder_path}/{ID}_{condition}.csv')
                 
                 df_5 = df.query('type.str.contains("05")')
                 df_10 = df.query('type.str.contains("10")')
@@ -182,14 +183,17 @@ def plot_traj_compare_conds(df_all_subjects: pd.DataFrame,
     """
     fig = plt.figure(figsize=(12, 6))
     conditions = ["urgent", "nonurgent", "omoiyari"]
-    for i, condition in enumerate(conditions):
-        ax = fig.add_subplot(1, 3, i+1)
-        for trial, color in zip(range(1, 9), mcolors.BASE_COLORS):
-            df = df_all_subjects[f"ID{ID}"][condition][f"agents{num_agents}_tri{trial}"]
-            for x, y in zip(df['posX'], df['posY']):
-                ax.scatter(x, y, color=color, alpha=.4)
-        ax.set_title(f"ID{ID}_{condition}_agents{num_agents}")
+    num_all_trials = 8
+    with tqdm(total=len(conditions)*num_all_trials) as pbar:
+        for i, condition in enumerate(conditions):
+            ax = fig.add_subplot(1, 3, i+1)
+            for trial, color in zip(range(1, num_all_trials+1), mcolors.BASE_COLORS):
+                df = df_all_subjects[f"ID{ID}"][condition][f"agents{num_agents}_tri{trial}"]
+                for x, y in zip(df['posX'], df['posY']):
+                    ax.scatter(x, y, color=color, alpha=.4)
+                pbar.update(1)
+            ax.set_title(f"ID{ID}_{condition}_agents{num_agents}")
+    print("plotting...")
     plt.show()
 
 # %%
-

@@ -25,17 +25,19 @@ def calc_distance(myX, myY, otherX, otherY):
     
     return distance
     
-dic = pd.DataFrame(columns=([i for i in range(1, 6)]))
-for i in range(1, 6):
+dic = pd.DataFrame(columns=([f"other{i}" for i in range(1, 21)]))
+for i in range(1, 21):
      tmp = df_part.apply(lambda df: calc_distance(
         df["myNextX"], df["myNextY"], df[f"other{i}NextX"], df[f"other{i}NextY"]
         ), axis=1)
-     dic[i] = tmp
+     dic[f"other{i}"] = tmp
 
-# might should consider the closest points to the nearest other agent at each moment?
+newdf = pd.concat([df_part, dic], axis=1)
+newdf.dropna(axis=1, inplace=True)
 
-# mf.plot_traj_per_trials(df_all_subjects, ID, conditions, num_agents)
-# mf.plot_traj_all_trials(df_all_subjects, ID, conditions, num_agents)
-# mf.plot_traj_compare_conds(df_all_subjects, ID, num_agents)
+
+# mf.plot_traj_per_trials(df_all, 1, 'urgent', 5)
+# mf.plot_traj_all_trials(df_all, 1, 'urgent', 5)
+# mf.plot_traj_compare_conds(df_all, 1, 5)
 
 
