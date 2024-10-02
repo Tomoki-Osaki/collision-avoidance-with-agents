@@ -77,8 +77,22 @@ def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # %%
+def calc_dist_real_ideal(df):
+    dists = [None]
+    for rx, ry, ix, iy in zip(df["posX"][1:], df["posY"][1:],
+                              df["idealNextX"][:-1], df["idealNextX"][:-1]):
+        realpos = np.array([rx, ry])
+        idealpos = np.array([ix, iy])
+        distance = np.linalg.norm(realpos - idealpos)
+        dists.append(distance)
+        
+    df["dist_real_ideal"] = dists
+    
+    return df
+
+# %%
 def drop_unnecessary_cols(df):
-    df.dropna(axis=1, inplace=True)
+    df.drop("Unnamed: 117",axis=1, inplace=True)
     cols_to_drop = []
     for i in range(6, 12, 5):
         if all(x == 0 for x in df[f"other{i}NextX"]):
@@ -121,6 +135,7 @@ def preprocess(df):
     df.reset_index(drop=True, inplace=True)
     df = make_start_from_UL(df)
     df = add_cols_ideal_positions(df)
+    df = calc_dist_real_ideal(df)
     df = drop_unnecessary_cols(df)
     df = add_cols_dist_others(df)
     
