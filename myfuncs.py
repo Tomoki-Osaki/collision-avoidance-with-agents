@@ -77,7 +77,11 @@ def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # %%
-def calc_dist_real_ideal(df):
+def calc_dist_real_ideal(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate the distance between real xy positions and the ideal xy positions.
+    Finally added the column named "dist_real_ideal" to the dataframe.
+    """
     dists = [None]
     for rx, ry, ix, iy in zip(df["posX"][1:], df["posY"][1:],
                               df["idealNextX"][:-1], df["idealNextX"][:-1]):
@@ -91,7 +95,10 @@ def calc_dist_real_ideal(df):
     return df
 
 # %%
-def drop_unnecessary_cols(df):
+def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Drop columns whose values are all None or 0.
+    """
     df.drop("Unnamed: 117",axis=1, inplace=True)
     cols_to_drop = []
     for i in range(6, 12, 5):

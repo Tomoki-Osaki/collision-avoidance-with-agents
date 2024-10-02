@@ -15,3 +15,4 @@ df_part = df_small["agents20_tri2"]
 mf.plot_traj_per_trials(df_all, 1, 'urgent', 5)
 mf.plot_traj_all_trials(df_all, 1, 'urgent', 5)
 mf.plot_traj_compare_conds(df_all, 1, 5)
+
