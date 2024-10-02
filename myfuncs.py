@@ -10,7 +10,7 @@ def show_all(obj):
     for i in obj: print(i)
     
 # %%
-def _make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
+def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
     """
     Make all trials' start points (30, 30) and add new columns reperesenting 
     those new X and Y positions (posX, PosY).
@@ -62,7 +62,7 @@ def _calc_ideal_positions(x1: int,
         return x, ymax
     
 # %%
-def _add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
+def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add 'idealNextX' and 'idealNextY' columns to the dataframe.
     """
@@ -119,8 +119,8 @@ def add_cols_dist_others(df):
 # %%
 def preprocess(df):
     df.reset_index(drop=True, inplace=True)
-    df = _make_start_from_UL(df)
-    df = _add_cols_ideal_positions(df)
+    df = make_start_from_UL(df)
+    df = add_cols_ideal_positions(df)
     df = drop_unnecessary_cols(df)
     df = add_cols_dist_others(df)
     
