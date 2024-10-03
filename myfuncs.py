@@ -26,6 +26,13 @@ sns.set_theme()
 from tqdm import tqdm
 from typing import Literal
 
+# %% Global varibales
+SUBJECTS = [subject for subject in range(1, 30)]
+CONDITIONS = ['urgent', 'nonurgent', 'omoiyari']
+AGENTS = [agent for agent in range(1, 21)]
+NUM_AGENTS = [5, 10, 20]
+TRIALS = [trial for trial in range(1, 9)]
+
 # %%
 def show_all(obj):
     for i in obj: print(i)
@@ -122,9 +129,9 @@ def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     """
     df.drop("Unnamed: 117",axis=1, inplace=True)
     cols_to_drop = []
-    for i in range(6, 12, 5):
+    for i in [6, 11]:
         if all(x == 0 for x in df[f"other{i}NextX"]):
-            for j in range(i, 21):
+            for j in range(i, len(AGENTS)+1):
                 other_cols = [f"other{j}NextX", f"other{j}NextY", 
                               f"other{j}MoveX", f"other{j}MoveY",
                               f"other{j}Coll"]    
@@ -145,7 +152,7 @@ def _calc_distance(myX, myY, anotherX, anotherY):
 # %%
 def add_cols_dist_others(df):
     df_tmp = pd.DataFrame()
-    for i in range(1, 21):
+    for i in AGENTS:
         try:
             dist_others = df.apply(lambda df_: _calc_distance(
                df_["myNextX"], df_["myNextY"], df_[f"other{i}NextX"], df_[f"other{i}NextY"]
@@ -179,25 +186,25 @@ def preprocess(df):
     return df
 
 # %%
-def make_empty_hierarchical_df(num_subjects, exp_conditions, num_agents):
+def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
     df_empty = {}
     
-    for subjectID in range(1, num_subjects+1):
+    for subjectID in SUBJECTS:
         df_empty[f"ID{subjectID}"] = {}
         
-    for subjectID in range(1, num_subjects+1):
-        for condition in exp_conditions:
+    for subjectID in SUBJECTS:
+        for condition in CONDITIONS:
             df_empty[f"ID{subjectID}"][condition] = {}
     
-    for subjectID in range(1, num_subjects+1):
-        for condition in exp_conditions:
-            for agent in num_agents:
+    for subjectID in SUBJECTS:
+        for condition in CONDITIONS:
+            for agent in NUM_AGENTS:
                 df_empty[f"ID{subjectID}"][condition][f"agents{agent}"] = {}
 
     return df_empty
 
 # %%
-def make_dict_of_all_info(num_subjects: int,
+def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                           folder_path: str = "04_RawData") -> pd.DataFrame:
     """
     Make a dictionary that contains all subjects' records.
@@ -211,13 +218,10 @@ def make_dict_of_all_info(num_subjects: int,
     """
     pd.options.mode.chained_assignment = None # otherwise there'll be many warnings
     
-    exp_conditions = ["urgent", "nonurgent", "omoiyari"] #, "control"]
-    num_agents = [5, 10, 20]
-    
-    df_all = make_empty_hierarchical_df(num_subjects, exp_conditions, num_agents)
+    df_all = make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS)
         
-    for ID in tqdm(range(1, num_subjects+1)):
-        for cond in exp_conditions:
+    for ID in tqdm(SUBJECTS):
+        for cond in CONDITIONS:
         
             df = pd.read_csv(f'{folder_path}/{ID}_{cond}.csv')
             
@@ -233,7 +237,7 @@ def make_dict_of_all_info(num_subjects: int,
             
             trialnums = [trialnum5, trialnum10, trialnum20]
             
-            for df_agent, trialnum, agent in zip(dfs, trialnums, num_agents):
+            for df_agent, trialnum, agent in zip(dfs, trialnums, NUM_AGENTS):
                 for trial in range(len(trialnum5)):
                     
                     df_tri = df_agent.query('trial == @trialnum[@trial]')
@@ -264,7 +268,7 @@ def plot_traj_per_trials(df_all: pd.DataFrame,
     Plot each trial's trajectory in different axes(2x4).
     """
     fig = plt.figure(figsize=(12, 6))
-    for trial, color in zip(range(1, 9), mcolors.TABLEAU_COLORS):
+    for trial, color in zip(TRIALS, mcolors.TABLEAU_COLORS):
         df = df_all[f"ID{ID}"][conditions][f"agents{num_agents}"][f"trial{trial}"]
         ax = fig.add_subplot(2, 4, trial)
         for x, y in zip(df['posX'], df['posY']):
@@ -282,12 +286,10 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     Figure has 1x3 axes.
     """
     fig = plt.figure(figsize=(12, 6))
-    conditions = ["urgent", "nonurgent", "omoiyari"]
-    num_all_trials = 8
-    with tqdm(total=len(conditions)*num_all_trials) as pbar:
-        for i, cond in enumerate(conditions):
+    with tqdm(total=len(CONDITIONS)*len(TRIALS)) as pbar:
+        for i, cond in enumerate(CONDITIONS):
             ax = fig.add_subplot(1, 3, i+1)
-            for trial, color in zip(range(1, num_all_trials+1), mcolors.TABLEAU_COLORS):
+            for trial, color in zip(TRIALS, mcolors.TABLEAU_COLORS):
                 df = df_all[f"ID{ID}"][cond][f"agents{num_agents}"][f"trial{trial}"]
                 for x, y in zip(df['posX'], df['posY']):
                     ax.scatter(x, y, color=color, alpha=.5)
