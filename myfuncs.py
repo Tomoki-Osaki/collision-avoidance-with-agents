@@ -3,7 +3,7 @@
 2.  make_start_from_UL
 3.  _calc_ideal_positions
 4.  add_cols_ideal_positions
-5.  calc_dist_real_ideal
+5.  calc_dist_actual_ideal
 6.  drop_unnecessary_cols
 7.  _calc_distance
 8.  add_cols_dist_others
@@ -105,20 +105,20 @@ def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # %%
-def calc_dist_real_ideal(df: pd.DataFrame) -> pd.DataFrame:
+def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate the distance between real xy positions and the ideal xy positions.
-    Finally added the column named "dist_real_ideal" to the dataframe.
+    Calculate the distance between actual xy positions and the ideal xy positions.
+    Finally added the column named "dist_actual_ideal" to the dataframe.
     """
     dists = [None]
     for rx, ry, ix, iy in zip(df["posX"][1:], df["posY"][1:],
                               df["idealNextX"][:-1], df["idealNextX"][:-1]):
-        realpos = np.array([rx, ry])
+        actualpos = np.array([rx, ry])
         idealpos = np.array([ix, iy])
-        distance = np.linalg.norm(realpos - idealpos)
+        distance = np.linalg.norm(actualpos - idealpos)
         dists.append(distance)
         
-    df["dist_real_ideal"] = dists
+    df["dist_actual_ideal"] = dists
     
     return df
 
@@ -178,7 +178,7 @@ def preprocess(df):
     df.reset_index(drop=True, inplace=True)
     df = make_start_from_UL(df)
     df = add_cols_ideal_positions(df)
-    df = calc_dist_real_ideal(df)
+    df = calc_dist_actual_ideal(df)
     df = drop_unnecessary_cols(df)
     df = add_cols_dist_others(df)
     df = calc_closest_others(df)
@@ -267,7 +267,7 @@ def plot_traj_per_trials(df_all: pd.DataFrame,
     """
     Plot each trial's trajectory in different axes(2x4).
     """
-    fig = plt.figure(figsize=(12, 6))
+    fig = plt.figure(figsize=(12, 6), tight_layout=True)
     for trial, color in zip(TRIALS, mcolors.TABLEAU_COLORS):
         df = df_all[f"ID{ID}"][conditions][f"agents{num_agents}"][f"trial{trial}"]
         ax = fig.add_subplot(2, 4, trial)
@@ -285,7 +285,7 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     Plot each trial's trajectory for all experiment conditions.
     Figure has 1x3 axes.
     """
-    fig = plt.figure(figsize=(12, 6))
+    fig = plt.figure(figsize=(12, 6), tight_layout=True)
     with tqdm(total=len(CONDITIONS)*len(TRIALS)) as pbar:
         for i, cond in enumerate(CONDITIONS):
             ax = fig.add_subplot(1, 3, i+1)
