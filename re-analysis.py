@@ -47,25 +47,55 @@ for trial in TRIALS:
     df_clustering[f"urgent_dist_{trial}"] = urgent
     df_clustering[f"nonurgent_dist_{trial}"] = nonurgent
     
-df_clustering = pd.concat([omoiyari, urgent, nonurgent])
+    df_clustering.dropna(inplace=True)
 
 from tslearn.clustering import TimeSeriesKMeans
-import collections
+from tslearn.utils import to_time_series_dataset
+from tslearn.preprocessing import TimeSeriesScalerMeanVariance    
+from tslearn.metrics import dtw 
+time_np = to_time_series_dataset(df_clustering)
 
-#metric : ユークリッド距離(euclidean) , DTW(dtw)
-metric = 'euclidean'
-# cluster数
-n_clusters = 3
-#クラスタリングの実装
-tskm_base = TimeSeriesKMeans(n_clusters=n_clusters, metric=metric,
-                             max_iter=100, random_state=42)
-tskm_base.fit(df_clustering.T.values)
+n = 3
+km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='euclidean', random_state=0)
+labels_euclidean = km_euclidean.fit_predict(df_clustering)
+print(labels_euclidean)
 
-#クラスタリングごとの表示
-cnt = collections.Counter(tskm_base.labels_)
-clusters = list(tskm_base.labels_)
-cluster_labels = {}
-for k in cnt:
-    cluster_labels['cluster-{}'.format(k)] = cnt[k]
-# クラスターごとの数
-print(sorted(cluster_labels.items()))
+fig, axes = plt.subplots(n, figsize=(8,16))
+for i in range(n):
+    ax = axes[i]
+
+    for x in time_np[labels_euclidean == i]:
+        ax.plot(x.ravel(), 'k-', alpha=0.2)
+    ax.plot(km_euclidean.cluster_centers_[i].ravel(), 'r-')
+
+    datanum = np.count_nonzero(labels_euclidean == i)
+    ax.text(0.5, (0.7+0.25), f'Cluster{(i)} : n = {datanum}')
+    if i == 0:
+        ax.set_title('time series clustering')
+plt.show()
+
+distortions = [] 
+for i in range(1,11): 
+    ts_km = TimeSeriesKMeans(n_clusters=i,metric="dtw",random_state=42) 
+    ts_km.fit_predict(df_clustering) 
+    distortions.append(ts_km.inertia_) 
+
+plt.plot(range(1,11),distortions,marker="o") 
+plt.xticks(range(1,11)) 
+plt.xlabel("Number of clusters") 
+plt.ylabel("Distortion") 
+plt.show()
+
+ts_km = TimeSeriesKMeans(n_clusters=3, metric="dtw", random_state=42) 
+y_pred = ts_km.fit_predict(df_clustering)
+
+plt.figure()
+for yi in range(3):
+    plt.subplot(3, 3, yi + 1)
+    # for xx in X_train[y_pred == yi]:
+    #     plt.plot(xx.ravel(), "k-", alpha=.2)
+    plt.plot(ts_km.cluster_centers_[yi].ravel(), "r-")
+    # plt.xlim(0, sz)
+    plt.ylim(-4, 4)
+    plt.text(0.55, 0.85,'Cluster %d' % (yi + 1),
+             transform=plt.gca().transAxes)
