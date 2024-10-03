@@ -12,8 +12,10 @@
 11. make_empty_hierarchical_df
 12. make_dict_of_all_info
 13. make_df_trial
-13. plot_traj_per_trials
-14. plot_traj_compare_conds
+14. make_df_for_clustering
+15. plot_traj_per_trials
+16. plot_traj_compare_conds
+17. plot_distance
 """
 
 # %%
@@ -260,6 +262,25 @@ def make_df_trial(df_all: pd.DataFrame,
     return df
     
 # %%
+def make_df_for_clustering(df_all: pd.DataFrame,
+                           ID: int, 
+                           agents: Literal[5, 10, 20], 
+                           dist: Literal["dist_actual_ideal", "closest_dists"]) -> pd.DataFrame:
+    df_clustering = pd.DataFrame()
+    for trial in TRIALS:
+        omoiyari = df_all[f"ID{ID}"]["omoiyari"][f"agents{agents}"][f"trial{trial}"][dist]
+        urgent = df_all[f"ID{ID}"]["urgent"][f"agents{agents}"][f"trial{trial}"][dist]
+        nonurgent = df_all[f"ID{ID}"]["nonurgent"][f"agents{agents}"][f"trial{trial}"][dist]
+        
+        df_clustering[f"omoiyari_dist_{trial}"] = omoiyari
+        df_clustering[f"urgent_dist_{trial}"] = urgent
+        df_clustering[f"nonurgent_dist_{trial}"] = nonurgent
+        
+        df_clustering.dropna(inplace=True)
+    
+    return df_clustering
+
+# %%
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 
                          conditions: Literal["urgent", "nonurgent", "omoiyari"], 
@@ -299,3 +320,21 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     plt.show()
 
 # %% 
+def plot_distance(df_all: pd.DataFrame,
+                  ID: int, 
+                  agents: Literal[5, 10, 20], 
+                  dist: Literal["dist_actual_ideal", "closest_dists"]) -> None:
+    fig = plt.figure(figsize=(10, 6), tight_layout=True)
+    ax = fig.add_subplot(1, 1, 1)
+    for cond, color in zip(CONDITIONS, mcolors.TABLEAU_COLORS):
+        df_small = df_all[f'ID{ID}'][cond][f'agents{agents}']
+        for tri in TRIALS:
+            if tri == TRIALS[0]:
+                ax.plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7, label=cond)
+            else:
+                ax.plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7)
+    ax.set_title(f"{dist} ID{ID} agents{agents}")
+    plt.legend()
+    plt.show()
+
+# %%
