@@ -15,8 +15,16 @@
 14. make_df_for_clustering
 15. plot_traj_per_trials
 16. plot_traj_compare_conds
-17. plot_distance
+17. plot_dist_compare_conds
+18. plot_dist_per_cond
 """
+
+# %% Global varibales
+SUBJECTS = [subject for subject in range(1, 30)]
+CONDITIONS = ['urgent', 'nonurgent', 'omoiyari']
+AGENTS = [agent for agent in range(1, 21)]
+NUM_AGENTS = [5, 10, 20]
+TRIALS = [trial for trial in range(1, 9)]
 
 # %%
 import pandas as pd
@@ -28,18 +36,11 @@ sns.set_theme()
 from tqdm import tqdm
 from typing import Literal
 
-# %% Global varibales
-SUBJECTS = [subject for subject in range(1, 30)]
-CONDITIONS = ['urgent', 'nonurgent', 'omoiyari']
-AGENTS = [agent for agent in range(1, 21)]
-NUM_AGENTS = [5, 10, 20]
-TRIALS = [trial for trial in range(1, 9)]
-
-# %%
+# %% 1
 def show_all(obj):
     for i in obj: print(i)
     
-# %%
+# %% 2
 def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
     """
     Make all trials' start points (30, 30) and add new columns reperesenting 
@@ -63,7 +64,7 @@ def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-# %%
+# %% 3
 def _calc_ideal_positions(x1: int, 
                           y1: int, 
                           goalx: int = 880, 
@@ -91,7 +92,7 @@ def _calc_ideal_positions(x1: int,
     else: 
         return x, ymax
     
-# %%
+# %% 4
 def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add 'idealNextX' and 'idealNextY' columns to the dataframe.
@@ -106,7 +107,7 @@ def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %%
+# %% 5
 def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculate the distance between actual xy positions and the ideal xy positions.
@@ -124,7 +125,7 @@ def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %%
+# %% 6
 def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     """
     Drop columns whose values are all None or 0.
@@ -143,7 +144,7 @@ def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %%
+# %% 7
 def _calc_distance(myX, myY, anotherX, anotherY):
     mypos = np.array([myX, myY])
     anotherpos = np.array([anotherX, anotherY])
@@ -151,7 +152,7 @@ def _calc_distance(myX, myY, anotherX, anotherY):
     
     return distance
 
-# %%
+# %% 8
 def add_cols_dist_others(df):
     df_tmp = pd.DataFrame()
     for i in AGENTS:
@@ -167,15 +168,15 @@ def add_cols_dist_others(df):
     
     return newdf
 
-# %%
+# %% 9
 def calc_closest_others(df):
     df_others = df.filter(like="distOther")
-    closest_dists = df_others.apply(min, axis=1)
-    df['closest_dists'] = closest_dists
+    dist_closest = df_others.apply(min, axis=1)
+    df['dist_closest'] = dist_closest
     
     return df
 
-# %%
+# %% 10
 def preprocess(df):
     df.reset_index(drop=True, inplace=True)
     df = make_start_from_UL(df)
@@ -187,7 +188,7 @@ def preprocess(df):
     
     return df
 
-# %%
+# %% 11
 def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
     df_empty = {}
     
@@ -205,7 +206,7 @@ def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
 
     return df_empty
 
-# %%
+# %% 12
 def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                           folder_path: str = "04_RawData") -> pd.DataFrame:
     """
@@ -250,7 +251,7 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                         
     return df_all
 
-# %%
+# %% 13
 def make_df_trial(df_all: pd.DataFrame, 
                   ID: int, 
                   condition: Literal['urgent', 'nonurgent', 'omoiyari'], 
@@ -261,11 +262,11 @@ def make_df_trial(df_all: pd.DataFrame,
     
     return df
     
-# %%
+# %% 14
 def make_df_for_clustering(df_all: pd.DataFrame,
                            ID: int, 
                            agents: Literal[5, 10, 20], 
-                           dist: Literal["dist_actual_ideal", "closest_dists"]) -> pd.DataFrame:
+                           dist: Literal["dist_actual_ideal", 'dist_closest']) -> pd.DataFrame:
     df_clustering = pd.DataFrame()
     for trial in TRIALS:
         omoiyari = df_all[f"ID{ID}"]["omoiyari"][f"agents{agents}"][f"trial{trial}"][dist]
@@ -280,7 +281,7 @@ def make_df_for_clustering(df_all: pd.DataFrame,
     
     return df_clustering
 
-# %%
+# %% 15
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 
                          conditions: Literal["urgent", "nonurgent", "omoiyari"], 
@@ -288,7 +289,7 @@ def plot_traj_per_trials(df_all: pd.DataFrame,
     """
     Plot each trial's trajectory in different axes(2x4).
     """
-    fig = plt.figure(figsize=(12, 6), tight_layout=True)
+    fig = plt.figure(figsize=(10, 6), tight_layout=True)
     for trial, color in zip(TRIALS, mcolors.TABLEAU_COLORS):
         df = df_all[f"ID{ID}"][conditions][f"agents{num_agents}"][f"trial{trial}"]
         ax = fig.add_subplot(2, 4, trial)
@@ -298,7 +299,7 @@ def plot_traj_per_trials(df_all: pd.DataFrame,
     plt.suptitle(f"ID{ID}_{conditions}_agents{num_agents}")
     plt.show()
     
-# %%
+# %% 16
 def plot_traj_compare_conds(df_all: pd.DataFrame, 
                             ID: int, 
                             num_agents: Literal[5, 10, 20]) -> None:
@@ -306,7 +307,7 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     Plot each trial's trajectory for all experiment conditions.
     Figure has 1x3 axes.
     """
-    fig = plt.figure(figsize=(12, 6), tight_layout=True)
+    fig = plt.figure(figsize=(10, 4), tight_layout=True)
     with tqdm(total=len(CONDITIONS)*len(TRIALS)) as pbar:
         for i, cond in enumerate(CONDITIONS):
             ax = fig.add_subplot(1, 3, i+1)
@@ -319,11 +320,14 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     print("plotting...")
     plt.show()
 
-# %% 
-def plot_distance(df_all: pd.DataFrame,
-                  ID: int, 
-                  agents: Literal[5, 10, 20], 
-                  dist: Literal["dist_actual_ideal", "closest_dists"]) -> None:
+# %% 17
+def plot_dist_compare_conds(df_all: pd.DataFrame,
+                            ID: int, 
+                            agents: Literal[5, 10, 20], 
+                            dist: Literal["dist_actual_ideal", 'dist_closest']) -> None:
+    """
+    Plot information of distance in one axis. Figures of each condition are overlapped.
+    """
     fig = plt.figure(figsize=(10, 6), tight_layout=True)
     ax = fig.add_subplot(1, 1, 1)
     for cond, color in zip(CONDITIONS, mcolors.TABLEAU_COLORS):
@@ -337,4 +341,26 @@ def plot_distance(df_all: pd.DataFrame,
     plt.legend()
     plt.show()
 
+# %% 18
+def plot_dist_per_cond(df_all: pd.DataFrame,
+                       ID: int, 
+                       agents: Literal[5, 10, 20], 
+                       dist: Literal["dist_actual_ideal", 'dist_closest']) -> None:
+    """
+    Plot information of distance in separated axes (1, 3). 
+    """
+    fig, ax = plt.subplots(1, 3, figsize=(10, 4), sharex="all", sharey="all", tight_layout=True)
+    
+    for i, (cond, color) in enumerate(zip(CONDITIONS, mcolors.TABLEAU_COLORS)):
+        df_small = df_all[f'ID{ID}'][cond][f'agents{agents}']
+        for tri in TRIALS:
+            if tri == TRIALS[0]:
+                ax[i].plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7, label=cond)
+            else:
+                ax[i].plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7)
+        ax[i].legend(loc="upper right")
+    plt.suptitle(f"{dist} ID{ID} agents{agents}")
+    plt.show()
+
 # %%
+
