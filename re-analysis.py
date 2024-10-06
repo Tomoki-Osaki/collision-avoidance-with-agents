@@ -16,10 +16,59 @@ TRIALS = mf.TRIALS
 
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
-ID = 11
-agents = 20
+# %%
+ID = 18
+agents = 10
 cond = "nonurgent"
-trial = 4
+trial = 3
+
+df_trial = mf.make_df_trial(df_all, ID, cond, agents, trial)
+cols = df_trial.columns
+
+
+dist_closest = np.mean(df_trial['dist_closest'])
+dist_actual_ideal = np.mean(df_trial['dist_actual_ideal'])
+completion_time = df_trial['timerTrial'].iloc[-1]
+tmp = pd.DataFrame({'completion_time': completion_time,
+                    'dist_closest': dist_closest,
+                    'dist_actual_ideal': dist_actual_ideal,
+                    'condition': 'nonurgent'},
+                   index=['ID14_nonurgent_agents20_trial3'])
+
+tmp = df_trial[['dist_closest', 'dist_actual_ideal']]
+tmp = tmp.apply(np.mean, axis=0)
+
+# %%
+ID = 5
+agents = 20
+df_sum = pd.DataFrame(columns=[
+    'completion_time', 'dist_closest', 'dist_actual_ideal', 'condition'
+    ])
+
+for cond in CONDITIONS:
+    for ID in SUBJECTS:
+        for trial in TRIALS:
+            df_trial = mf.make_df_trial(df_all, ID, cond, agents, trial)
+            tmp = pd.DataFrame({'completion_time': df_trial['timerTrial'].iloc[-1],
+                                'dist_closest': np.mean(df_trial['dist_closest']),
+                                'dist_actual_ideal': np.mean(df_trial['dist_actual_ideal']),
+                                'condition': cond},
+                               index=[f'ID{ID}_{cond}_agents{agents}_trial{trial}'])
+            df_sum = pd.concat([df_sum, tmp])
+
+from sklearn.cluster import KMeans
+import warnings
+warnings.simplefilter('ignore')
+X = df_sum[['completion_time', 'dist_closest', 'dist_actual_ideal']]
+Y = df_sum['condition']
+
+kmeans_model = KMeans(n_clusters=3)
+clusters = kmeans_model.fit_predict(X)
+print('urgent   ', clusters[:232])
+print('nonurgent', clusters[232:464])
+print('omoiyari ', clusters[464:])
+
+
 
 # %% plot functions
 mf.plot_traj_per_trials(df_all, ID, cond, agents)
@@ -28,40 +77,36 @@ mf.plot_traj_compare_conds(df_all, ID, agents)
 mf.plot_dist_compare_conds(df_all, ID, agents, "dist_actual_ideal")
 mf.plot_dist_per_cond(df_all, ID, agents, "dist_actual_ideal")
 
-mf.plot_dist_compare_conds(df_all, ID, agents, "closest_dists")
-mf.plot_dist_per_cond(df_all, ID, agents, "closest_dists")
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_closest")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_closest")
 
 # %%
-df_trial = mf.make_df_trial(df_all, ID, cond, agents, trial)
-cols = df_trial.columns
-
-posXtplus1  = pd.concat([df_trial.posX[1:], pd.Series([None])])
-posYtplus1  = pd.concat([df_trial.posY[1:], pd.Series([None])])
+posXtplus1  = pd.concat([df_trial.posX[1:], pd.Series([None])], ignore_index=True)
+posYtplus1  = pd.concat([df_trial.posY[1:], pd.Series([None])], ignore_index=True)
 df_trial['posXt+1'] = posXtplus1
 df_trial['posYt+1'] = posYtplus1
 
-def _calc_distance(myX, myY, anotherX, anotherY):
-    mypos = np.array([myX, myY])
-    anotherpos = np.array([anotherX, anotherY])
-    distance = np.linalg.norm(mypos - anotherpos)
-    
-    return distance
-
-def calc_deg(x0, y0, x1, y1, x2, y2):
-    #角度計算開始
+def calc_deg(x0, y0, x1, y1, x2=880, y2=880):
     try:
         vec1 = [x1 - x0, y1 - y0]
         vec2 = [x2 - x0, y2 - y0]
+      
+        absvec1 = np.linalg.norm(vec1)
+        absvec2 = np.linalg.norm(vec2)
+        inner = np.inner(vec1, vec2)
+        cos_theta = inner / (absvec1 * absvec2)
+        theta = math.degrees(math.acos(cos_theta))
+        
+        return theta
+    
     except TypeError:
         return None
     
-    absvec1 = np.linalg.norm(vec1)
-    absvec2 = np.linalg.norm(vec2)
-    inner = np.inner(vec1, vec2)
-    cos_theta = inner / (absvec1 * absvec2)
-    theta = math.degrees(math.acos(cos_theta))
-    
-    return theta
+# might need to consider how to deal with unmoving degree.
+# when the position of time t and time t+1 is same, the degree will be None.
+# deg = df_trial.apply(lambda df: calc_deg(
+#     df["posX"], df["posY"], df["posXt+1"], df["posYt+1"]
+#     ), axis=1)
 
 # %% time series clustering
 df_clustering = mf.make_df_for_clustering(df_all, 8, 20, "dist_actual_ideal")

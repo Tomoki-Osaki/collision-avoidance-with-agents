@@ -1,22 +1,23 @@
 """
 1.  show_all
 2.  make_start_from_UL
-3.  _calc_ideal_positions
-4.  add_cols_ideal_positions
-5.  calc_dist_actual_ideal
-6.  drop_unnecessary_cols
-7.  _calc_distance
-8.  add_cols_dist_others
-9.  calc_closest_others
-10. preprocess
-11. make_empty_hierarchical_df
-12. make_dict_of_all_info
-13. make_df_trial
-14. make_df_for_clustering
-15. plot_traj_per_trials
-16. plot_traj_compare_conds
-17. plot_dist_compare_conds
-18. plot_dist_per_cond
+3.  drop_unmoved_from_start
+4.  _calc_ideal_positions
+5.  add_cols_ideal_positions
+6.  calc_dist_actual_ideal
+7.  drop_unnecessary_cols
+8.  _calc_distance
+9.  add_cols_dist_others
+10.  calc_closest_others
+11. preprocess
+12. make_empty_hierarchical_df
+13. make_dict_of_all_info
+14. make_df_trial
+15. make_df_for_clustering
+16. plot_traj_per_trials
+17. plot_traj_compare_conds
+18. plot_dist_compare_conds
+19. plot_dist_per_cond
 """
 
 # %% Global varibales
@@ -65,6 +66,16 @@ def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # %% 3
+def drop_unmoved_from_start(df):
+    for i, (x, y) in enumerate(zip(df["posX"], df["posY"])):
+        if x != 30 or y != 30:
+            df_dropped = df[i-1:]
+            df_dropped.reset_index(inplace=True)
+            break
+    
+    return df_dropped
+
+# %% 4
 def _calc_ideal_positions(x1: int, 
                           y1: int, 
                           goalx: int = 880, 
@@ -92,7 +103,7 @@ def _calc_ideal_positions(x1: int,
     else: 
         return x, ymax
     
-# %% 4
+# %% 5
 def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add 'idealNextX' and 'idealNextY' columns to the dataframe.
@@ -107,7 +118,7 @@ def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 5
+# %% 6
 def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculate the distance between actual xy positions and the ideal xy positions.
@@ -125,7 +136,7 @@ def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 6
+# %% 7
 def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     """
     Drop columns whose values are all None or 0.
@@ -144,7 +155,7 @@ def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 7
+# %% 8
 def _calc_distance(myX, myY, anotherX, anotherY):
     mypos = np.array([myX, myY])
     anotherpos = np.array([anotherX, anotherY])
@@ -152,7 +163,7 @@ def _calc_distance(myX, myY, anotherX, anotherY):
     
     return distance
 
-# %% 8
+# %% 9
 def add_cols_dist_others(df):
     df_tmp = pd.DataFrame()
     for i in AGENTS:
@@ -168,7 +179,7 @@ def add_cols_dist_others(df):
     
     return newdf
 
-# %% 9
+# %% 10
 def calc_closest_others(df):
     df_others = df.filter(like="distOther")
     dist_closest = df_others.apply(min, axis=1)
@@ -176,10 +187,11 @@ def calc_closest_others(df):
     
     return df
 
-# %% 10
+# %% 11
 def preprocess(df):
     df.reset_index(drop=True, inplace=True)
     df = make_start_from_UL(df)
+    df = drop_unmoved_from_start(df)
     df = add_cols_ideal_positions(df)
     df = calc_dist_actual_ideal(df)
     df = drop_unnecessary_cols(df)
@@ -188,7 +200,7 @@ def preprocess(df):
     
     return df
 
-# %% 11
+# %% 12
 def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
     df_empty = {}
     
@@ -206,7 +218,7 @@ def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
 
     return df_empty
 
-# %% 12
+# %% 13
 def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                           folder_path: str = "04_RawData") -> pd.DataFrame:
     """
@@ -247,11 +259,10 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                     df_tri = preprocess(df_tri)
 
                     df_all[f"ID{ID}"][cond][f"agents{agent}"][f"trial{trial+1}"] = df_tri
-
                         
     return df_all
 
-# %% 13
+# %% 14
 def make_df_trial(df_all: pd.DataFrame, 
                   ID: int, 
                   condition: Literal['urgent', 'nonurgent', 'omoiyari'], 
@@ -262,7 +273,7 @@ def make_df_trial(df_all: pd.DataFrame,
     
     return df
     
-# %% 14
+# %% 15
 def make_df_for_clustering(df_all: pd.DataFrame,
                            ID: int, 
                            agents: Literal[5, 10, 20], 
@@ -281,7 +292,7 @@ def make_df_for_clustering(df_all: pd.DataFrame,
     
     return df_clustering
 
-# %% 15
+# %% 16
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 
                          conditions: Literal["urgent", "nonurgent", "omoiyari"], 
@@ -299,7 +310,7 @@ def plot_traj_per_trials(df_all: pd.DataFrame,
     plt.suptitle(f"ID{ID}_{conditions}_agents{num_agents}")
     plt.show()
     
-# %% 16
+# %% 17
 def plot_traj_compare_conds(df_all: pd.DataFrame, 
                             ID: int, 
                             num_agents: Literal[5, 10, 20]) -> None:
@@ -320,7 +331,7 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     print("plotting...")
     plt.show()
 
-# %% 17
+# %% 18
 def plot_dist_compare_conds(df_all: pd.DataFrame,
                             ID: int, 
                             agents: Literal[5, 10, 20], 
@@ -341,7 +352,7 @@ def plot_dist_compare_conds(df_all: pd.DataFrame,
     plt.legend()
     plt.show()
 
-# %% 18
+# %% 19
 def plot_dist_per_cond(df_all: pd.DataFrame,
                        ID: int, 
                        agents: Literal[5, 10, 20], 
