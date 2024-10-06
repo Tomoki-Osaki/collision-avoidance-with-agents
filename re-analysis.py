@@ -59,8 +59,28 @@ for cond in CONDITIONS:
 from sklearn.cluster import KMeans
 import warnings
 warnings.simplefilter('ignore')
+#Import scikit-learn metrics module for accuracy calculation
+from sklearn import metrics
+#Import svm model
+from sklearn import svm
+
 X = df_sum[['completion_time', 'dist_closest', 'dist_actual_ideal']]
 Y = df_sum['condition']
+x_train, y_train = X[:400], Y[:400]
+x_test, y_test = X[400:], Y[400:]
+
+#Create a svm Classifier
+clf = svm.SVC(kernel='rbf') # Linear Kernel
+
+#Train the model using the training sets
+clf.fit(x_train, y_train)
+
+#Predict the response for test dataset
+y_pred = clf.predict(x_test)
+
+# Model Accuracy: how often is the classifier correct?
+print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+
 
 kmeans_model = KMeans(n_clusters=3)
 clusters = kmeans_model.fit_predict(X)
