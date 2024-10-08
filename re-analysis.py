@@ -16,7 +16,7 @@ TRIALS = mf.TRIALS
 
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
-# %%
+# %% make a dataframe for classification (supervised)
 ID = 18
 agents = 10
 cond = "nonurgent"
@@ -38,7 +38,7 @@ tmp = pd.DataFrame({'completion_time': completion_time,
 tmp = df_trial[['dist_closest', 'dist_actual_ideal']]
 tmp = tmp.apply(np.mean, axis=0)
 
-# %%
+# %% run classification
 ID = 5
 agents = 20
 df_sum = pd.DataFrame(columns=[
@@ -123,7 +123,8 @@ def calc_deg(x0, y0, x1, y1, x2=880, y2=880):
         return None
     
 # might need to consider how to deal with unmoving degree.
-# when the position of time t and time t+1 is same, the degree will be None.
+# when the position of time t and time t+1 is same, the degree will be None but 
+# it should be punished most.
 # deg = df_trial.apply(lambda df: calc_deg(
 #     df["posX"], df["posY"], df["posXt+1"], df["posYt+1"]
 #     ), axis=1)
