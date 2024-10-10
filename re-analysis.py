@@ -6,6 +6,7 @@ import seaborn as sns
 from gc import collect as g
 from typing import Literal
 import math
+from tqdm import tqdm
 import myfuncs as mf
 
 SUBJECTS = mf.SUBJECTS
@@ -133,6 +134,13 @@ def calc_deg(x0, y0, x1, y1, x2=880, y2=880):
 df_clustering = mf.make_df_for_clustering(df_all, 8, 20, "dist_actual_ideal")
 true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
 
+df_clustering = pd.DataFrame()
+for ID in tqdm(SUBJECTS):
+    for agent in NUM_AGENTS:
+        df = mf.make_df_for_clustering(df_all, ID, agent, "dist_actual_ideal")
+        df_clustering = pd.concat([df_clustering, df], ignore_index=True)
+
+
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance    
@@ -142,11 +150,10 @@ from sklearn.preprocessing import StandardScaler
 scaler_std = StandardScaler()
 df_clustering = scaler_std.fit_transform(df_clustering)
 
-
 time_np = to_time_series_dataset(df_clustering.T)
 
 n = 3
-km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='euclidean', random_state=42)
+km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw')
 labels_euclidean = km_euclidean.fit_predict(df_clustering.T)
 print(labels_euclidean)
 
