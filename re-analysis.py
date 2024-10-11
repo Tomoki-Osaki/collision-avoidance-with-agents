@@ -105,6 +105,8 @@ mf.plot_traj_compare_conds(df_all, ID, agents)
 mf.plot_dist_compare_conds(df_all, ID, agents, "dist_actual_ideal")
 mf.plot_dist_per_cond(df_all, ID, agents, "dist_actual_ideal")
 
+mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
+
 mf.plot_dist_compare_conds(df_all, ID, agents, "dist_closest")
 mf.plot_dist_per_cond(df_all, ID, agents, "dist_closest")
 

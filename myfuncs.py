@@ -18,6 +18,7 @@
 17. plot_traj_compare_conds
 18. plot_dist_compare_conds
 19. plot_dist_per_cond
+20. plot_all_dist_compare_conds
 """
 
 # %% Global varibales
@@ -373,5 +374,26 @@ def plot_dist_per_cond(df_all: pd.DataFrame,
     plt.suptitle(f"{dist} ID{ID} agents{agents}")
     plt.show()
 
-# %%
+# %% 20
+def plot_all_dist_compare_conds(df_all: pd.DataFrame,
+                                subjects: list[int], 
+                                agents: Literal[5, 10, 20], 
+                                dist: Literal["dist_actual_ideal", 'dist_closest']) -> None:
+    """
+    Plot information of distance in one axis. Figures of each condition are overlapped.
+    """
+    fig = plt.figure(figsize=(10, 6), tight_layout=True)
+    ax = fig.add_subplot(1, 1, 1)
+    for id_ in tqdm(SUBJECTS):
+        for cond, color in zip(CONDITIONS, mcolors.TABLEAU_COLORS):
+            df_small = df_all[f'ID{id_}'][cond][f'agents{agents}']
+            for tri in TRIALS:
+                if tri == TRIALS[0] and id_ == 1:
+                    ax.plot(df_small[f'trial{tri}'][dist], color=color, alpha=.2, label=cond)
+                else:
+                    ax.plot(df_small[f'trial{tri}'][dist], color=color, alpha=.2)
+    ax.set_title(f"{dist} agents{agents}")
+    plt.legend()
+    plt.show()
+
 
