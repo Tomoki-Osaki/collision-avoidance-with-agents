@@ -3,10 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
+
+from tslearn.clustering import TimeSeriesKMeans
+from tslearn.utils import to_time_series_dataset
+from tslearn.preprocessing import TimeSeriesScalerMeanVariance    
+from tslearn.metrics import dtw 
+from sklearn.preprocessing import StandardScaler
 from gc import collect as g
 from typing import Literal
 import math
 from tqdm import tqdm
+import time
 import myfuncs as mf
 
 SUBJECTS = mf.SUBJECTS
@@ -140,22 +147,32 @@ for ID in tqdm(SUBJECTS):
         df = mf.make_df_for_clustering(df_all, ID, agent, "dist_actual_ideal")
         df_clustering = pd.concat([df_clustering, df], ignore_index=True)
 
-
-from tslearn.clustering import TimeSeriesKMeans
-from tslearn.utils import to_time_series_dataset
-from tslearn.preprocessing import TimeSeriesScalerMeanVariance    
-from tslearn.metrics import dtw 
-
-from sklearn.preprocessing import StandardScaler
-scaler_std = StandardScaler()
-df_clustering = scaler_std.fit_transform(df_clustering)
+# scaler_std = StandardScaler()
+# df_clustering = scaler_std.fit_transform(df_clustering)
 
 time_np = to_time_series_dataset(df_clustering.T)
 
+start = time.time()
 n = 3
 km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw')
 labels_euclidean = km_euclidean.fit_predict(df_clustering.T)
 print(labels_euclidean)
+end = time.time()
+print(end-start)
+
+df_labels = pd.DataFrame({"true_labels": true_labels,
+                          "clustered_labels": labels_euclidean})
+
+clus0, clus1, clus2 = [], [], []
+for i, j in zip(df_labels["clustered_labels"], df_labels["true_labels"]):
+    if i == 0:
+        clus0.append(j)
+    elif i == 1:
+        clus1.append(j)
+    else:
+        clus2.append(j)
+print("clus0", clus0, "\n\nclus1", clus1, "\n\nclus2", clus2)
+
 
 fig = plt.figure(figsize=(12, 4))
 for i in range(n):
