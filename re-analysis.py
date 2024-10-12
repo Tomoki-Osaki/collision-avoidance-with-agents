@@ -141,6 +141,23 @@ def calc_deg(x0, y0, x1, y1, x2=880, y2=880):
 
 # %% time series clustering
 df_clustering = mf.make_df_for_clustering(df_all, 8, 20, "dist_actual_ideal")
+
+def dist_sum_1st2nd_closest(series):
+    array_sorted = series
+    array_sorted.sort_values(ascending=False)
+    sum_top12_closest = sum(array_sorted[0:2])
+    
+    return sum_top12_closest
+
+def add_col_dist_top12_closest(df):
+    df_others = df.filter(like="distOther")
+    dist_1st2nd_closest = df_others.apply(
+        lambda series: dist_sum_1st2nd_closest(series), 
+        axis=1)
+    df['dist_top12_closest'] = dist_1st2nd_closest
+    
+    return df
+
 true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
 
 df_clustering = pd.DataFrame()
