@@ -298,7 +298,8 @@ def make_df_trial(df_all: pd.DataFrame,
 def make_df_for_clustering(df_all: pd.DataFrame,
                            ID: int, 
                            agents: Literal[5, 10, 20], 
-                           dist: Literal["dist_actual_ideal", 'dist_closest']) -> pd.DataFrame:
+                           dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+                           ) -> pd.DataFrame:
     df_clustering = pd.DataFrame()
     for trial in TRIALS:
         omoiyari = df_all[f"ID{ID}"]["omoiyari"][f"agents{agents}"][f"trial{trial}"][dist]
@@ -356,7 +357,8 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
 def plot_dist_compare_conds(df_all: pd.DataFrame,
                             ID: int, 
                             agents: Literal[5, 10, 20], 
-                            dist: Literal["dist_actual_ideal", 'dist_closest']) -> None:
+                            dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+                            ) -> None:
     """
     Plot information of distance in one axis. Figures of each condition are overlapped.
     """
@@ -377,7 +379,8 @@ def plot_dist_compare_conds(df_all: pd.DataFrame,
 def plot_dist_per_cond(df_all: pd.DataFrame,
                        ID: int, 
                        agents: Literal[5, 10, 20], 
-                       dist: Literal["dist_actual_ideal", 'dist_closest']) -> None:
+                       dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+                       ) -> None:
     """
     Plot information of distance in separated axes (1, 3). 
     """
@@ -398,7 +401,8 @@ def plot_dist_per_cond(df_all: pd.DataFrame,
 def plot_all_dist_compare_conds(df_all: pd.DataFrame,
                                 subjects: list[int], 
                                 agents: Literal[5, 10, 20], 
-                                dist: Literal["dist_actual_ideal", 'dist_closest']) -> None:
+                                dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+                                ) -> None:
     """
     Plot information of distance in one axis. Figures of each condition are overlapped.
     """

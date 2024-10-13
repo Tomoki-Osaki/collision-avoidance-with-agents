@@ -9,6 +9,12 @@ from tslearn.utils import to_time_series_dataset
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance    
 from tslearn.metrics import dtw 
 from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+import warnings
+warnings.simplefilter('ignore')
+from sklearn import metrics
+from sklearn import svm
+
 from gc import collect as g
 from typing import Literal
 import math
@@ -26,7 +32,7 @@ df_all = mf.make_dict_of_all_info(SUBJECTS)
 
 # %% make a dataframe for classification (supervised)
 ID = 18
-agents = 10
+agents = 20
 cond = "nonurgent"
 trial = 3
 
@@ -64,13 +70,7 @@ for cond in CONDITIONS:
                                index=[f'ID{ID}_{cond}_agents{agents}_trial{trial}'])
             df_sum = pd.concat([df_sum, tmp])
 
-from sklearn.cluster import KMeans
-import warnings
-warnings.simplefilter('ignore')
-#Import scikit-learn metrics module for accuracy calculation
-from sklearn import metrics
-#Import svm model
-from sklearn import svm
+
 
 X = df_sum[['completion_time', 'dist_closest', 'dist_actual_ideal']]
 Y = df_sum['condition']
@@ -110,6 +110,9 @@ mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_dist_compare_conds(df_all, ID, agents, "dist_closest")
 mf.plot_dist_per_cond(df_all, ID, agents, "dist_closest")
 
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_top12_closest")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_top12_closest")
+
 # %%
 posXtplus1  = pd.concat([df_trial.posX[1:], pd.Series([None])], ignore_index=True)
 posYtplus1  = pd.concat([df_trial.posY[1:], pd.Series([None])], ignore_index=True)
@@ -140,30 +143,16 @@ def calc_deg(x0, y0, x1, y1, x2=880, y2=880):
 #     ), axis=1)
 
 # %% time series clustering
-df_clustering = mf.make_df_for_clustering(df_all, 8, 20, "dist_actual_ideal")
-
-def dist_sum_1st2nd_closest(series):
-    array_sorted = series
-    array_sorted.sort_values(ascending=False)
-    sum_top12_closest = sum(array_sorted[0:2])
-    
-    return sum_top12_closest
-
-def add_col_dist_top12_closest(df):
-    df_others = df.filter(like="distOther")
-    dist_1st2nd_closest = df_others.apply(
-        lambda series: dist_sum_1st2nd_closest(series), 
-        axis=1)
-    df['dist_top12_closest'] = dist_1st2nd_closest
-    
-    return df
+dist = "dist_actual_ideal"
+dist = "dist_top12_closest"
+df_clustering = mf.make_df_for_clustering(df_all, 8, 20, dist)
 
 true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
 
 df_clustering = pd.DataFrame()
 for ID in tqdm(SUBJECTS):
     for agent in NUM_AGENTS:
-        df = mf.make_df_for_clustering(df_all, ID, agent, "dist_actual_ideal")
+        df = mf.make_df_for_clustering(df_all, ID, agent, dist)
         df_clustering = pd.concat([df_clustering, df], ignore_index=True)
 
 # scaler_std = StandardScaler()
