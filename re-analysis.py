@@ -190,7 +190,7 @@ for i in range(n):
     ax.plot(km_euclidean.cluster_centers_[i].ravel(), 'r-')
 
     datanum = np.count_nonzero(labels_euclidean == i)
-    ax.text(0.5, (0.7+0.25), f'Cluster{(i)} : n = {datanum}')
+    ax.text(0.5, 600, f'Cluster{(i)} : n = {datanum}')
 plt.suptitle('time series clustering')
 plt.show()
 
