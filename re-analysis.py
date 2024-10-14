@@ -31,49 +31,29 @@ TRIALS = mf.TRIALS
 
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
-# %% make a dataframe for classification (supervised)
-ID = 18
-agents = 20
-cond = "nonurgent"
-trial = 3
-
-df_trial = mf.make_df_trial(df_all, ID, cond, agents, trial)
-cols = df_trial.columns
-
-
-dist_closest = np.mean(df_trial['dist_closest'])
-dist_actual_ideal = np.mean(df_trial['dist_actual_ideal'])
-completion_time = df_trial['timerTrial'].iloc[-1]
-tmp = pd.DataFrame({'completion_time': completion_time,
-                    'dist_closest': dist_closest,
-                    'dist_actual_ideal': dist_actual_ideal,
-                    'condition': 'nonurgent'},
-                   index=['ID14_nonurgent_agents20_trial3'])
-
-tmp = df_trial[['dist_closest', 'dist_actual_ideal']]
-tmp = tmp.apply(np.mean, axis=0)
-
-# %% run classification
-ID = 5
+# %% run classification for all participants' data
 agents = 20
 df_sum = pd.DataFrame(columns=[
-    'completion_time', 'dist_closest', 'dist_actual_ideal', 'condition'
+    'completion_time', 'dist_top12_closest', 'dist_actual_ideal', 'condition'
     ])
 
 for cond in CONDITIONS:
     for ID in SUBJECTS:
         for trial in TRIALS:
             df_trial = mf.make_df_trial(df_all, ID, cond, agents, trial)
+            if cond == 'urgent': 
+                condition = 'urgent'
+            else:
+                condition = 'non-urgent'
             tmp = pd.DataFrame({'completion_time': df_trial['timerTrial'].iloc[-1],
-                                'dist_closest': np.mean(df_trial['dist_closest']),
+                                'dist_top12_closest': np.mean(df_trial['dist_top12_closest']),
                                 'dist_actual_ideal': np.mean(df_trial['dist_actual_ideal']),
-                                'condition': cond},
-                               index=[f'ID{ID}_{cond}_agents{agents}_trial{trial}'])
+                                'condition': condition},
+                               index=[f'ID{ID}_{condition}_agents{agents}_trial{trial}'])
             df_sum = pd.concat([df_sum, tmp])
 
 
-
-X = df_sum[['completion_time', 'dist_closest', 'dist_actual_ideal']]
+X = df_sum[['completion_time', 'dist_top12_closest', 'dist_actual_ideal']]
 Y = df_sum['condition']
 x_train, y_train = X[:400], Y[:400]
 x_test, y_test = X[400:], Y[400:]
@@ -88,12 +68,13 @@ clf.fit(x_train, y_train)
 y_pred = clf.predict(x_test)
 
 # Model Accuracy: how often is the classifier correct?
-print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
 
 
-kmeans_model = KMeans(n_clusters=3)
+kmeans_model = KMeans(n_clusters=2)
 clusters = kmeans_model.fit_predict(X)
 print('urgent   ', clusters[:232])
+print('non-urgent   ', clusters[232:])
 print('nonurgent', clusters[232:464])
 print('omoiyari ', clusters[464:])
 
