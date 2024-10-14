@@ -17,6 +17,7 @@ from sklearn import metrics
 from sklearn import svm
 
 from gc import collect as g
+from collections import Counter
 from typing import Literal
 import math
 from tqdm import tqdm
@@ -35,22 +36,23 @@ df_all = mf.make_dict_of_all_info(SUBJECTS)
 agents = 20
 df_sum = pd.DataFrame(columns=[
     'completion_time', 'dist_top12_closest', 'dist_actual_ideal', 'condition'
-    ])
+    ]
+)
 
 for cond in CONDITIONS:
     for ID in SUBJECTS:
         for trial in TRIALS:
             df_trial = mf.make_df_trial(df_all, ID, cond, agents, trial)
-            if cond == 'urgent': 
-                condition = 'urgent'
-            else:
-                condition = 'non-urgent'
+            # if cond == 'urgent': 
+            #     condition = 'urgent'
+            # else:
+            #     condition = 'non-urgent'
             tmp = pd.DataFrame({'completion_time': df_trial['timerTrial'].iloc[-1],
                                 'dist_top12_closest': np.mean(df_trial['dist_top12_closest']),
                                 'dist_actual_ideal': np.mean(df_trial['dist_actual_ideal']),
-                                'condition': condition},
-                               index=[f'ID{ID}_{condition}_agents{agents}_trial{trial}'])
-            df_sum = pd.concat([df_sum, tmp])
+                                'condition': cond},
+                               index=[f'ID{ID}_{cond}_agents{agents}_trial{trial}'])
+            df_sum = pd.concat([df_sum, tmp], ignore_index=True)
 
 
 X = df_sum[['completion_time', 'dist_top12_closest', 'dist_actual_ideal']]
@@ -60,25 +62,36 @@ x_test, y_test = X[400:], Y[400:]
 
 #Create a svm Classifier
 clf = svm.SVC(kernel='rbf') # Linear Kernel
-
-#Train the model using the training sets
 clf.fit(x_train, y_train)
-
-#Predict the response for test dataset
 y_pred = clf.predict(x_test)
+acc_score = metrics.accuracy_score(y_test, y_pred)
+print("Accuracy:", np.round(acc_score, 4)*100, "%")
 
-# Model Accuracy: how often is the classifier correct?
-print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
-
-
-kmeans_model = KMeans(n_clusters=2)
+kmeans_model = KMeans(n_clusters=3)
 clusters = kmeans_model.fit_predict(X)
-print('urgent   ', clusters[:232])
-print('non-urgent   ', clusters[232:])
-print('nonurgent', clusters[232:464])
-print('omoiyari ', clusters[464:])
+len_per_cond = int(len(clusters) / len(CONDITIONS))
+
+label_urg = clusters[:len_per_cond]
+label_nonurg = clusters[len_per_cond:len_per_cond*2]
+label_omoi = clusters[len_per_cond*2:]
+
+label_nonurg_omoi = clusters[len_per_cond:]
+
+a = Counter(label_urg)
+b = Counter(label_nonurg)
+c = Counter(label_omoi)
+total_urg = a[1] + b[1] + c[1]
+tp = a[1]
+fp = b[1] + c[1]
+fn = a[0]
+tn = b[0] + b[2] + c[0] + c[2]
+accuracy = (tp + tn) / (tp + fp + fn + tn)
 
 
+print('urgent', label_urg)
+print('non-urgent', label_nonurg_omoi)
+print('nonurgent', label_nonurg)
+print('omoiyari', label_omoi)
 
 # %% plot functions
 mf.plot_traj_per_trials(df_all, ID, cond, agents)
