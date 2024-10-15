@@ -111,7 +111,9 @@ def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add 'idealNextX' and 'idealNextY' columns to the dataframe.
     """
-    posIdeal = df.apply(lambda df: _calc_ideal_positions(df["posX"], df["posY"]), axis=1)
+    posIdeal = df.apply(
+        lambda df: _calc_ideal_positions(df["posX"], df["posY"]), 
+        axis=1)
     idealX, idealY = [], []
     for i in range(len(posIdeal)):
         idealX.append(posIdeal[i][0])
@@ -172,7 +174,8 @@ def add_cols_dist_others(df):
     for i in AGENTS:
         try:
             dist_others = df.apply(lambda df_: _calc_distance(
-               df_["myNextX"], df_["myNextY"], df_[f"other{i}NextX"], df_[f"other{i}NextY"]
+               df_["myNextX"], df_["myNextY"], 
+               df_[f"other{i}NextX"], df_[f"other{i}NextY"]
                ), axis=1)
             df_tmp[f"distOther{i}"] = dist_others
         except KeyError:
@@ -295,20 +298,22 @@ def make_df_trial(df_all: pd.DataFrame,
     return df
     
 # %% 17
-def make_df_for_clustering(df_all: pd.DataFrame,
-                           ID: int, 
-                           agents: Literal[5, 10, 20], 
-                           dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
-                           ) -> pd.DataFrame:
+def make_df_for_clustering(
+        df_all: pd.DataFrame,
+        ID: int, 
+        agents: Literal[5, 10, 20], 
+        dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+        ) -> pd.DataFrame:
+    
     df_clustering = pd.DataFrame()
     for trial in TRIALS:
         omoiyari = df_all[f"ID{ID}"]["omoiyari"][f"agents{agents}"][f"trial{trial}"][dist]
         urgent = df_all[f"ID{ID}"]["urgent"][f"agents{agents}"][f"trial{trial}"][dist]
         nonurgent = df_all[f"ID{ID}"]["nonurgent"][f"agents{agents}"][f"trial{trial}"][dist]
         
-        df_clustering[f"omoiyari_dist_{trial}"] = omoiyari
-        df_clustering[f"urgent_dist_{trial}"] = urgent
-        df_clustering[f"nonurgent_dist_{trial}"] = nonurgent
+        df_clustering[f"ID{ID}_omoiyari_dist_{trial}"] = omoiyari
+        df_clustering[f"ID{ID}_urgent_dist_{trial}"] = urgent
+        df_clustering[f"ID{ID}_nonurgent_dist_{trial}"] = nonurgent
         
         df_clustering.dropna(inplace=True)
     
@@ -354,11 +359,12 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     plt.show()
 
 # %% 20
-def plot_dist_compare_conds(df_all: pd.DataFrame,
-                            ID: int, 
-                            agents: Literal[5, 10, 20], 
-                            dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
-                            ) -> None:
+def plot_dist_compare_conds(
+        df_all: pd.DataFrame,
+        ID: int, 
+        agents: Literal[5, 10, 20], 
+        dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+        ) -> None:
     """
     Plot information of distance in one axis. Figures of each condition are overlapped.
     """
@@ -376,11 +382,12 @@ def plot_dist_compare_conds(df_all: pd.DataFrame,
     plt.show()
 
 # %% 21
-def plot_dist_per_cond(df_all: pd.DataFrame,
-                       ID: int, 
-                       agents: Literal[5, 10, 20], 
-                       dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
-                       ) -> None:
+def plot_dist_per_cond(
+        df_all: pd.DataFrame,
+        ID: int, 
+        agents: Literal[5, 10, 20], 
+        dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+        ) -> None:
     """
     Plot information of distance in separated axes (1, 3). 
     """
@@ -398,11 +405,12 @@ def plot_dist_per_cond(df_all: pd.DataFrame,
     plt.show()
 
 # %% 22
-def plot_all_dist_compare_conds(df_all: pd.DataFrame,
-                                subjects: list[int], 
-                                agents: Literal[5, 10, 20], 
-                                dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
-                                ) -> None:
+def plot_all_dist_compare_conds(
+        df_all: pd.DataFrame,
+        subjects: list[int], 
+        agents: Literal[5, 10, 20], 
+        dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+        ) -> None:
     """
     Plot information of distance in one axis. Figures of each condition are overlapped.
     """
