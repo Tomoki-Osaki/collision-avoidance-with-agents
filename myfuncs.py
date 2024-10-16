@@ -8,19 +8,20 @@
 7.  drop_unnecessary_cols
 8.  _calc_distance
 9.  add_cols_dist_others
-10. calc_closest_others
-11. _dist_sum_1st2nd_closest
-12. add_col_dist_top12_closest
-13. preprocess
-14. make_empty_hierarchical_df
-15. make_dict_of_all_info
-16. make_df_trial
-17. make_df_for_clustering
-18. plot_traj_per_trials
-19. plot_traj_compare_conds
-20. plot_dist_compare_conds
-21. plot_dist_per_cond
-22. plot_all_dist_compare_conds
+10. add_col_dist_from_start
+11. calc_closest_others
+12. _dist_sum_1st2nd_closest
+13. add_col_dist_top12_closest
+14. preprocess
+15. make_empty_hierarchical_df
+16. make_dict_of_all_info
+17. make_df_trial
+18. make_df_for_clustering
+19. plot_traj_per_trials
+20. plot_traj_compare_conds
+21. plot_dist_compare_conds
+22. plot_dist_per_cond
+23. plot_all_dist_compare_conds
 """
 
 # %% Global varibales
@@ -186,6 +187,15 @@ def add_cols_dist_others(df):
     return newdf
 
 # %% 10
+def add_col_dist_from_start(df):
+    dist_from_start = df.apply(lambda df_: _calc_distance(
+        df_["posX"], df_["posY"], 30, 30
+        ), axis=1)
+    df["dist_from_start"] = dist_from_start
+    
+    return df
+
+# %% 11
 def calc_closest_others(df):
     df_others = df.filter(like="distOther")
     dist_closest = df_others.apply(min, axis=1)
@@ -193,14 +203,14 @@ def calc_closest_others(df):
     
     return df
 
-# %% 11
+# %% 12
 def _dist_sum_1st2nd_closest(series):
     array_sorted = series.sort_values(ascending=True)
     sum_top12_closest = sum(array_sorted[0:2])
     
     return sum_top12_closest
 
-# %% 12
+# %% 13
 def add_col_dist_top12_closest(df):
     df_others = df.filter(like="distOther")
     dist_1st2nd_closest = df_others.apply(
@@ -210,7 +220,7 @@ def add_col_dist_top12_closest(df):
     
     return df
 
-# %% 13
+# %% 14
 def preprocess(df):
     df.reset_index(drop=True, inplace=True)
     df = make_start_from_UL(df)
@@ -221,10 +231,11 @@ def preprocess(df):
     df = add_cols_dist_others(df)
     df = calc_closest_others(df)
     df = add_col_dist_top12_closest(df)
+    df = add_col_dist_from_start(df)
     
     return df
 
-# %% 14
+# %% 15
 def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
     df_empty = {}
     
@@ -242,7 +253,7 @@ def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
 
     return df_empty
 
-# %% 15
+# %% 16
 def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                           folder_path: str = "04_RawData") -> pd.DataFrame:
     """
@@ -286,7 +297,7 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                         
     return df_all
 
-# %% 16
+# %% 17
 def make_df_trial(df_all: pd.DataFrame, 
                   ID: int, 
                   condition: Literal['urgent', 'nonurgent', 'omoiyari'], 
@@ -297,7 +308,7 @@ def make_df_trial(df_all: pd.DataFrame,
     
     return df
     
-# %% 17
+# %% 18
 def make_df_for_clustering(
         df_all: pd.DataFrame,
         ID: int, 
@@ -319,7 +330,7 @@ def make_df_for_clustering(
     
     return df_clustering
 
-# %% 18
+# %% 19
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 
                          conditions: Literal["urgent", "nonurgent", "omoiyari"], 
@@ -337,7 +348,7 @@ def plot_traj_per_trials(df_all: pd.DataFrame,
     plt.suptitle(f"ID{ID}_{conditions}_agents{num_agents}")
     plt.show()
     
-# %% 19
+# %% 20
 def plot_traj_compare_conds(df_all: pd.DataFrame, 
                             ID: int, 
                             num_agents: Literal[5, 10, 20]) -> None:
@@ -358,12 +369,14 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     print("plotting...")
     plt.show()
 
-# %% 20
+# %% 21
 def plot_dist_compare_conds(
         df_all: pd.DataFrame,
         ID: int, 
         agents: Literal[5, 10, 20], 
-        dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+        dist: Literal[
+            'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
+            ]
         ) -> None:
     """
     Plot information of distance in one axis. Figures of each condition are overlapped.
@@ -381,12 +394,14 @@ def plot_dist_compare_conds(
     plt.legend()
     plt.show()
 
-# %% 21
+# %% 22
 def plot_dist_per_cond(
         df_all: pd.DataFrame,
         ID: int, 
         agents: Literal[5, 10, 20], 
-        dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+        dist: Literal[
+            'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
+            ]
         ) -> None:
     """
     Plot information of distance in separated axes (1, 3). 
@@ -404,12 +419,14 @@ def plot_dist_per_cond(
     plt.suptitle(f"{dist} ID{ID} agents{agents}")
     plt.show()
 
-# %% 22
+# %% 23
 def plot_all_dist_compare_conds(
         df_all: pd.DataFrame,
         subjects: list[int], 
         agents: Literal[5, 10, 20], 
-        dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+        dist: Literal[
+            'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
+            ]
         ) -> None:
     """
     Plot information of distance in one axis. Figures of each condition are overlapped.
