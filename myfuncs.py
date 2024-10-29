@@ -30,6 +30,7 @@ CONDITIONS = ['urgent', 'nonurgent', 'omoiyari']
 AGENTS = [agent for agent in range(1, 21)]
 NUM_AGENTS = [5, 10, 20]
 TRIALS = [trial for trial in range(1, 9)]
+JA_CONDITIONS = ["急ぎ", "ゆっくり", "思いやり"]
 
 # %%
 import pandas as pd
@@ -44,6 +45,15 @@ from typing import Literal
 # %% 1
 def show_all(obj):
     for i in obj: print(i)
+    
+# %%
+def japanize(dist):
+    plt.rcParams['font.family'] = "MS Gothic"
+    if dist:
+        if dist == "dist_actual_ideal": ja_dist = "理想位置と実際の位置の距離"
+        if dist == "dist_from_start": ja_dist = "開始点からの距離"
+    
+    return ja_dist
     
 # %% 2
 def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
@@ -313,7 +323,9 @@ def make_df_for_clustering(
         df_all: pd.DataFrame,
         ID: int, 
         agents: Literal[5, 10, 20], 
-        dist: Literal["dist_actual_ideal", 'dist_closest', 'dist_top12_closest']
+        dist: Literal[
+            'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
+            ]
         ) -> pd.DataFrame:
     
     df_clustering = pd.DataFrame()
@@ -401,11 +413,12 @@ def plot_dist_per_cond(
         agents: Literal[5, 10, 20], 
         dist: Literal[
             'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
-            ]
+            ],
+        nihongo = False
         ) -> None:
     """
     Plot information of distance in separated axes (1, 3). 
-    """
+    """ 
     fig, ax = plt.subplots(1, 3, figsize=(10, 4), sharex="all", sharey="all", tight_layout=True)
     
     for i, (cond, color) in enumerate(zip(CONDITIONS, mcolors.TABLEAU_COLORS)):
