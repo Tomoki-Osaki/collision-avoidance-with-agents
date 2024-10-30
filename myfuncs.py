@@ -40,13 +40,10 @@ import matplotlib.colors as mcolors
 import seaborn as sns
 sns.set_theme()
 from tqdm import tqdm
+import time
 from typing import Literal
 
 # %% 1
-def show_all(obj):
-    for i in obj: print(i)
-    
-# %%
 def japanize(dist):
     plt.rcParams['font.family'] = "MS Gothic"
     if dist:

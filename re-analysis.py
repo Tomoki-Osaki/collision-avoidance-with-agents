@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+# plt.rcParams['font.family'] = "MS Gothic"
+import seaborn as sns
 
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
@@ -50,38 +52,80 @@ mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
 
-# %% time series clustering
-dist = "dist_actual_ideal"
-dist = "dist_from_start"
-df_clustering = mf.make_df_for_clustering(df_all, 22, 20, dist)
+# %% funcs
+def calculate_accuracy_of_clustering(clus0, clus1, clus2):
+    a = Counter(clus0)
+    b = Counter(clus1)
+    c = Counter(clus2)
+    total_urg = a["isogi"] + b["isogi"] + c["isogi"]
+    tp = a["isogi"]
+    fp = b["isogi"] + c["isogi"]
+    fn = a["yukkuri"] + a["omoiyari"]
+    tn = b["yukkuri"] + b["omoiyari"] + c["yukkuri"] + c["omoiyari"]
+    accuracy = (tp + tn) / (tp + fp + fn + tn)
+    print(accuracy)
+    
+def plot_result_of_clustering(time_np, labels_euclidean, n_clusters):
+    fig = plt.figure(figsize=(12, 4))
+    for i in range(n_clusters):
+        ax = fig.add_subplot(1, 3, i+1)
+        clus_arr = time_np[labels_euclidean == i]
+        for x in clus_arr:
+            ax.plot(x.ravel(), 'k-', alpha=0.2)
+        ax.plot(km_euclidean.cluster_centers_[i].ravel(), 'r-')
+        datanum = np.count_nonzero(labels_euclidean == i)
+        ax.text(0.5, max(clus_arr[1])*0.8, f'Cluster{i} : n = {datanum}')
+    plt.suptitle('time series clustering')
+    plt.show()
 
-true_labels = ["omoiyari", "isogi", "yukkuri"] * 29 * 8
-# for personal clustering
+def find_proper_num_clusters(df):
+    distortions = [] 
+    for i in range(1, 11): 
+        ts_km = TimeSeriesKMeans(n_clusters=i, metric="dtw", random_state=42) 
+        ts_km.fit_predict(df.T) 
+        distortions.append(ts_km.inertia_) 
+    
+    plt.plot(range(1, 11), distortions, marker="o") 
+    plt.xticks(range(1, 11)) 
+    plt.xlabel("Number of clusters") 
+    plt.ylabel("Distortion") 
+    plt.show()
+
+# %% time series clustering
+dist1 = "dist_actual_ideal"
+dist2 = "dist_from_start"
+n_clusters = 3
+
 true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
 
+# scaler_std = StandardScaler()
+# df_clustering = scaler_std.fit_transform(df_clustering)
 
-df_clustering = pd.DataFrame()
+df_labels = pd.DataFrame(columns=["true_labels", "clustered_labels"])
 for ID in tqdm(SUBJECTS):
-    df = mf.make_df_for_clustering(df_all, ID, 20, dist)
-    df_clustering = pd.concat([df_clustering, df], axis=1)
+    df_clustering = mf.make_df_for_clustering(df_all, ID, 20, dist2)
+    km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
+    labels_euclidean = km_euclidean.fit_predict(df_clustering.T)
+        
+    df_tmp = pd.DataFrame({"true_labels": true_labels,
+                           "clustered_labels": labels_euclidean})
+    
+    df_labels = pd.concat([df_labels, df_tmp])
 
+df_labels = df_labels.sort_values("clustered_labels")
 
-scaler_std = StandardScaler()
-df_clustering = scaler_std.fit_transform(df_clustering)
+for i, label in enumerate(df_labels["clustered_labels"]):
+    df_labels.iloc[i, 1] = f"cluster{label}"
 
+ax = sns.histplot(data=df_labels, 
+                  x="clustered_labels", 
+                  hue="true_labels", 
+                  multiple="dodge", 
+                  shrink=0.5)
+ax.set(title=f"{dist2}")
+plt.show()
 
 time_np = to_time_series_dataset(df_clustering.T)
-n = 3
-start = time.time()
-km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', verbose=1, random_state=2)
-labels_euclidean = km_euclidean.fit_predict(df_clustering.T)
-print(labels_euclidean)
-end = time.time()
-print(np.round(end-start, 1), "seconds")
-
-df_labels = pd.DataFrame({"true_labels": true_labels,
-                          "clustered_labels": labels_euclidean})
-
 
 clus0, clus1, clus2 = [], [], []
 for i, j in zip(df_labels["clustered_labels"], df_labels["true_labels"]):
@@ -96,46 +140,39 @@ print(f'clus0({len(clus0)}): {Counter(clus0)}')
 print(f'clus1({len(clus1)}): {Counter(clus1)}')
 print(f'clus2({len(clus2)}): {Counter(clus2)}')
 
-
-a = Counter(clus0)
-b = Counter(clus1)
-c = Counter(clus2)
-total_urg = a["isogi"] + b["isogi"] + c["isogi"]
-tp = a["isogi"]
-fp = b["isogi"] + c["isogi"]
-fn = a["yukkuri"] + a["omoiyari"]
-tn = b["yukkuri"] + b["omoiyari"] + c["yukkuri"] + c["omoiyari"]
-accuracy = (tp + tn) / (tp + fp + fn + tn)
-print(accuracy)
-
-
-fig = plt.figure(figsize=(12, 4))
-for i in range(n):
-    ax = fig.add_subplot(1, 3, i+1)
-    clus_arr = time_np[labels_euclidean == i]
-    for x in clus_arr:
-        ax.plot(x.ravel(), 'k-', alpha=0.2)
-    ax.plot(km_euclidean.cluster_centers_[i].ravel(), 'r-')
-    datanum = np.count_nonzero(labels_euclidean == i)
-    ax.text(0.5, max(clus_arr[1])*0.8, f'Cluster{i} : n = {datanum}')
-plt.suptitle('time series clustering')
-plt.show()
-
-
-def find_proper_num_clusters(df):
-    distortions = [] 
-    for i in range(1, 11): 
-        ts_km = TimeSeriesKMeans(n_clusters=i, metric="dtw", random_state=42) 
-        ts_km.fit_predict(df.T) 
-        distortions.append(ts_km.inertia_) 
-    
-    plt.plot(range(1, 11), distortions, marker="o") 
-    plt.xticks(range(1, 11)) 
-    plt.xlabel("Number of clusters") 
-    plt.ylabel("Distortion") 
-    plt.show()
-    
+plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
 find_proper_num_clusters(df_clustering)
+
+# %% perform clusterings for each condition and hopefully find specific patterns for that condition
+def make_df_for_clustering_per_conditiosn(cond):
+    df_cond = pd.DataFrame()
+    for ID in tqdm(SUBJECTS):
+        for trial in TRIALS:
+            df_cond_tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
+            df_cond_tmp = df_cond_tmp["dist_from_start"]
+            df_cond = pd.concat([df_cond, df_cond_tmp], axis=1)
+    
+    return df_cond
+        
+df_omoi = make_df_for_clustering_per_conditiosn("omoiyari")
+df_isogi = make_df_for_clustering_per_conditiosn("urgent")
+df_yukkuri = make_df_for_clustering_per_conditiosn("nonurgent")
+
+def tsclustering(df, n_clusters):
+    km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
+    labels_euclidean = km_euclidean.fit_predict(df["dist_from_start"].T)
+    time_np = time_np = to_time_series_dataset(df.T)
+    plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
+
+find_proper_num_clusters(df_omoi)
+tsclustering(df_omoi, 3)
+
+find_proper_num_clusters(df_isogi)
+tsclustering(df_isogi, 3)
+
+find_proper_num_clusters(df_yukkuri)
+tsclustering(df_yukkuri, 3)
+
 
 
 # %% calculate degrees
@@ -168,7 +205,6 @@ def calc_deg(x0, y0, x1, y1, x2=880, y2=880):
 # deg = df_trial.apply(lambda df: calc_deg(
 #     df["posX"], df["posY"], df["posXt+1"], df["posYt+1"]
 #     ), axis=1)
-
 
 # %% run classification for all participants' data
 cols_to_classify = ['completion_time', 'dist_top12_closest', 'dist_actual_ideal', 'condition']
