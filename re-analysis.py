@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-# plt.rcParams['font.family'] = "MS Gothic"
+plt.rcParams['font.family'] = "MS Gothic"
 import seaborn as sns
 
 from tslearn.clustering import TimeSeriesKMeans
@@ -92,8 +92,10 @@ def find_proper_num_clusters(df):
     plt.show()
 
 # %% time series clustering
-dist1 = "dist_actual_ideal"
-dist2 = "dist_from_start"
+dist = "dist_actual_ideal"
+dist = "dist_from_start"
+dist = "dist_closest"
+dist = "dist_top12_closest"
 n_clusters = 3
 
 true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
@@ -103,7 +105,7 @@ true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
 
 df_labels = pd.DataFrame(columns=["true_labels", "clustered_labels"])
 for ID in tqdm(SUBJECTS):
-    df_clustering = mf.make_df_for_clustering(df_all, ID, 20, dist2)
+    df_clustering = mf.make_df_for_clustering(df_all, ID, 20, dist)
     km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
     labels_euclidean = km_euclidean.fit_predict(df_clustering.T)
         
@@ -122,7 +124,8 @@ ax = sns.histplot(data=df_labels,
                   hue="true_labels", 
                   multiple="dodge", 
                   shrink=0.5)
-ax.set(title=f"{dist2}")
+sns.set(rc={'figure.figsize':(10, 6)})
+ax.set(title=dist)
 plt.show()
 
 time_np = to_time_series_dataset(df_clustering.T)
