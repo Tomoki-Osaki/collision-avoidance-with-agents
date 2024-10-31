@@ -9,12 +9,14 @@ import seaborn as sns
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
 from sklearn.cluster import KMeans
-import warnings
-# warnings.simplefilter('ignore')
+
 from sklearn import metrics
 from sklearn import svm
 from sklearn.preprocessing import StandardScaler
 
+from typing import Literal
+import warnings
+# warnings.simplefilter('ignore')
 from gc import collect as g
 from collections import Counter
 import math
@@ -119,13 +121,17 @@ df_labels = df_labels.sort_values("clustered_labels")
 for i, label in enumerate(df_labels["clustered_labels"]):
     df_labels.iloc[i, 1] = f"cluster{label}"
 
+palette = {'isogi': 'tab:blue', 'yukkuri': 'tab:orange', 'omoiyari': 'tab:green'}
 ax = sns.histplot(data=df_labels, 
                   x="clustered_labels", 
                   hue="true_labels", 
                   multiple="dodge", 
+                  palette=palette,
+                  alpha=0.65,
                   shrink=0.5)
 sns.set(rc={'figure.figsize':(10, 6)})
 ax.set(title=dist)
+#plt.legend([], [], frameon=False)
 plt.show()
 
 time_np = to_time_series_dataset(df_clustering.T)
@@ -145,6 +151,53 @@ print(f'clus2({len(clus2)}): {Counter(clus2)}')
 
 plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
 find_proper_num_clusters(df_clustering)
+
+# %% plot functions
+def plot_dist_compare_conds(
+        df_all: pd.DataFrame,
+        ID: int, 
+        agents: Literal[5, 10, 20], 
+        dist: Literal['dist_actual_ideal', 'dist_closest', 
+                      'dist_top12_closest', 'dist_from_start']
+        ) -> None:
+    """
+    Plot information of distance in one axis. Figures of each condition are overlapped.
+    """
+    fig = plt.figure(figsize=(10, 6), tight_layout=True)
+    ax = fig.add_subplot(1, 1, 1)
+    for cond, color in zip(CONDITIONS, mcolors.TABLEAU_COLORS):
+        df_small = df_all[f'ID{ID}'][cond][f'agents{agents}']
+        for tri in TRIALS:
+            if tri == TRIALS[0]:
+                ax.plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7, label=cond)
+            else:
+                ax.plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7)
+    ax.set_title(f"{dist} ID{ID} agents{agents}")
+    #plt.legend()
+    plt.show()
+
+def plot_dist_per_cond(
+        df_all: pd.DataFrame,
+        ID: int, 
+        agents: Literal[5, 10, 20], 
+        dist: Literal['dist_actual_ideal', 'dist_closest', 
+                      'dist_top12_closest', 'dist_from_start'],
+        nihongo = False
+        ) -> None:
+    """
+    Plot information of distance in separated axes (1, 3). 
+    """ 
+    fig, ax = plt.subplots(1, 3, figsize=(10, 4), sharex="all", sharey="all", tight_layout=True)
+    
+    for i, (cond, color) in enumerate(zip(CONDITIONS, mcolors.TABLEAU_COLORS)):
+        df_small = df_all[f'ID{ID}'][cond][f'agents{agents}']
+        for tri in TRIALS:
+            ax[i].plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7)
+            
+
+    plt.suptitle(f"{dist} ID{ID} agents{agents}")
+    plt.show()
+
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditiosn(cond):

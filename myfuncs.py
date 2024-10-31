@@ -320,9 +320,8 @@ def make_df_for_clustering(
         df_all: pd.DataFrame,
         ID: int, 
         agents: Literal[5, 10, 20], 
-        dist: Literal[
-            'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
-            ]
+        dist: Literal['dist_actual_ideal', 'dist_closest', 
+                      'dist_top12_closest', 'dist_from_start']
         ) -> pd.DataFrame:
     
     df_clustering = pd.DataFrame()
@@ -383,9 +382,8 @@ def plot_dist_compare_conds(
         df_all: pd.DataFrame,
         ID: int, 
         agents: Literal[5, 10, 20], 
-        dist: Literal[
-            'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
-            ]
+        dist: Literal['dist_actual_ideal', 'dist_closest', 
+                      'dist_top12_closest', 'dist_from_start']
         ) -> None:
     """
     Plot information of distance in one axis. Figures of each condition are overlapped.
@@ -408,9 +406,8 @@ def plot_dist_per_cond(
         df_all: pd.DataFrame,
         ID: int, 
         agents: Literal[5, 10, 20], 
-        dist: Literal[
-            'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
-            ],
+        dist: Literal['dist_actual_ideal', 'dist_closest', 
+                      'dist_top12_closest', 'dist_from_start'],
         nihongo = False
         ) -> None:
     """
@@ -434,9 +431,8 @@ def plot_all_dist_compare_conds(
         df_all: pd.DataFrame,
         subjects: list[int], 
         agents: Literal[5, 10, 20], 
-        dist: Literal[
-            'dist_actual_ideal', 'dist_closest', 'dist_top12_closest', 'dist_from_start'
-            ]
+        dist: Literal['dist_actual_ideal', 'dist_closest', 
+                      'dist_top12_closest', 'dist_from_start']
         ) -> None:
     """
     Plot information of distance in one axis. Figures of each condition are overlapped.
