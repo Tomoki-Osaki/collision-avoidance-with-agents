@@ -1,27 +1,28 @@
 """
-1.  show_all
-2.  make_start_from_UL
-3.  drop_unmoved_from_start
-4.  _calc_ideal_positions
-5.  add_cols_ideal_positions
-6.  calc_dist_actual_ideal
-7.  drop_unnecessary_cols
-8.  _calc_distance
-9.  add_cols_dist_others
-10. add_col_dist_from_start
-11. calc_closest_others
-12. _dist_sum_1st2nd_closest
-13. add_col_dist_top12_closest
-14. preprocess
-15. make_empty_hierarchical_df
-16. make_dict_of_all_info
-17. make_df_trial
-18. make_df_for_clustering
-19. plot_traj_per_trials
-20. plot_traj_compare_conds
-21. plot_dist_compare_conds
-22. plot_dist_per_cond
-23. plot_all_dist_compare_conds
+1.  make_start_from_UL
+2.  drop_unmoved_from_start
+3.  _calc_ideal_positions
+4.  add_cols_ideal_positions
+5.  calc_dist_actual_ideal
+6.  drop_unnecessary_cols
+7.  _calc_distance
+8.  add_cols_dist_others
+9. add_col_dist_from_start
+10. calc_closest_others
+11. _dist_sum_1st2nd_closest
+12. add_col_dist_top12_closest
+13. preprocess
+14. make_empty_hierarchical_df
+15. make_dict_of_all_info
+16. make_df_trial
+17. make_df_for_clustering
+18. plot_traj_per_trials
+19. plot_traj_compare_conds
+20. plot_dist_compare_conds
+21. plot_dist_per_cond
+22. plot_all_dist_compare_conds
+23. find_proper_num_clusters
+24. plot_result_of_clustering
 """
 
 # %% Global varibales
@@ -30,29 +31,20 @@ CONDITIONS = ['urgent', 'nonurgent', 'omoiyari']
 AGENTS = [agent for agent in range(1, 21)]
 NUM_AGENTS = [5, 10, 20]
 TRIALS = [trial for trial in range(1, 9)]
-JA_CONDITIONS = ["急ぎ", "ゆっくり", "思いやり"]
 
-# %%
+# %% import libraries
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
 sns.set_theme()
-from tqdm import tqdm
-import time
-from typing import Literal
+from tslearn.clustering import TimeSeriesKMeans
 
+from tqdm import tqdm
+from typing import Literal
+    
 # %% 1
-def japanize(dist):
-    plt.rcParams['font.family'] = "MS Gothic"
-    if dist:
-        if dist == "dist_actual_ideal": ja_dist = "理想位置と実際の位置の距離"
-        if dist == "dist_from_start": ja_dist = "開始点からの距離"
-    
-    return ja_dist
-    
-# %% 2
 def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
     """
     Make all trials' start points (30, 30) and add new columns reperesenting 
@@ -76,7 +68,7 @@ def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-# %% 3
+# %% 2
 def drop_unmoved_from_start(df):
     for i, (x, y) in enumerate(zip(df["posX"], df["posY"])):
         if x != 30 or y != 30:
@@ -86,7 +78,7 @@ def drop_unmoved_from_start(df):
     
     return df_dropped
 
-# %% 4
+# %% 3
 def _calc_ideal_positions(x1: int, 
                           y1: int, 
                           goalx: int = 880, 
@@ -114,7 +106,7 @@ def _calc_ideal_positions(x1: int,
     else: 
         return x, ymax
     
-# %% 5
+# %% 4
 def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add 'idealNextX' and 'idealNextY' columns to the dataframe.
@@ -131,7 +123,7 @@ def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 6
+# %% 5
 def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculate the distance between actual xy positions and the ideal xy positions.
@@ -149,7 +141,7 @@ def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 7
+# %% 6
 def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     """
     Drop columns whose values are all None or 0.
@@ -168,7 +160,7 @@ def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 8
+# %% 7
 def _calc_distance(myX, myY, anotherX, anotherY):
     mypos = np.array([myX, myY])
     anotherpos = np.array([anotherX, anotherY])
@@ -176,7 +168,7 @@ def _calc_distance(myX, myY, anotherX, anotherY):
     
     return distance
 
-# %% 9
+# %% 8
 def add_cols_dist_others(df):
     df_tmp = pd.DataFrame()
     for i in AGENTS:
@@ -193,7 +185,7 @@ def add_cols_dist_others(df):
     
     return newdf
 
-# %% 10
+# %% 9
 def add_col_dist_from_start(df):
     dist_from_start = df.apply(lambda df_: _calc_distance(
         df_["posX"], df_["posY"], 30, 30
@@ -202,7 +194,7 @@ def add_col_dist_from_start(df):
     
     return df
 
-# %% 11
+# %% 10
 def calc_closest_others(df):
     df_others = df.filter(like="distOther")
     dist_closest = df_others.apply(min, axis=1)
@@ -210,14 +202,14 @@ def calc_closest_others(df):
     
     return df
 
-# %% 12
+# %% 11
 def _dist_sum_1st2nd_closest(series):
     array_sorted = series.sort_values(ascending=True)
     sum_top12_closest = sum(array_sorted[0:2])
     
     return sum_top12_closest
 
-# %% 13
+# %% 12
 def add_col_dist_top12_closest(df):
     df_others = df.filter(like="distOther")
     dist_1st2nd_closest = df_others.apply(
@@ -227,7 +219,7 @@ def add_col_dist_top12_closest(df):
     
     return df
 
-# %% 14
+# %% 13
 def preprocess(df):
     df.reset_index(drop=True, inplace=True)
     df = make_start_from_UL(df)
@@ -242,7 +234,7 @@ def preprocess(df):
     
     return df
 
-# %% 15
+# %% 14
 def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
     df_empty = {}
     
@@ -260,7 +252,7 @@ def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
 
     return df_empty
 
-# %% 16
+# %% 15
 def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                           folder_path: str = "04_RawData") -> pd.DataFrame:
     """
@@ -304,7 +296,7 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                         
     return df_all
 
-# %% 17
+# %% 16
 def make_df_trial(df_all: pd.DataFrame, 
                   ID: int, 
                   condition: Literal['urgent', 'nonurgent', 'omoiyari'], 
@@ -315,7 +307,7 @@ def make_df_trial(df_all: pd.DataFrame,
     
     return df
     
-# %% 18
+# %% 17
 def make_df_for_clustering(
         df_all: pd.DataFrame,
         ID: int, 
@@ -338,7 +330,7 @@ def make_df_for_clustering(
     
     return df_clustering
 
-# %% 19
+# %% 18
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 
                          conditions: Literal["urgent", "nonurgent", "omoiyari"], 
@@ -356,7 +348,7 @@ def plot_traj_per_trials(df_all: pd.DataFrame,
     plt.suptitle(f"ID{ID}_{conditions}_agents{num_agents}")
     plt.show()
     
-# %% 20
+# %% 19
 def plot_traj_compare_conds(df_all: pd.DataFrame, 
                             ID: int, 
                             num_agents: Literal[5, 10, 20]) -> None:
@@ -377,7 +369,7 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     print("plotting...")
     plt.show()
 
-# %% 21
+# %% 20
 def plot_dist_compare_conds(
         df_all: pd.DataFrame,
         ID: int, 
@@ -401,7 +393,7 @@ def plot_dist_compare_conds(
     plt.legend()
     plt.show()
 
-# %% 22
+# %% 21
 def plot_dist_per_cond(
         df_all: pd.DataFrame,
         ID: int, 
@@ -426,7 +418,7 @@ def plot_dist_per_cond(
     plt.suptitle(f"{dist} ID{ID} agents{agents}")
     plt.show()
 
-# %% 23
+# %% 22
 def plot_all_dist_compare_conds(
         df_all: pd.DataFrame,
         subjects: list[int], 
@@ -451,4 +443,32 @@ def plot_all_dist_compare_conds(
     plt.legend()
     plt.show()
 
+# %% 23
+def find_proper_num_clusters(df):
+    distortions = [] 
+    for i in range(1, 11): 
+        ts_km = TimeSeriesKMeans(n_clusters=i, metric="dtw", random_state=42) 
+        ts_km.fit_predict(df.T) 
+        distortions.append(ts_km.inertia_) 
+    
+    plt.plot(range(1, 11), distortions, marker="o") 
+    plt.xticks(range(1, 11)) 
+    plt.xlabel("Number of clusters") 
+    plt.ylabel("Distortion") 
+    plt.show()
 
+# %% 24
+def plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_clusters):
+    fig = plt.figure(figsize=(12, 4))
+    for i in range(n_clusters):
+        ax = fig.add_subplot(1, 3, i+1)
+        clus_arr = time_np[labels_euclidean == i]
+        for x in clus_arr:
+            ax.plot(x.ravel(), 'k-', alpha=0.2)
+        ax.plot(km_euclidean.cluster_centers_[i].ravel(), 'r-')
+        datanum = np.count_nonzero(labels_euclidean == i)
+        ax.text(0.5, max(clus_arr[1])*0.8, f'Cluster{i} : n = {datanum}')
+    plt.suptitle('time series clustering')
+    plt.show()
+    
+    

@@ -1,25 +1,20 @@
 # %%
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-plt.rcParams['font.family'] = "MS Gothic"
+#plt.rcParams['font.family'] = "MS Gothic"
 import seaborn as sns
 
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
-from sklearn.cluster import KMeans
 
 from sklearn import metrics
-from sklearn import svm
 from sklearn.preprocessing import StandardScaler
 
-from typing import Literal
 import warnings
 # warnings.simplefilter('ignore')
 from gc import collect as g
 from collections import Counter
-import math
 from tqdm import tqdm
 import time
 import myfuncs as mf
@@ -53,45 +48,6 @@ mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
 
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
-
-# %% funcs
-def calculate_accuracy_of_clustering(clus0, clus1, clus2):
-    a = Counter(clus0)
-    b = Counter(clus1)
-    c = Counter(clus2)
-    total_urg = a["isogi"] + b["isogi"] + c["isogi"]
-    tp = a["isogi"]
-    fp = b["isogi"] + c["isogi"]
-    fn = a["yukkuri"] + a["omoiyari"]
-    tn = b["yukkuri"] + b["omoiyari"] + c["yukkuri"] + c["omoiyari"]
-    accuracy = (tp + tn) / (tp + fp + fn + tn)
-    print(accuracy)
-    
-def plot_result_of_clustering(time_np, labels_euclidean, n_clusters):
-    fig = plt.figure(figsize=(12, 4))
-    for i in range(n_clusters):
-        ax = fig.add_subplot(1, 3, i+1)
-        clus_arr = time_np[labels_euclidean == i]
-        for x in clus_arr:
-            ax.plot(x.ravel(), 'k-', alpha=0.2)
-        ax.plot(km_euclidean.cluster_centers_[i].ravel(), 'r-')
-        datanum = np.count_nonzero(labels_euclidean == i)
-        ax.text(0.5, max(clus_arr[1])*0.8, f'Cluster{i} : n = {datanum}')
-    plt.suptitle('time series clustering')
-    plt.show()
-
-def find_proper_num_clusters(df):
-    distortions = [] 
-    for i in range(1, 11): 
-        ts_km = TimeSeriesKMeans(n_clusters=i, metric="dtw", random_state=42) 
-        ts_km.fit_predict(df.T) 
-        distortions.append(ts_km.inertia_) 
-    
-    plt.plot(range(1, 11), distortions, marker="o") 
-    plt.xticks(range(1, 11)) 
-    plt.xlabel("Number of clusters") 
-    plt.ylabel("Distortion") 
-    plt.show()
 
 # %% time series clustering
 dist = "dist_actual_ideal"
@@ -131,7 +87,6 @@ ax = sns.histplot(data=df_labels,
                   shrink=0.5)
 sns.set(rc={'figure.figsize':(10, 6)})
 ax.set(title=dist)
-#plt.legend([], [], frameon=False)
 plt.show()
 
 time_np = to_time_series_dataset(df_clustering.T)
@@ -149,55 +104,21 @@ print(f'clus0({len(clus0)}): {Counter(clus0)}')
 print(f'clus1({len(clus1)}): {Counter(clus1)}')
 print(f'clus2({len(clus2)}): {Counter(clus2)}')
 
-plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
-find_proper_num_clusters(df_clustering)
+mf.plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
+mf.find_proper_num_clusters(df_clustering)
 
-# %% plot functions
-def plot_dist_compare_conds(
-        df_all: pd.DataFrame,
-        ID: int, 
-        agents: Literal[5, 10, 20], 
-        dist: Literal['dist_actual_ideal', 'dist_closest', 
-                      'dist_top12_closest', 'dist_from_start']
-        ) -> None:
-    """
-    Plot information of distance in one axis. Figures of each condition are overlapped.
-    """
-    fig = plt.figure(figsize=(10, 6), tight_layout=True)
-    ax = fig.add_subplot(1, 1, 1)
-    for cond, color in zip(CONDITIONS, mcolors.TABLEAU_COLORS):
-        df_small = df_all[f'ID{ID}'][cond][f'agents{agents}']
-        for tri in TRIALS:
-            if tri == TRIALS[0]:
-                ax.plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7, label=cond)
-            else:
-                ax.plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7)
-    ax.set_title(f"{dist} ID{ID} agents{agents}")
-    #plt.legend()
-    plt.show()
-
-def plot_dist_per_cond(
-        df_all: pd.DataFrame,
-        ID: int, 
-        agents: Literal[5, 10, 20], 
-        dist: Literal['dist_actual_ideal', 'dist_closest', 
-                      'dist_top12_closest', 'dist_from_start'],
-        nihongo = False
-        ) -> None:
-    """
-    Plot information of distance in separated axes (1, 3). 
-    """ 
-    fig, ax = plt.subplots(1, 3, figsize=(10, 4), sharex="all", sharey="all", tight_layout=True)
-    
-    for i, (cond, color) in enumerate(zip(CONDITIONS, mcolors.TABLEAU_COLORS)):
-        df_small = df_all[f'ID{ID}'][cond][f'agents{agents}']
-        for tri in TRIALS:
-            ax[i].plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7)
-            
-
-    plt.suptitle(f"{dist} ID{ID} agents{agents}")
-    plt.show()
-
+# %% funcs
+def calculate_accuracy_of_clustering(clus0, clus1, clus2):
+    a = Counter(clus0)
+    b = Counter(clus1)
+    c = Counter(clus2)
+    total_urg = a["isogi"] + b["isogi"] + c["isogi"]
+    tp = a["isogi"]
+    fp = b["isogi"] + c["isogi"]
+    fn = a["yukkuri"] + a["omoiyari"]
+    tn = b["yukkuri"] + b["omoiyari"] + c["yukkuri"] + c["omoiyari"]
+    accuracy = (tp + tn) / (tp + fp + fn + tn)
+    print(accuracy)
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditiosn(cond):
@@ -218,120 +139,19 @@ def tsclustering(df, n_clusters):
     km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
     labels_euclidean = km_euclidean.fit_predict(df["dist_from_start"].T)
     time_np = time_np = to_time_series_dataset(df.T)
-    plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
+    mf.plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
 
-find_proper_num_clusters(df_omoi)
+mf.find_proper_num_clusters(df_omoi)
 tsclustering(df_omoi, 3)
 
-find_proper_num_clusters(df_isogi)
+mf.find_proper_num_clusters(df_isogi)
 tsclustering(df_isogi, 3)
 
-find_proper_num_clusters(df_yukkuri)
+mf.find_proper_num_clusters(df_yukkuri)
 tsclustering(df_yukkuri, 3)
 
+# %% why doesn't it calculate degrees
 
-
-# %% calculate degrees
-df_trial = mf.make_df_trial(df_all, ID=1, cond="omoiyari", agents=20, trial=1)
-posXtplus1 = pd.concat([df_trial.posX[1:], pd.Series([None])], ignore_index=True)
-posYtplus1 = pd.concat([df_trial.posY[1:], pd.Series([None])], ignore_index=True)
-df_trial['posXt+1'] = posXtplus1
-df_trial['posYt+1'] = posYtplus1
-
-def calc_deg(x0, y0, x1, y1, x2=880, y2=880):
-    try:
-        vec1 = [x1 - x0, y1 - y0]
-        vec2 = [x2 - x0, y2 - y0]
-      
-        absvec1 = np.linalg.norm(vec1)
-        absvec2 = np.linalg.norm(vec2)
-        inner = np.inner(vec1, vec2)
-        cos_theta = inner / (absvec1 * absvec2)
-        theta = math.degrees(math.acos(cos_theta))
-        
-        return theta
-    
-    except TypeError:
-        return None
-    
-# might need to consider how to deal with unmoving degree.
+# need to consider how to deal with unmoving degree.
 # when the position of time t and time t+1 is same, the degree will be None but 
-# it should be punished most.
-
-# deg = df_trial.apply(lambda df: calc_deg(
-#     df["posX"], df["posY"], df["posXt+1"], df["posYt+1"]
-#     ), axis=1)
-
-# %% run classification for all participants' data
-cols_to_classify = ['completion_time', 'dist_top12_closest', 'dist_actual_ideal', 'condition']
-df_sum = pd.DataFrame(columns=cols_to_classify)
-
-for cond in CONDITIONS:
-    for ID in SUBJECTS:
-        for trial in TRIALS:
-            df_trial = mf.make_df_trial(df_all, ID, cond, agents, trial)
-            # if cond == 'urgent': 
-            #     condition = 'urgent'
-            # else:
-            #     condition = 'non-urgent'
-            tmp = pd.DataFrame(
-                {'completion_time': df_trial['timerTrial'].iloc[-1],
-                 'dist_top12_closest': np.mean(df_trial['dist_top12_closest']),
-                 'dist_actual_ideal': np.mean(df_trial['dist_actual_ideal']),
-                 'condition': cond},
-                index=[f'ID{ID}_{cond}_agents{agents}_trial{trial}']
-            )
-            df_sum = pd.concat([df_sum, tmp], ignore_index=True)
-
-df_sum = pd.DataFrame(columns=cols_to_classify)
-for cond in CONDITIONS:
-    for trial in TRIALS:
-        df_tri = mf.make_df_trial(df_all, 3, cond, 20, trial)
-        df_class = pd.DataFrame(
-            {'completion_time': df_trial['timerTrial'].iloc[-1],
-             'dist_top12_closest': np.mean(df_trial['dist_top12_closest']),
-             'dist_actual_ideal': np.mean(df_trial['dist_actual_ideal']),
-             'condition': cond},
-            index=[f'ID{ID}_{cond}_agents{agents}_trial{trial}']
-        )
-        df_sum = pd.concat([df_sum, df_class])
-
-X = df_sum[['completion_time', 'dist_top12_closest', 'dist_actual_ideal']]
-Y = df_sum['condition']
-x_train, y_train = X[:400], Y[:400]
-x_test, y_test = X[400:], Y[400:]
-
-#Create a svm Classifier
-clf = svm.SVC(kernel='rbf') # Linear Kernel
-clf.fit(x_train, y_train)
-y_pred = clf.predict(x_test)
-acc_score = metrics.accuracy_score(y_test, y_pred)
-print("Accuracy:", np.round(acc_score, 4)*100, "%")
-
-kmeans_model = KMeans(n_clusters=3)
-clusters = kmeans_model.fit_predict(X)
-len_per_cond = int(len(clusters) / len(CONDITIONS))
-
-label_urg = clusters[:len_per_cond]
-label_nonurg = clusters[len_per_cond:len_per_cond*2]
-label_omoi = clusters[len_per_cond*2:]
-
-label_nonurg_omoi = clusters[len_per_cond:]
-
-a = Counter(label_urg)
-b = Counter(label_nonurg)
-c = Counter(label_omoi)
-total_urg = a[1] + b[1] + c[1]
-tp = a[1]
-fp = b[1] + c[1]
-fn = a[0]
-tn = b[0] + b[2] + c[0] + c[2]
-accuracy = (tp + tn) / (tp + fp + fn + tn)
-print(accuracy)
-
-print(f'urgent({len(label_urg)}) {Counter(label_urg)}')
-print(f'nonurgent({len(label_nonurg)}) {Counter(label_nonurg)}')
-print(f'omoiyari({len(label_omoi)}) {Counter(label_omoi)}')
-
-print(f'non-urgent({len(label_nonurg_omoi)}) {Counter(label_nonurg_omoi)}')
-
+# it should be punished most, but how?
