@@ -61,6 +61,7 @@ true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
 # scaler_std = StandardScaler()
 # df_clustering = scaler_std.fit_transform(df_clustering)
 
+# because clusters for each subject are not related, this way of counting is not proper and must need to consider anothey way!!!
 df_labels = pd.DataFrame(columns=["true_labels", "clustered_labels"])
 for ID in tqdm(SUBJECTS):
     df_clustering = mf.make_df_for_clustering(df_all, ID, 20, dist)
