@@ -1,8 +1,7 @@
-# %%
+# %% import libraries and define global variables
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-#plt.rcParams['font.family'] = "MS Gothic"
 import seaborn as sns
 
 from tslearn.clustering import TimeSeriesKMeans
@@ -12,11 +11,9 @@ from sklearn import metrics
 from sklearn.preprocessing import StandardScaler
 
 import warnings
-# warnings.simplefilter('ignore')
-from gc import collect as g
+warnings.simplefilter('ignore')
 from collections import Counter
 from tqdm import tqdm
-import time
 import myfuncs as mf
 
 SUBJECTS = mf.SUBJECTS
@@ -25,10 +22,10 @@ AGENTS = mf.AGENTS
 NUM_AGENTS = mf.NUM_AGENTS
 TRIALS = mf.TRIALS
 
-#%%
+#%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
-# %% plot functions
+# %% plot data
 ID = 23
 agents = 20
 mf.plot_traj_per_trials(df_all, ID, "omoiyari", agents)
@@ -57,6 +54,28 @@ dist = "dist_top12_closest"
 n_clusters = 3
 
 true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
+
+dfs = pd.DataFrame()
+for ID in SUBJECTS:
+    for cond in CONDITIONS:
+        for trial in TRIALS:
+            df_tmp = df_all[f'ID{ID}'][cond]['agents20'][f'trial{trial}']['timerTrial']
+            dfs[f'ID{ID}cond{cond}tri{trial}timer'] = df_tmp**2
+        
+        
+true_labels = ["urgent", "nonurgent", "omoiyari"] * 8        
+df = pd.DataFrame()
+for tri in TRIALS:
+    for cond in CONDITIONS:
+        df_tmp = df_all['ID1'][cond]['agents20'][f'trial{tri}']['timerTrial']
+        df_tmp = pd.Series(df_tmp, name=f'cond_{cond}_tri{tri}')
+        df = pd.concat([df, df_tmp], axis=1)
+
+km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
+labels_euclidean = km_euclidean.fit_predict(df.T)        
+        
+df_comp = pd.DataFrame({"true_labels": true_labels,
+                        "clustered_labels": labels_euclidean})
 
 # scaler_std = StandardScaler()
 # df_clustering = scaler_std.fit_transform(df_clustering)
@@ -122,7 +141,7 @@ def calculate_accuracy_of_clustering(clus0, clus1, clus2):
     print(accuracy)
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
-def make_df_for_clustering_per_conditiosn(cond):
+def make_df_for_clustering_per_conditions(cond):
     df_cond = pd.DataFrame()
     for ID in tqdm(SUBJECTS):
         for trial in TRIALS:
@@ -132,9 +151,9 @@ def make_df_for_clustering_per_conditiosn(cond):
     
     return df_cond
         
-df_omoi = make_df_for_clustering_per_conditiosn("omoiyari")
-df_isogi = make_df_for_clustering_per_conditiosn("urgent")
-df_yukkuri = make_df_for_clustering_per_conditiosn("nonurgent")
+df_omoi = make_df_for_clustering_per_conditions("omoiyari")
+df_isogi = make_df_for_clustering_per_conditions("urgent")
+df_yukkuri = make_df_for_clustering_per_conditions("nonurgent")
 
 def tsclustering(df, n_clusters):
     km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
