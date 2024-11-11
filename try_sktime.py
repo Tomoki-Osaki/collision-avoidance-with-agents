@@ -9,6 +9,7 @@ from sktime.classification.interval_based import DrCIF
 from sktime.transformations.panel.compose import ColumnConcatenator
 from sktime.classification.compose import ColumnEnsembleClassifier
 from sktime.classification.hybrid import HIVECOTEV2
+from sktime.classification.distance_based import KNeighborsTimeSeriesClassifier
 
 # "basic motions" dataset
 motions_X, motions_Y = load_basic_motions(return_type="numpy3d")
@@ -42,30 +43,8 @@ y_pred = hc2.predict(motions_test_X)
 accuracy_score(motions_test_y, y_pred)
 
 
-"""
-1.Concatenation of time series columns into a single long time series column via 
-ColumnConcatenator and apply a classifier to the concatenated data,
-
-2.Dimension ensembling via ColumnEnsembleClassifier in which one classifier is 
-fitted for each time series column/dimension of the time series and their 
-predictions are combined through a voting scheme.
-"""
-
-clf = ColumnConcatenator() * DrCIF(n_estimators=10, n_intervals=5)
-clf.fit(motions_train_X, motions_train_y)
-y_pred = clf.predict(motions_test_X)
+classifier = KNeighborsTimeSeriesClassifier(distance="dtw")
+classifier.fit(motions_train_X, motions_train_y)
+y_pred = classifier.predict(motions_test_X)
 
 accuracy_score(motions_test_y, y_pred)
-
-col = ColumnEnsembleClassifier(
-    estimators=[
-        ("DrCIF0", DrCIF(n_estimators=10, n_intervals=5), [0]),
-        ("ROCKET3", RocketClassifier(num_kernels=1000), [3]),
-    ]
-)
-
-col.fit(motions_train_X, motions_train_y)
-y_pred = col.predict(motions_test_X)
-
-accuracy_score(motions_test_y, y_pred)
-
