@@ -1,5 +1,6 @@
-# %% import libraries and define global variables
+# %% import libraries 
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
@@ -16,6 +17,7 @@ from collections import Counter
 from tqdm import tqdm
 import myfuncs as mf
 
+# %% define global variables
 SUBJECTS = mf.SUBJECTS
 CONDITIONS = mf.CONDITIONS # [urgent, nonurgent, omoiyari]
 AGENTS = mf.AGENTS
@@ -126,6 +128,19 @@ print(f'clus2({len(clus2)}): {Counter(clus2)}')
 
 mf.plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
 mf.find_proper_num_clusters(df_clustering)
+
+# %% try downsampling and confirm how much information was lost
+from sklearn.metrics import accuracy_score
+from sktime.classification.kernel_based import RocketClassifier
+
+df = mf.make_df_for_clustering(df_all, 1, 20, 'dist_from_start')
+true_labels = np.array(['omoiyari', 'urgent', 'nonurgent'] * 8)
+
+rocket = RocketClassifier(num_kernels=2000)
+rocket.fit(df, true_labels)
+y_pred = rocket.predict(df)
+
+accuracy_score(true_labels, y_pred)
 
 # %% funcs
 def calculate_accuracy_of_clustering(clus0, clus1, clus2):

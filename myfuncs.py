@@ -308,19 +308,17 @@ def make_df_trial(df_all: pd.DataFrame,
     return df
     
 # %% 17
-def make_df_for_clustering(
-        df_all: pd.DataFrame,
-        ID: int, 
-        agents: Literal[5, 10, 20], 
-        dist: Literal['dist_actual_ideal', 'dist_closest', 
-                      'dist_top12_closest', 'dist_from_start']
-        ) -> pd.DataFrame:
+def make_df_for_clustering(df_all: pd.DataFrame,
+                           ID: int, 
+                           agents: Literal[5, 10, 20], 
+                           column: str
+                           ) -> pd.DataFrame:
     
     df_clustering = pd.DataFrame()
     for trial in TRIALS:
-        omoiyari = df_all[f"ID{ID}"]["omoiyari"][f"agents{agents}"][f"trial{trial}"][dist]
-        urgent = df_all[f"ID{ID}"]["urgent"][f"agents{agents}"][f"trial{trial}"][dist]
-        nonurgent = df_all[f"ID{ID}"]["nonurgent"][f"agents{agents}"][f"trial{trial}"][dist]
+        omoiyari = df_all[f"ID{ID}"]["omoiyari"][f"agents{agents}"][f"trial{trial}"][column]
+        urgent = df_all[f"ID{ID}"]["urgent"][f"agents{agents}"][f"trial{trial}"][column]
+        nonurgent = df_all[f"ID{ID}"]["nonurgent"][f"agents{agents}"][f"trial{trial}"][column]
         
         df_clustering[f"ID{ID}_omoiyari_dist_{trial}"] = omoiyari
         df_clustering[f"ID{ID}_urgent_dist_{trial}"] = urgent

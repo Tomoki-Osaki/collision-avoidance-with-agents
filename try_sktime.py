@@ -1,6 +1,6 @@
 # https://www.sktime.net/en/v0.19.2/examples/02_classification.html
 
-# Plotting and data loading imports used in this notebook
+import numpy as np
 import matplotlib.pyplot as plt
 from sktime.datasets import load_basic_motions
 from sklearn.metrics import accuracy_score
@@ -51,9 +51,6 @@ y_pred = classifier.predict(motions_test_X)
 accuracy_score(motions_test_y, y_pred)
 
 
-
-import numpy as np
-
 # サンプルデータを生成
 data_A = np.arange(100)  # 長さ100のデータA
 data_B = np.arange(80)   # 長さ80のデータB（基準）
@@ -74,14 +71,11 @@ print("Data B:", data_B)
 print("Data C (downsampled):", data_C_downsampled)
 
 
-import numpy as np
 from sktime.distances import dtw_distance
 x_1d = np.array([1, 2, 3, 4])  # 1d array
 y_1d = np.array([5, 6, 7, 8, 9, 10])  # 1d array
 dtw_distance(x_1d, y_1d)
 
-
-import numpy as np
 
 # 元データの長さとダウンサンプリング後の長さ
 original_length = 120
