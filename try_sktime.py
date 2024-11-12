@@ -5,11 +5,10 @@ import matplotlib.pyplot as plt
 from sktime.datasets import load_basic_motions
 from sklearn.metrics import accuracy_score
 from sktime.classification.kernel_based import RocketClassifier
-from sktime.classification.interval_based import DrCIF
-from sktime.transformations.panel.compose import ColumnConcatenator
-from sktime.classification.compose import ColumnEnsembleClassifier
 from sktime.classification.hybrid import HIVECOTEV2
 from sktime.classification.distance_based import KNeighborsTimeSeriesClassifier
+import warnings 
+warnings.simplefilter('ignore')
 
 # "basic motions" dataset
 motions_X, motions_Y = load_basic_motions(return_type="numpy3d")
