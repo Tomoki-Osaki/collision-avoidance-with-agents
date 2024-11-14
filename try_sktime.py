@@ -1,6 +1,7 @@
 # https://www.sktime.net/en/v0.19.2/examples/02_classification.html
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from sktime.datasets import load_basic_motions
 from sklearn.metrics import accuracy_score
@@ -51,21 +52,27 @@ y_pred = classifier.predict(motions_test_X)
 accuracy_score(motions_test_y, y_pred)
 
 
-# サンプルデータを生成
-data_A = np.arange(100)  # 長さ100のデータA
-data_B = np.arange(80)   # 長さ80のデータB（基準）
-data_C = np.arange(120)  # 長さ120のデータC
+arr1 = np.arange(0, 50., 1)
+arr2 = np.arange(0, 55., 1)
+arr3 = np.arange(0, 58., 1)
+arr4 = np.arange(0, 60., 1)
+arr5 = np.arange(0, 63., 1)
+arr6 = np.arange(0, 68., 1)
+arr7 = np.arange(0, 75., 1)
+arr8 = np.arange(0, 80., 1)
+arr9 = np.arange(0, 100., 1)
 
-# ダウンサンプリングの関数
-def downsample(data, target_length):
-    indices = np.linspace(0, len(data) - 1, target_length, dtype=int)
-    return data[indices]
+arrs = [arr1, arr2, arr3, arr4, arr5, arr6, arr7, arr8, arr9]
+labs = np.array(
+    ['short', 'short', 'short', 'short', 'short', 'med', 'med', 'med', 'long']
+)
 
-# データAとデータCを長さ80にダウンサンプリング
-data_A_downsampled = downsample(data_A, len(data_B))
-data_C_downsampled = downsample(data_C, len(data_B))
+max_len = max(len(arr) for arr in arrs)
 
-# 結果を表示
-print("Data A (downsampled):", data_A_downsampled)
-print("Data B:", data_B)
-print("Data C (downsampled):", data_C_downsampled)
+padded_arrs = np.array(
+    [np.pad(arr, (0, max_len - len(arr)), constant_values=np.nan) for arr in arrs]
+)
+
+print(padded_arrs.shape)
+print(padded_arrs)
+
