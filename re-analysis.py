@@ -54,6 +54,23 @@ from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 df_std = scaler.fit_transform(df)
 
+arr = np.zeros((696, 2, 30))
+for i in tqdm(range(arr.shape[0])):
+    for ID in SUBJECTS:
+        for trial in TRIALS:
+            df_tri = mf.make_df_trial(df_all, ID, 'omoiyari', 20, trial)[:30]
+            df_arr = np.array(df_tri[['timerTrial', 'dist_from_start']])
+            arr[i] += df_arr.T
+
+ylabs = np.array(['1', '2', '3']*232)
+
+from sklearn.metrics import accuracy_score
+from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
+clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
+clf.fit(arr, ylabs)
+y_pred = clf.predict(arr)
+accuracy_score(ylabs, y_pred)
+
 
 # %% time series clustering
 dist = "dist_actual_ideal"
