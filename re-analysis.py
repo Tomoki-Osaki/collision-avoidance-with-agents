@@ -48,6 +48,13 @@ mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
 
+# %% try standardize
+df = mf.make_df_for_clustering(df_all, 1, 20, 'dist_actual_ideal')
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+df_std = scaler.fit_transform(df)
+
+
 # %% time series clustering
 dist = "dist_actual_ideal"
 dist = "dist_from_start"

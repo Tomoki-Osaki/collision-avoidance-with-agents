@@ -146,7 +146,7 @@ def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     """
     Drop columns whose values are all None or 0.
     """
-    df.drop("Unnamed: 117",axis=1, inplace=True)
+    df.drop("Unnamed: 117", axis=1, inplace=True)
     cols_to_drop = []
     for i in [6, 11]:
         if all(x == 0 for x in df[f"other{i}NextX"]):

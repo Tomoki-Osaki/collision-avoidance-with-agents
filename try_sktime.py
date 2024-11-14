@@ -55,7 +55,7 @@ accuracy_score(motions_test_y, y_pred)
 
 ## ## KNeighborsTimeSeriesClassifier from tslean (CAN handle missing values)
 from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
-clf = tsKNTSC(n_neighbors=1, weights='distance')
+clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
 clf.fit(motions_train_X, motions_train_y)
 y_pred = clf.predict(motions_test_X)
 accuracy_score(motions_test_y, y_pred)
@@ -89,7 +89,7 @@ print(padded_arrs)
 res_ts = []
 len_train = 7
 for _ in tqdm(range(1000)):
-    nums = [i for i in range(11)]
+    nums = [i for i in range(len(arrs))]
     random.shuffle(nums)
     
     train_x, train_y = padded_arrs[nums[:len_train]], labs[nums[:len_train]]
