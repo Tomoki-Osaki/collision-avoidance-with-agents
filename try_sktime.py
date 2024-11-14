@@ -17,8 +17,8 @@ motions_test_X, motions_test_y = load_basic_motions(split="test", return_type="n
 
 print('motions_train_X.shape', motions_train_X.shape) # 40 people, 6 variables, 100 timepoints
 print('motions_train_y.shape', motions_train_y.shape)
-print('motions_test_X.shape', motions_test_X.shape)
-print('motions_test_y.shape', motions_test_y.shape)
+print('motions_test_X.shape ', motions_test_X.shape)
+print('motions_test_y.shape ', motions_test_y.shape)
 
 plt.title("First and second dimensions of the first instance in BasicMotions data")
 plt.plot(motions_train_X[0][0])
@@ -69,59 +69,3 @@ data_C_downsampled = downsample(data_C, len(data_B))
 print("Data A (downsampled):", data_A_downsampled)
 print("Data B:", data_B)
 print("Data C (downsampled):", data_C_downsampled)
-
-
-from sktime.distances import dtw_distance
-x_1d = np.array([1, 2, 3, 4])  # 1d array
-y_1d = np.array([5, 6, 7, 8, 9, 10])  # 1d array
-dtw_distance(x_1d, y_1d)
-
-
-# 元データの長さとダウンサンプリング後の長さ
-original_length = 120
-downsampled_length = 80
-
-# 元のタイムポイント（1/120, 2/120, ..., 120/120）
-original_timepoints = np.linspace(1, original_length, original_length) / original_length
-
-# ダウンサンプリング後のタイムポイント（1/80, 2/80, ..., 80/80）
-downsampled_timepoints = np.linspace(1, downsampled_length, downsampled_length) / downsampled_length
-
-# タイムポイントの線形補間
-interpolated_timepoints = np.interp(np.linspace(0, len(original_timepoints) - 1, downsampled_length),
-                                    np.arange(len(original_timepoints)), original_timepoints)
-
-print("Original Timepoints:", original_timepoints)
-print("Downsampled Timepoints:", downsampled_timepoints)
-print("Interpolated Timepoints:", interpolated_timepoints)
-
-# 元データのタイムポイント（0から1の範囲に正規化）
-relative_timepoints = np.linspace(0, 1, original_length)
-
-# ダウンサンプリング後のタイムポイント（0から1の範囲に正規化）
-downsampled_relative_timepoints = np.linspace(0, 1, downsampled_length)
-
-# 相対的タイムポイントの線形補間
-interpolated_relative_timepoints = np.interp(np.linspace(0, len(relative_timepoints) - 1, downsampled_length),
-                                             np.arange(len(relative_timepoints)), relative_timepoints)
-
-print("Original Relative Timepoints:", relative_timepoints)
-print("Downsampled Relative Timepoints:", downsampled_relative_timepoints)
-print("Interpolated Relative Timepoints:", interpolated_relative_timepoints)
-
-a = [i**2/100 for i in range(50)]
-b = [i**2/100 for i in range(100)]
-
-c = [i**2/100 for i in range(0, 100, 2)]
-d = [i**2/100 for i in range(70)]
-
-
-a = [i**2/100 for i in range(30)]
-b = [i**2/100 for i in range(90)]
-
-c = [i**2/100 for i in range(0, 90, 3)]
-
-a = [i for i in range(30)]
-b = [i for i in range(90)]
-
-c = [i for i in range(0, 90, 3)]
