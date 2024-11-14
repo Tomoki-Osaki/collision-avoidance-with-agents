@@ -57,7 +57,10 @@ from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 df_std = scaler.fit_transform(df)
 
-features = ['timerTrial', 'dist_from_start', 'dist_actual_ideal',
+features = ['timerTrial', #]
+            'dist_from_start', #] 
+            'dist_actual_ideal', #]
+            'dist_closest', #]
             'dist_top12_closest']
 arr = np.zeros((696, len(features), 44))
 i = 0
@@ -74,12 +77,20 @@ ylabs = np.array(['urgent', 'not-urgent', 'not-urgent'] * 232)
 ylabs = np.array(['not-nonurgent', 'nonurgent', 'not-nonurgent'] * 232)
 ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
 
-X_train, X_test, y_train, y_test = train_test_split(arr, ylabs, test_size=0.2)
-
+res = []
 clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
-clf.fit(X_train, y_train)
-y_pred = clf.predict(X_test)
-accuracy_score(y_test, y_pred)
+
+for _ in tqdm(range(30)):
+    X_train, X_test, y_train, y_test = train_test_split(
+        arr, ylabs, test_size=0.15, shuffle=True
+    )
+    
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    acc_score = accuracy_score(y_test, y_pred)
+    res.append(acc_score)
+    
+plt.hist(res); plt.show()
 
 # cannot distinguish not-nonurgent and nonurgent but can distinguish not-omoiyari 
 # and not-omoiyari
