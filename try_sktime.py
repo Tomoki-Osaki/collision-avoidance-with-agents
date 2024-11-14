@@ -8,6 +8,8 @@ from sklearn.metrics import accuracy_score
 from sktime.classification.kernel_based import RocketClassifier
 from sktime.classification.hybrid import HIVECOTEV2
 from tqdm import tqdm
+import random
+from collections import Counter
 import warnings 
 warnings.simplefilter('ignore')
 
@@ -44,14 +46,14 @@ y_pred = hc2.predict(motions_test_X)
 
 accuracy_score(motions_test_y, y_pred)
 
-## KNeighborsTimeSeriesClassifier
+## KNeighborsTimeSeriesClassifier from sktime (CANNOT handle missing values)
 from sktime.classification.distance_based import KNeighborsTimeSeriesClassifier as skKNTSC
 classifier = skKNTSC(n_neighbors=1, weights='distance', distance="dtw")
 classifier.fit(motions_train_X, motions_train_y)
 y_pred = classifier.predict(motions_test_X)
 accuracy_score(motions_test_y, y_pred)
 
-
+## ## KNeighborsTimeSeriesClassifier from tslean (CAN handle missing values)
 from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
 clf = tsKNTSC(n_neighbors=1, weights='distance')
 clf.fit(motions_train_X, motions_train_y)
@@ -83,9 +85,6 @@ padded_arrs = np.array(
 
 print(padded_arrs.shape)
 print(padded_arrs)
-
-import random
-from collections import Counter
 
 res_ts = []
 len_train = 7
