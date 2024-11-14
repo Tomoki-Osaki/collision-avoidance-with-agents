@@ -8,8 +8,7 @@ import seaborn as sns
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
 
-from sklearn import metrics
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
@@ -52,25 +51,64 @@ mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
 
 # %% try standardize
-df = mf.make_df_for_clustering(df_all, 1, 20, 'dist_actual_ideal')
-from sklearn.preprocessing import StandardScaler
-scaler = StandardScaler()
-df_std = scaler.fit_transform(df)
-
 features = ['timerTrial', #]
             'dist_from_start', #] 
             'dist_actual_ideal', #]
             'dist_closest', #]
             'dist_top12_closest']
-arr = np.zeros((696, len(features), 44))
+
+lengths = []
+for ID in SUBJECTS:
+    for cond in CONDITIONS:
+        for trial in TRIALS:
+            tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
+            lengths.append(len(tmp))
+max_length = max(lengths)
+
+df_merge = pd.DataFrame()
+for cond in CONDITIONS:
+    for trial in TRIALS:
+        df = mf.make_df_trial(df_all, 1, cond, 20, trial)
+        df['condition'] = cond
+        df_merge = pd.concat([df_merge, df], axis=1)
+df_merge = df_merge[features]
+scaler = StandardScaler()
+#scaler = MinMaxScaler()
+for feature in features:
+    df_merge[feature] = scaler.fit_transform(df_merge[feature])
+    
+arr = np.pad(df_merge['timerTrial'], 
+             (0, max_length - len(df_merge['timerTrial'])),
+             constant_values=np.nan)
+
+
+padded_arrs = np.array(
+    [np.pad(arr, (0, max_length - len(arr)), 
+            constant_values=np.nan) for arr in df_merge.values]
+)
+
+a = [1., 2., 3., 4., 5.]
+np.pad(a, (0, 3), constant_values=np.nan)
+
+
+conds = ['urgent', 'nonurgent', 'omoiyari']
+conds = ['nonurgent', 'omoiyari']
+conds = ['urgent', 'nonurgent']
+conds = ['urgent', 'omoiyari']
+
+arr = np.zeros((232*len(conds), len(features), 44))
 i = 0
 for ID in SUBJECTS:
     for trial in TRIALS:
-        for cond in CONDITIONS:
+        for cond in conds:
             df_tri = mf.make_df_trial(df_all, ID, cond, 20, trial)[:44]
             df_arr = np.array(df_tri[features])
             arr[i] += df_arr.T
             i += 1
+            
+ylabs = np.array(['nonurgent', 'omoiyari'] * 232)
+ylabs = np.array(['urgent', 'nonurgent'] * 232)
+ylabs = np.array(['urgent', 'omoyari'] * 232)
 
 ylabs = np.array(['urgent', 'nonurgent', 'omoiyari'] * 232)
 ylabs = np.array(['urgent', 'not-urgent', 'not-urgent'] * 232)
@@ -82,7 +120,7 @@ clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
 
 for _ in tqdm(range(30)):
     X_train, X_test, y_train, y_test = train_test_split(
-        arr, ylabs, test_size=0.15, shuffle=True
+        arr, ylabs, test_size=0.20, shuffle=True
     )
     
     clf.fit(X_train, y_train)
@@ -91,6 +129,7 @@ for _ in tqdm(range(30)):
     res.append(acc_score)
     
 plt.hist(res); plt.show()
+print(np.mean(res))
 
 # cannot distinguish not-nonurgent and nonurgent but can distinguish not-omoiyari 
 # and not-omoiyari
