@@ -10,6 +10,9 @@ from tslearn.utils import to_time_series_dataset
 
 from sklearn import metrics
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
 
 import warnings
 warnings.simplefilter('ignore')
@@ -54,23 +57,32 @@ from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 df_std = scaler.fit_transform(df)
 
-arr = np.zeros((696, 2, 30))
-for i in tqdm(range(arr.shape[0])):
-    for ID in SUBJECTS:
-        for trial in TRIALS:
-            df_tri = mf.make_df_trial(df_all, ID, 'omoiyari', 20, trial)[:30]
-            df_arr = np.array(df_tri[['timerTrial', 'dist_from_start']])
+features = ['timerTrial', 'dist_from_start', 'dist_actual_ideal',
+            'dist_top12_closest']
+arr = np.zeros((696, len(features), 44))
+i = 0
+for ID in SUBJECTS:
+    for trial in TRIALS:
+        for cond in CONDITIONS:
+            df_tri = mf.make_df_trial(df_all, ID, cond, 20, trial)[:44]
+            df_arr = np.array(df_tri[features])
             arr[i] += df_arr.T
+            i += 1
 
-ylabs = np.array(['1', '2', '3']*232)
+ylabs = np.array(['urgent', 'nonurgent', 'omoiyari'] * 232)
+ylabs = np.array(['urgent', 'not-urgent', 'not-urgent'] * 232)
+ylabs = np.array(['not-nonurgent', 'nonurgent', 'not-nonurgent'] * 232)
+ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
 
-from sklearn.metrics import accuracy_score
-from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
+X_train, X_test, y_train, y_test = train_test_split(arr, ylabs, test_size=0.2)
+
 clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
-clf.fit(arr, ylabs)
-y_pred = clf.predict(arr)
-accuracy_score(ylabs, y_pred)
+clf.fit(X_train, y_train)
+y_pred = clf.predict(X_test)
+accuracy_score(y_test, y_pred)
 
+# cannot distinguish not-nonurgent and nonurgent but can distinguish not-omoiyari 
+# and not-omoiyari
 
 # %% time series clustering
 dist = "dist_actual_ideal"
