@@ -50,45 +50,53 @@ mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
 
-# %% try standardize
+# %% KNeighborsTimeSeriesClassifier from tslean
+# ex. shape (40, 100, 6) = (data, timepoints, variables)
+# each timepoint has 6 variables
+
 features = [#'timerTrial', #]
             'dist_from_start', #] 
             'dist_actual_ideal', #]
             #'dist_closest', #]
             'dist_top12_closest']
 
-def find_max_length(df_all):
-    lengths = []
-    for ID in SUBJECTS:
-        for cond in CONDITIONS:
-            for trial in TRIALS:
-                tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
-                lengths.append(len(tmp))
-    max_length = max(lengths)
-    
-    return max_length
-
-max_length = find_max_length(df_all)
+max_length = mf.find_max_length(df_all)
 
 df_merge = pd.DataFrame()
 for cond in CONDITIONS:
     for trial in TRIALS:
         df = mf.make_df_trial(df_all, 1, cond, 20, trial)
-        df['condition'] = cond
+        df = df.add_prefix(cond + str(trial))
         df_merge = pd.concat([df_merge, df], axis=1)
-df_merge = df_merge[features]
+        
+features_with_prefix = []
+for feature in features:
+    col = df_merge.filter(like=feature, axis=1).columns
+    features_with_prefix.extend(col)
+    
+df_merge = df_merge[features_with_prefix]
+
 scaler = StandardScaler()
 #scaler = MinMaxScaler()
 for feature in features:
-    df_merge[feature] = scaler.fit_transform(df_merge[feature])
-    
-def pad_with_nan(df, max_length):
-    df_nan = pd.DataFrame(index=range(len(df), max_length), columns=df.columns)    
-    df_with_nan = pd.concat([df, df_nan], axis=0)    
+    cols = df_merge.filter(like=feature, axis=1).columns
+    df_merge[cols] = scaler.fit_transform(df_merge[cols])
 
-    return df_with_nan
+df_merge = mf.pad_with_nan(df_merge, max_length)
 
-df_merge = pad_with_nan(df_merge, max_length)
+conds = ['urgent', 'nonurgent', 'omoiyari']
+arr = np.zeros((232*len(conds), max_length, len(features), ))
+i = 0
+for ID in SUBJECTS:
+    for trial in TRIALS:
+        for cond in conds:
+            df_tri = mf.make_df_trial(df_all, ID, cond, 20, trial)
+            df_arr = np.array(df_tri[features])
+            arr[i] += df_arr.T
+            i += 1
+
+
+
 
 conds = ['urgent', 'nonurgent', 'omoiyari']
 conds = ['nonurgent', 'omoiyari']
@@ -116,32 +124,21 @@ ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
 
 res = []
 
-res_n1, res_n3, res_n5, res_n7 = [], [], [], []
+clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
 
-for n in [1, 3, 5, 7]:
-    clf = tsKNTSC(n_neighbors=n, weights='distance', metric='dtw')
+for _ in tqdm(range(10)):
+    X_train, X_test, y_train, y_test = train_test_split(
+        arr, ylabs, test_size=0.20, shuffle=True
+    )
     
-    for _ in tqdm(range(10)):
-        X_train, X_test, y_train, y_test = train_test_split(
-            arr, ylabs, test_size=0.20, shuffle=True
-        )
-        
-        clf.fit(X_train, y_train)
-        y_pred = clf.predict(X_test)
-        acc_score = accuracy_score(y_test, y_pred)
-        if n == 1: res_n1.append(acc_score)
-        if n == 3: res_n3.append(acc_score)
-        if n == 5: res_n5.append(acc_score)
-        if n == 7: res_n7.append(acc_score)
-       
-        
-res = pd.DataFrame(data=[[res_n1, res_n3, res_n5, res_n7]], 
-                   columns=['res_n1', 'res_n3', 'res_n5', 'res_n7'])
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    acc_score = accuracy_score(y_test, y_pred)
+    res.append(acc_score)
+
 plt.hist(res); plt.show()
 print(np.mean(res))
 
-# cannot distinguish not-nonurgent and nonurgent but can distinguish not-omoiyari 
-# and not-omoiyari
 
 # %% time series clustering
 dist = "dist_actual_ideal"
@@ -223,32 +220,6 @@ print(f'clus2({len(clus2)}): {Counter(clus2)}')
 
 mf.plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
 mf.find_proper_num_clusters(df_clustering)
-
-# %% try downsampling and confirm how much information was lost
-from sklearn.metrics import accuracy_score
-from sktime.classification.kernel_based import RocketClassifier
-
-df = mf.make_df_for_clustering(df_all, 1, 20, 'dist_from_start')
-true_labels = np.array(['omoiyari', 'urgent', 'nonurgent'] * 8)
-
-rocket = RocketClassifier(num_kernels=2000)
-rocket.fit(df, true_labels)
-y_pred = rocket.predict(df)
-
-accuracy_score(true_labels, y_pred)
-
-# %% funcs
-def calculate_accuracy_of_clustering(clus0, clus1, clus2):
-    a = Counter(clus0)
-    b = Counter(clus1)
-    c = Counter(clus2)
-    total_urg = a["isogi"] + b["isogi"] + c["isogi"]
-    tp = a["isogi"]
-    fp = b["isogi"] + c["isogi"]
-    fn = a["yukkuri"] + a["omoiyari"]
-    tn = b["yukkuri"] + b["omoiyari"] + c["yukkuri"] + c["omoiyari"]
-    accuracy = (tp + tn) / (tp + fp + fn + tn)
-    print(accuracy)
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditions(cond):

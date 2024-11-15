@@ -328,6 +328,25 @@ def make_df_for_clustering(df_all: pd.DataFrame,
     
     return df_clustering
 
+# %%
+def find_max_length(df_all):
+    lengths = []
+    for ID in SUBJECTS:
+        for cond in CONDITIONS:
+            for trial in TRIALS:
+                tmp = make_df_trial(df_all, ID, cond, 20, trial)
+                lengths.append(len(tmp))
+    max_length = max(lengths)
+    
+    return max_length
+
+# %%
+def pad_with_nan(df, max_length):
+    df_nan = pd.DataFrame(index=range(len(df), max_length), columns=df.columns)    
+    df_with_nan = pd.concat([df, df_nan], axis=0)    
+
+    return df_with_nan
+
 # %% 18
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 

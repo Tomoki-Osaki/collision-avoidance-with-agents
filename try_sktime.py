@@ -47,6 +47,8 @@ y_pred = hc2.predict(motions_test_X)
 accuracy_score(motions_test_y, y_pred)
 
 ## KNeighborsTimeSeriesClassifier from sktime (CANNOT handle missing values)
+# shape (40, 6, 100) = (data, variables, timepoints)
+# each variable has 100 timepoints
 from sktime.classification.distance_based import KNeighborsTimeSeriesClassifier as skKNTSC
 classifier = skKNTSC(n_neighbors=1, weights='distance', distance="dtw")
 classifier.fit(motions_train_X, motions_train_y)
@@ -54,38 +56,20 @@ y_pred = classifier.predict(motions_test_X)
 accuracy_score(motions_test_y, y_pred)
 
 ## KNeighborsTimeSeriesClassifier from tslean (CAN handle missing values)
-## MUST VERIFY IF TSLEAN CLASSICIATION WORKS WITH (40, 6, 100)
-## maybe need to be (40, 100, 6)
+# shape (40, 100, 6) = (data, timepoints, variables)
+# each timepoint has 6 variables
 from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
 clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
-clf.fit(motions_train_X, motions_train_y)
-y_pred = clf.predict(motions_test_X)
+
+train_X, test_X = np.zeros((40, 100, 6)), np.zeros((40, 100, 6))
+for i in range(40):
+    tmp1 = motions_train_X[i].T
+    tmp2 = motions_test_X[i].T
+    train_X[i] = tmp1
+    test_X[i] = tmp2
+
+clf.fit(train_X, motions_train_y)
+y_pred = clf.predict(test_X)
 accuracy_score(motions_test_y, y_pred)
-
-
-from tslearn.neighbors import KNeighborsTimeSeriesClassifier
-from tslearn.datasets import CachedDatasets
-from tslearn.preprocessing import TimeSeriesScalerMinMax
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-
-# データの準備
-data_loader = CachedDatasets()
-X_train, y_train, X_test, y_test = data_loader.load_dataset("Trace")
-
-# KNN分類器の作成（DTW距離を使用）
-knn = KNeighborsTimeSeriesClassifier(n_neighbors=3, metric="dtw")
-
-# モデルの学習
-knn.fit(X_train, y_train)
-
-# テストデータでの予測
-y_pred = knn.predict(X_test)
-
-accuracy_score(y_test, y_pred)
-
-# 結果を表示
-print("Classification Report:")
-print(classification_report(y_test, y_pred))
 
 
