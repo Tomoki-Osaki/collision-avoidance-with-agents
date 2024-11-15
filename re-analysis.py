@@ -53,6 +53,8 @@ mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
 # %% KNeighborsTimeSeriesClassifier from tslean
 # ex. shape (40, 100, 6) = (data, timepoints, variables)
 # each timepoint has 6 variables
+# thus, the prepared data's shape must be (696, 191, ?5)
+# where, 696=3x8x29, 191=max_length, ?5=len(features)
 
 features = [#'timerTrial', #]
             'dist_from_start', #] 
@@ -84,34 +86,24 @@ for feature in features:
 
 df_merge = mf.pad_with_nan(df_merge, max_length)
 
+##### before standardization
 conds = ['urgent', 'nonurgent', 'omoiyari']
-arr = np.zeros((232*len(conds), max_length, len(features), ))
+arr = np.zeros((232*len(conds), max_length, len(features)))
 i = 0
 for ID in SUBJECTS:
     for trial in TRIALS:
-        for cond in conds:
+        for cond in CONDITIONS:
             df_tri = mf.make_df_trial(df_all, ID, cond, 20, trial)
-            df_arr = np.array(df_tri[features])
-            arr[i] += df_arr.T
+            df_tri = df_tri[features]
+            df_merge = mf.pad_with_nan(df_tri, max_length)
+            arr[i] += df_merge
             i += 1
-
-
-
+#####
 
 conds = ['urgent', 'nonurgent', 'omoiyari']
 conds = ['nonurgent', 'omoiyari']
 conds = ['urgent', 'nonurgent']
 conds = ['urgent', 'omoiyari']
-
-arr = np.zeros((232*len(conds), len(features), 44))
-i = 0
-for ID in SUBJECTS:
-    for trial in TRIALS:
-        for cond in conds:
-            df_tri = mf.make_df_trial(df_all, ID, cond, 20, trial)[:44]
-            df_arr = np.array(df_tri[features])
-            arr[i] += df_arr.T
-            i += 1
             
 ylabs = np.array(['nonurgent', 'omoiyari'] * 232)
 ylabs = np.array(['urgent', 'nonurgent'] * 232)
@@ -122,23 +114,18 @@ ylabs = np.array(['urgent', 'not-urgent', 'not-urgent'] * 232)
 ylabs = np.array(['not-nonurgent', 'nonurgent', 'not-nonurgent'] * 232)
 ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
 
-res = []
+clf = tsKNTSC(n_neighbors=1, 
+              weights='distance', 
+              metric='dtw')
 
-clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
+X_train, X_test, y_train, y_test = train_test_split(
+    arr, ylabs, test_size=0.2, shuffle=True
+)
 
-for _ in tqdm(range(10)):
-    X_train, X_test, y_train, y_test = train_test_split(
-        arr, ylabs, test_size=0.20, shuffle=True
-    )
-    
-    clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    acc_score = accuracy_score(y_test, y_pred)
-    res.append(acc_score)
-
-plt.hist(res); plt.show()
-print(np.mean(res))
-
+clf.fit(X_train, y_train)
+y_pred = clf.predict(X_test)
+acc_score = accuracy_score(y_test, y_pred)
+print(acc_score)
 
 # %% time series clustering
 dist = "dist_actual_ideal"
