@@ -51,19 +51,24 @@ mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
 
 # %% try standardize
-features = ['timerTrial', #]
+features = [#'timerTrial', #]
             'dist_from_start', #] 
             'dist_actual_ideal', #]
-            'dist_closest', #]
+            #'dist_closest', #]
             'dist_top12_closest']
 
-lengths = []
-for ID in SUBJECTS:
-    for cond in CONDITIONS:
-        for trial in TRIALS:
-            tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
-            lengths.append(len(tmp))
-max_length = max(lengths)
+def find_max_length(df_all):
+    lengths = []
+    for ID in SUBJECTS:
+        for cond in CONDITIONS:
+            for trial in TRIALS:
+                tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
+                lengths.append(len(tmp))
+    max_length = max(lengths)
+    
+    return max_length
+
+max_length = find_max_length(df_all)
 
 df_merge = pd.DataFrame()
 for cond in CONDITIONS:
@@ -77,19 +82,13 @@ scaler = StandardScaler()
 for feature in features:
     df_merge[feature] = scaler.fit_transform(df_merge[feature])
     
-arr = np.pad(df_merge['timerTrial'], 
-             (0, max_length - len(df_merge['timerTrial'])),
-             constant_values=np.nan)
+def pad_with_nan(df, max_length):
+    df_nan = pd.DataFrame(index=range(len(df), max_length), columns=df.columns)    
+    df_with_nan = pd.concat([df, df_nan], axis=0)    
 
+    return df_with_nan
 
-padded_arrs = np.array(
-    [np.pad(arr, (0, max_length - len(arr)), 
-            constant_values=np.nan) for arr in df_merge.values]
-)
-
-a = [1., 2., 3., 4., 5.]
-np.pad(a, (0, 3), constant_values=np.nan)
-
+df_merge = pad_with_nan(df_merge, max_length)
 
 conds = ['urgent', 'nonurgent', 'omoiyari']
 conds = ['nonurgent', 'omoiyari']
@@ -116,18 +115,28 @@ ylabs = np.array(['not-nonurgent', 'nonurgent', 'not-nonurgent'] * 232)
 ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
 
 res = []
-clf = tsKNTSC(n_neighbors=1, weights='distance', metric='dtw')
 
-for _ in tqdm(range(30)):
-    X_train, X_test, y_train, y_test = train_test_split(
-        arr, ylabs, test_size=0.20, shuffle=True
-    )
+res_n1, res_n3, res_n5, res_n7 = [], [], [], []
+
+for n in [1, 3, 5, 7]:
+    clf = tsKNTSC(n_neighbors=n, weights='distance', metric='dtw')
     
-    clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    acc_score = accuracy_score(y_test, y_pred)
-    res.append(acc_score)
-    
+    for _ in tqdm(range(10)):
+        X_train, X_test, y_train, y_test = train_test_split(
+            arr, ylabs, test_size=0.20, shuffle=True
+        )
+        
+        clf.fit(X_train, y_train)
+        y_pred = clf.predict(X_test)
+        acc_score = accuracy_score(y_test, y_pred)
+        if n == 1: res_n1.append(acc_score)
+        if n == 3: res_n3.append(acc_score)
+        if n == 5: res_n5.append(acc_score)
+        if n == 7: res_n7.append(acc_score)
+       
+        
+res = pd.DataFrame(data=[[res_n1, res_n3, res_n5, res_n7]], 
+                   columns=['res_n1', 'res_n3', 'res_n5', 'res_n7'])
 plt.hist(res); plt.show()
 print(np.mean(res))
 
