@@ -29,8 +29,66 @@ TRIALS = mf.TRIALS
 #%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
+# %% KNeighborsTimeSeriesClassifier from tslean
+# ex. shape (40, 100, 6) = (data, timepoints, variables)
+# each timepoint has 6 variables
+# thus, the prepared data's shape must be (696, 191, ?5)
+# where, 696=3x8x29, 191=max_length, ?5=len(features)
+
+features = [#'timerTrial', #]
+            'dist_from_start', 
+            'dist_actual_ideal']
+            #'dist_closest', ]
+            #'dist_top12_closest']
+
+conds = ['urgent', 'nonurgent', 'omoiyari']
+
+ylabs = np.array(['urgent', 'nonurgent', 'omoiyari'] * 232)
+ylabs = np.array(['urgent', 'not-urgent', 'not-urgent'] * 232)
+ylabs = np.array(['not-nonurgent', 'nonurgent', 'not-nonurgent'] * 232)
+ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
+
+
+conds = ['nonurgent', 'omoiyari']
+ylabs = np.array(['nonurgent', 'omoiyari'] * 232)
+
+conds = ['urgent', 'nonurgent']
+ylabs = np.array(['urgent', 'nonurgent'] * 232)
+
+conds = ['urgent', 'omoiyari']
+ylabs = np.array(['urgent', 'omoyari'] * 232)
+
+max_length = mf.find_max_length(df_all, return_as_list=False)  
+    
+def train_and_test(n):
+    arr = np.zeros((232*len(conds), max_length, len(features)))
+    i = 0
+    for ID in SUBJECTS:
+        for trial in TRIALS:
+            for cond in conds:
+                df_tri = mf.make_df_trial(df_all, ID, cond, 20, trial)
+                df_tri = df_tri[features]
+                for feature in features:
+                    df_tri[feature] /= np.max(df_tri[feature])  
+                df_merge = mf.pad_with_nan(df_tri, max_length)
+                arr[i] += df_merge
+                i += 1
+    
+    clf = tsKNTSC(n_neighbors=n, 
+                  weights='uniform', 
+                  metric='dtw')
+    
+    X_train, X_test, y_train, y_test = train_test_split(
+        arr, ylabs, test_size=0.2, shuffle=True
+    )
+    
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    acc_score = accuracy_score(y_test, y_pred)
+    print(acc_score)
+
 # %% plot data
-ID = 23
+ID = 1
 agents = 20
 mf.plot_traj_per_trials(df_all, ID, "omoiyari", agents)
 mf.plot_traj_compare_conds(df_all, ID, agents)
@@ -49,83 +107,6 @@ mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
 
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
-
-# %% KNeighborsTimeSeriesClassifier from tslean
-# ex. shape (40, 100, 6) = (data, timepoints, variables)
-# each timepoint has 6 variables
-# thus, the prepared data's shape must be (696, 191, ?5)
-# where, 696=3x8x29, 191=max_length, ?5=len(features)
-
-features = [#'timerTrial', #]
-            'dist_from_start', #] 
-            'dist_actual_ideal', #]
-            #'dist_closest', #]
-            'dist_top12_closest']
-
-max_length = mf.find_max_length(df_all)
-
-df_merge = pd.DataFrame()
-for cond in CONDITIONS:
-    for trial in TRIALS:
-        df = mf.make_df_trial(df_all, 1, cond, 20, trial)
-        df = df.add_prefix(cond + str(trial))
-        df_merge = pd.concat([df_merge, df], axis=1)
-        
-features_with_prefix = []
-for feature in features:
-    col = df_merge.filter(like=feature, axis=1).columns
-    features_with_prefix.extend(col)
-    
-df_merge = df_merge[features_with_prefix]
-
-scaler = StandardScaler()
-#scaler = MinMaxScaler()
-for feature in features:
-    cols = df_merge.filter(like=feature, axis=1).columns
-    df_merge[cols] = scaler.fit_transform(df_merge[cols])
-
-df_merge = mf.pad_with_nan(df_merge, max_length)
-
-##### before standardization
-conds = ['urgent', 'nonurgent', 'omoiyari']
-arr = np.zeros((232*len(conds), max_length, len(features)))
-i = 0
-for ID in SUBJECTS:
-    for trial in TRIALS:
-        for cond in CONDITIONS:
-            df_tri = mf.make_df_trial(df_all, ID, cond, 20, trial)
-            df_tri = df_tri[features]
-            df_merge = mf.pad_with_nan(df_tri, max_length)
-            arr[i] += df_merge
-            i += 1
-#####
-
-conds = ['urgent', 'nonurgent', 'omoiyari']
-conds = ['nonurgent', 'omoiyari']
-conds = ['urgent', 'nonurgent']
-conds = ['urgent', 'omoiyari']
-            
-ylabs = np.array(['nonurgent', 'omoiyari'] * 232)
-ylabs = np.array(['urgent', 'nonurgent'] * 232)
-ylabs = np.array(['urgent', 'omoyari'] * 232)
-
-ylabs = np.array(['urgent', 'nonurgent', 'omoiyari'] * 232)
-ylabs = np.array(['urgent', 'not-urgent', 'not-urgent'] * 232)
-ylabs = np.array(['not-nonurgent', 'nonurgent', 'not-nonurgent'] * 232)
-ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
-
-clf = tsKNTSC(n_neighbors=1, 
-              weights='distance', 
-              metric='dtw')
-
-X_train, X_test, y_train, y_test = train_test_split(
-    arr, ylabs, test_size=0.2, shuffle=True
-)
-
-clf.fit(X_train, y_train)
-y_pred = clf.predict(X_test)
-acc_score = accuracy_score(y_test, y_pred)
-print(acc_score)
 
 # %% time series clustering
 dist = "dist_actual_ideal"

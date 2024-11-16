@@ -329,7 +329,7 @@ def make_df_for_clustering(df_all: pd.DataFrame,
     return df_clustering
 
 # %%
-def find_max_length(df_all):
+def find_max_length(df_all, return_as_list=False):
     lengths = []
     for ID in SUBJECTS:
         for cond in CONDITIONS:
@@ -338,7 +338,10 @@ def find_max_length(df_all):
                 lengths.append(len(tmp))
     max_length = max(lengths)
     
-    return max_length
+    if return_as_list == True:
+        return lengths
+    else:
+        return max_length
 
 # %%
 def pad_with_nan(df, max_length):
