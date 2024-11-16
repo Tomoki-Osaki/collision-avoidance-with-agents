@@ -10,7 +10,7 @@ from tslearn.utils import to_time_series_dataset
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
 from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
 
 import warnings
@@ -35,19 +35,61 @@ df_all = mf.make_dict_of_all_info(SUBJECTS)
 # thus, the prepared data's shape must be (696, 191, ?5)
 # where, 696=3x8x29, 191=max_length, ?5=len(features)
 
-features = [#'timerTrial', #]
+def make_arr_for_train_test(df_all, features, conds, ylabs):
+    max_length = mf.find_max_length(df_all, return_as_list=False)  
+    
+    arr = np.zeros((232*len(conds), max_length, len(features)))
+    idx = 0
+    
+    for ID in tqdm(SUBJECTS):
+        df_tri = pd.DataFrame()
+        for trial in TRIALS:
+            for cond in conds:
+                df_tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
+                df_tri = pd.concat([df_tri, df_tmp], axis=1)
+            
+        df_tri = df_tri[features]
+        
+        # standardize the values within the individual (0-1)
+        for feature in features:
+            df_tri[feature] /= np.max(df_tri[feature])  
+        
+        df_tri = mf.pad_with_nan(df_tri, max_length)    
+            
+        data_per_person = len(TRIALS) * len(conds)
+        
+        for i in range(data_per_person):
+            cols_per_tri = [j for j in range(i, df_tri.shape[1], data_per_person)]
+            tmp_arr = df_tri.iloc[:, cols_per_tri]
+            arr[idx] = tmp_arr
+            idx += 1
+        
+    return arr
+
+def train_test(clf, arr, ylabs):
+    X_train, X_test, y_train, y_test = train_test_split(
+        arr, ylabs, test_size=0.2
+    )
+    
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    summary = classification_report(y_test, y_pred)
+    print(summary)
+    # acc_score = accuracy_score(y_test, y_pred)
+    # print(acc_score)
+
+features = ['timerTrial', #]
             'dist_from_start', 
             'dist_actual_ideal']
             #'dist_closest', ]
             #'dist_top12_closest']
 
 conds = ['urgent', 'nonurgent', 'omoiyari']
-
 ylabs = np.array(['urgent', 'nonurgent', 'omoiyari'] * 232)
+
 ylabs = np.array(['urgent', 'not-urgent', 'not-urgent'] * 232)
 ylabs = np.array(['not-nonurgent', 'nonurgent', 'not-nonurgent'] * 232)
 ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
-
 
 conds = ['nonurgent', 'omoiyari']
 ylabs = np.array(['nonurgent', 'omoiyari'] * 232)
@@ -58,34 +100,10 @@ ylabs = np.array(['urgent', 'nonurgent'] * 232)
 conds = ['urgent', 'omoiyari']
 ylabs = np.array(['urgent', 'omoyari'] * 232)
 
-max_length = mf.find_max_length(df_all, return_as_list=False)  
-    
-def train_and_test(n):
-    arr = np.zeros((232*len(conds), max_length, len(features)))
-    i = 0
-    for ID in SUBJECTS:
-        for trial in TRIALS:
-            for cond in conds:
-                df_tri = mf.make_df_trial(df_all, ID, cond, 20, trial)
-                df_tri = df_tri[features]
-                for feature in features:
-                    df_tri[feature] /= np.max(df_tri[feature])  
-                df_merge = mf.pad_with_nan(df_tri, max_length)
-                arr[i] += df_merge
-                i += 1
-    
-    clf = tsKNTSC(n_neighbors=n, 
-                  weights='uniform', 
-                  metric='dtw')
-    
-    X_train, X_test, y_train, y_test = train_test_split(
-        arr, ylabs, test_size=0.2, shuffle=True
-    )
-    
-    clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    acc_score = accuracy_score(y_test, y_pred)
-    print(acc_score)
+arr = make_arr_for_train_test(df_all, features, conds, ylabs)
+
+clf = tsKNTSC(n_neighbors=1, weights='uniform', metric='dtw')
+train_test(clf, arr, ylabs)
 
 # %% plot data
 ID = 1
