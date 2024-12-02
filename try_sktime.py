@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sktime.datasets import load_basic_motions
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
 from sktime.classification.kernel_based import RocketClassifier
 from sktime.classification.hybrid import HIVECOTEV2
 from tqdm import tqdm
@@ -53,7 +53,10 @@ from sktime.classification.distance_based import KNeighborsTimeSeriesClassifier 
 classifier = skKNTSC(n_neighbors=1, weights='distance', distance="dtw")
 classifier.fit(motions_train_X, motions_train_y)
 y_pred = classifier.predict(motions_test_X)
-accuracy_score(motions_test_y, y_pred)
+report = pd.DataFrame(
+    classification_report(motions_test_y, y_pred, digits=3, output_dict=True)
+)
+print(classification_report(motions_test_y, y_pred, digits=3))
 
 ## KNeighborsTimeSeriesClassifier from tslean (CAN handle missing values)
 # shape (40, 100, 6) = (data, timepoints, variables)
@@ -70,6 +73,8 @@ for i in range(40):
 
 clf.fit(train_X, motions_train_y)
 y_pred = clf.predict(test_X)
-accuracy_score(motions_test_y, y_pred)
-
+report = pd.DataFrame(
+    classification_report(motions_test_y, y_pred, digits=3, output_dict=True)
+)
+print(classification_report(motions_test_y, y_pred, digits=3))
 
