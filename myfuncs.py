@@ -1,30 +1,3 @@
-"""
-1.  make_start_from_UL
-2.  drop_unmoved_from_start
-3.  _calc_ideal_positions
-4.  add_cols_ideal_positions
-5.  calc_dist_actual_ideal
-6.  drop_unnecessary_cols
-7.  _calc_distance
-8.  add_cols_dist_others
-9. add_col_dist_from_start
-10. calc_closest_others
-11. _dist_sum_1st2nd_closest
-12. add_col_dist_top12_closest
-13. preprocess
-14. make_empty_hierarchical_df
-15. make_dict_of_all_info
-16. make_df_trial
-17. make_df_for_clustering
-18. plot_traj_per_trials
-19. plot_traj_compare_conds
-20. plot_dist_compare_conds
-21. plot_dist_per_cond
-22. plot_all_dist_compare_conds
-23. find_proper_num_clusters
-24. plot_result_of_clustering
-"""
-
 # %% Global varibales
 SUBJECTS = [subject for subject in range(1, 30)]
 CONDITIONS = ['urgent', 'nonurgent', 'omoiyari']
@@ -44,7 +17,7 @@ from tslearn.clustering import TimeSeriesKMeans
 from tqdm import tqdm
 from typing import Literal
     
-# %% 1
+# %% 
 def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
     """
     Make all trials' start points (30, 30) and add new columns reperesenting 
@@ -68,7 +41,7 @@ def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-# %% 2
+# %% 
 def drop_unmoved_from_start(df):
     for i, (x, y) in enumerate(zip(df["posX"], df["posY"])):
         if x != 30 or y != 30:
@@ -78,7 +51,7 @@ def drop_unmoved_from_start(df):
     
     return df_dropped
 
-# %% 3
+# %% 
 def _calc_ideal_positions(x1: int, 
                           y1: int, 
                           goalx: int = 880, 
@@ -106,7 +79,7 @@ def _calc_ideal_positions(x1: int,
     else: 
         return x, ymax
     
-# %% 4
+# %% 
 def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add 'idealNextX' and 'idealNextY' columns to the dataframe.
@@ -123,7 +96,7 @@ def add_cols_ideal_positions(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 5
+# %% 
 def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculate the distance between actual xy positions and the ideal xy positions.
@@ -141,7 +114,7 @@ def calc_dist_actual_ideal(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 6
+# %% 
 def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     """
     Drop columns whose values are all None or 0.
@@ -160,7 +133,7 @@ def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-# %% 7
+# %% 
 def _calc_distance(myX, myY, anotherX, anotherY):
     mypos = np.array([myX, myY])
     anotherpos = np.array([anotherX, anotherY])
@@ -168,7 +141,7 @@ def _calc_distance(myX, myY, anotherX, anotherY):
     
     return distance
 
-# %% 8
+# %% 
 def add_cols_dist_others(df):
     df_tmp = pd.DataFrame()
     for i in AGENTS:
@@ -185,7 +158,7 @@ def add_cols_dist_others(df):
     
     return newdf
 
-# %% 9
+# %% 
 def add_col_dist_from_start(df):
     dist_from_start = df.apply(lambda df_: _calc_distance(
         df_["posX"], df_["posY"], 30, 30
@@ -194,7 +167,7 @@ def add_col_dist_from_start(df):
     
     return df
 
-# %% 10
+# %% 
 def calc_closest_others(df):
     df_others = df.filter(like="distOther")
     dist_closest = df_others.apply(min, axis=1)
@@ -202,14 +175,14 @@ def calc_closest_others(df):
     
     return df
 
-# %% 11
+# %% 
 def _dist_sum_1st2nd_closest(series):
     array_sorted = series.sort_values(ascending=True)
     sum_top12_closest = sum(array_sorted[0:2])
     
     return sum_top12_closest
 
-# %% 12
+# %% 
 def add_col_dist_top12_closest(df):
     df_others = df.filter(like="distOther")
     dist_1st2nd_closest = df_others.apply(
@@ -219,7 +192,7 @@ def add_col_dist_top12_closest(df):
     
     return df
 
-# %% 13
+# %% 
 def preprocess(df):
     df.reset_index(drop=True, inplace=True)
     df = make_start_from_UL(df)
@@ -234,7 +207,7 @@ def preprocess(df):
     
     return df
 
-# %% 14
+# %% 
 def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
     df_empty = {}
     
@@ -252,7 +225,7 @@ def make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS):
 
     return df_empty
 
-# %% 15
+# %% 
 def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                           folder_path: str = "04_RawData") -> pd.DataFrame:
     """
@@ -350,7 +323,70 @@ def pad_with_nan(df, max_length):
 
     return df_with_nan
 
-# %% 18
+# %%
+def make_arr_for_train_test(df_all, features, conds, ylabs):
+    max_length = find_max_length(df_all, return_as_list=False)  
+    
+    arr = np.zeros((232*len(conds), max_length, len(features)))
+    idx = 0
+    
+    for ID in tqdm(SUBJECTS):
+        df_tri = pd.DataFrame()
+        for trial in TRIALS:
+            for cond in conds:
+                df_tmp = make_df_trial(df_all, ID, cond, 20, trial)
+                df_tri = pd.concat([df_tri, df_tmp], axis=1)
+            
+        df_tri = df_tri[features]
+        
+        # standardize the values within the individual (0-1)
+        for feature in features:
+            df_tri[feature] /= np.max(df_tri[feature])  
+        
+        df_tri = pad_with_nan(df_tri, max_length)    
+            
+        data_per_person = len(TRIALS) * len(conds)
+        
+        for i in range(data_per_person):
+            cols_per_tri = [j for j in range(i, df_tri.shape[1], data_per_person)]
+            tmp_arr = df_tri.iloc[:, cols_per_tri]
+            arr[idx] = tmp_arr
+            idx += 1
+        
+    return arr
+
+# %% def make_arr_for_train_test(df_all, features, conds, ylabs):
+    max_length = find_max_length(df_all, return_as_list=False)  
+    
+    arr = np.zeros((232*len(conds), max_length, len(features)))
+    idx = 0
+    
+    for ID in tqdm(SUBJECTS):
+        df_tri = pd.DataFrame()
+        for trial in TRIALS:
+            for cond in conds:
+                df_tmp = make_df_trial(df_all, ID, cond, 20, trial)
+                df_tri = pd.concat([df_tri, df_tmp], axis=1)
+            
+        df_tri = df_tri[features]
+        
+        # standardize the values within the individual (0-1)
+        for feature in features:
+            df_tri[feature] /= np.max(df_tri[feature])  
+        
+        df_tri = pad_with_nan(df_tri, max_length)    
+            
+        data_per_person = len(TRIALS) * len(conds)
+        
+        for i in range(data_per_person):
+            cols_per_tri = [j for j in range(i, df_tri.shape[1], data_per_person)]
+            tmp_arr = df_tri.iloc[:, cols_per_tri]
+            arr[idx] = tmp_arr
+            idx += 1
+        
+    return arr
+
+# %%
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 
                          conditions: Literal["urgent", "nonurgent", "omoiyari"], 
@@ -368,7 +404,7 @@ def plot_traj_per_trials(df_all: pd.DataFrame,
     plt.suptitle(f"ID{ID}_{conditions}_agents{num_agents}")
     plt.show()
     
-# %% 19
+# %% 
 def plot_traj_compare_conds(df_all: pd.DataFrame, 
                             ID: int, 
                             num_agents: Literal[5, 10, 20]) -> None:
@@ -389,7 +425,7 @@ def plot_traj_compare_conds(df_all: pd.DataFrame,
     print("plotting...")
     plt.show()
 
-# %% 20
+# %% 
 def plot_dist_compare_conds(
         df_all: pd.DataFrame,
         ID: int, 
@@ -413,7 +449,7 @@ def plot_dist_compare_conds(
     plt.legend()
     plt.show()
 
-# %% 21
+# %% 
 def plot_dist_per_cond(
         df_all: pd.DataFrame,
         ID: int, 
@@ -438,7 +474,7 @@ def plot_dist_per_cond(
     plt.suptitle(f"{dist} ID{ID} agents{agents}")
     plt.show()
 
-# %% 22
+# %% 
 def plot_all_dist_compare_conds(
         df_all: pd.DataFrame,
         subjects: list[int], 
@@ -463,7 +499,7 @@ def plot_all_dist_compare_conds(
     plt.legend()
     plt.show()
 
-# %% 23
+# %% 
 def find_proper_num_clusters(df):
     distortions = [] 
     for i in range(1, 11): 
@@ -477,7 +513,7 @@ def find_proper_num_clusters(df):
     plt.ylabel("Distortion") 
     plt.show()
 
-# %% 24
+# %% 
 def plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_clusters):
     fig = plt.figure(figsize=(12, 4))
     for i in range(n_clusters):

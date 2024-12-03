@@ -35,52 +35,8 @@ df_all = mf.make_dict_of_all_info(SUBJECTS)
 # thus, the prepared data's shape must be (696, 191, ?5)
 # where, 696=3x8x29, 191=max_length, ?5=len(features)
 
-def make_arr_for_train_test(df_all, features, conds, ylabs):
-    max_length = mf.find_max_length(df_all, return_as_list=False)  
-    
-    arr = np.zeros((232*len(conds), max_length, len(features)))
-    idx = 0
-    
-    for ID in tqdm(SUBJECTS):
-        df_tri = pd.DataFrame()
-        for trial in TRIALS:
-            for cond in conds:
-                df_tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
-                df_tri = pd.concat([df_tri, df_tmp], axis=1)
-            
-        df_tri = df_tri[features]
-        
-        # standardize the values within the individual (0-1)
-        for feature in features:
-            df_tri[feature] /= np.max(df_tri[feature])  
-        
-        df_tri = mf.pad_with_nan(df_tri, max_length)    
-            
-        data_per_person = len(TRIALS) * len(conds)
-        
-        for i in range(data_per_person):
-            cols_per_tri = [j for j in range(i, df_tri.shape[1], data_per_person)]
-            tmp_arr = df_tri.iloc[:, cols_per_tri]
-            arr[idx] = tmp_arr
-            idx += 1
-        
-    return arr
-
-def train_test(clf, arr, ylabs):
-    X_train, X_test, y_train, y_test = train_test_split(
-        arr, ylabs, test_size=0.2
-    )
-    
-    clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    summary = classification_report(y_test, y_pred)
-    print(summary)
-    # acc_score = accuracy_score(y_test, y_pred)
-    # print(acc_score)
-
 # be careful not to make tuples
 features = ['timerTrial', 
-            'posX', 'posY',
             'dist_from_start', 
             'dist_actual_ideal']
             #'dist_closest', ]
@@ -102,11 +58,19 @@ ylabs = np.array(['urgent', 'nonurgent'] * 232)
 conds = ['urgent', 'omoiyari']
 ylabs = np.array(['urgent', 'omoyari'] * 232)
 
-arr = make_arr_for_train_test(df_all, features, conds, ylabs)
+arr = mf.make_arr_for_train_test(df_all, features, conds, ylabs)
 
-clf = tsKNTSC(n_neighbors=3, weights='uniform', metric='dtw')
+clf = tsKNTSC(n_neighbors=1, weights='uniform', metric='dtw')
 
-repeat = 3
+X_train, X_test, y_train, y_test = train_test_split(arr, ylabs, test_size=0.25)
+clf.fit(X_train, y_train)
+y_pred = clf.predict(X_test)
+summary = pd.DataFrame(
+    classification_report(y_test, y_pred, output_dict=True)
+)
+print(summary.T)
+
+repeat = 10
 for i in tqdm(range(repeat)):
     X_train, X_test, y_train, y_test = train_test_split(arr, ylabs, test_size=0.25)
     clf.fit(X_train, y_train)
@@ -121,6 +85,9 @@ for i in tqdm(range(repeat)):
         )
 summary /= repeat
 
+print(summary.T)
+print(features)
+print(conds)
 
 # %% plot data
 ID = 1
@@ -225,34 +192,50 @@ mf.plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
 mf.find_proper_num_clusters(df_clustering)
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
-def make_df_for_clustering_per_conditions(cond):
+def make_df_for_clustering_per_conditions(cond, feature):
     df_cond = pd.DataFrame()
     for ID in tqdm(SUBJECTS):
         for trial in TRIALS:
             df_cond_tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
-            df_cond_tmp = df_cond_tmp["dist_from_start"]
+            df_cond_tmp = df_cond_tmp[feature]
             df_cond = pd.concat([df_cond, df_cond_tmp], axis=1)
     
     return df_cond
         
-df_omoi = make_df_for_clustering_per_conditions("omoiyari")
-df_isogi = make_df_for_clustering_per_conditions("urgent")
-df_yukkuri = make_df_for_clustering_per_conditions("nonurgent")
+df_omoi = make_df_for_clustering_per_conditions("omoiyari", 'dist_actual_ideal')
+df_isogi = make_df_for_clustering_per_conditions("urgent", 'dist_from_start')
+df_yukkuri = make_df_for_clustering_per_conditions("nonurgent", 'dist_from_start')
 
-def tsclustering(df, n_clusters):
+def tsclustering(df, n_clusters, feature):
     km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
-    labels_euclidean = km_euclidean.fit_predict(df["dist_from_start"].T)
-    time_np = time_np = to_time_series_dataset(df.T)
-    mf.plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
+    labels_euclidean = km_euclidean.fit_predict(df[feature].T)
+    time_np = to_time_series_dataset(df.T)
+    mf.plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_clusters)
 
 mf.find_proper_num_clusters(df_omoi)
-tsclustering(df_omoi, 3)
+tsclustering(df_omoi, 3, 'dist_')
 
 mf.find_proper_num_clusters(df_isogi)
-tsclustering(df_isogi, 3)
+tsclustering(df_isogi, 3, 'dist_from_start')
 
 mf.find_proper_num_clusters(df_yukkuri)
-tsclustering(df_yukkuri, 3)
+tsclustering(df_yukkuri, 3, 'dist_from_start')
+
+# %% time series clustering 
+# per condition and look through what kind of patterns could be found
+df_clustering = mf.make_df_for_clustering(df_all, 3, 20, 'dist_actual_ideal')
+df_omoi = df_clustering.filter(like='nonurgent')
+
+mf.find_proper_num_clusters(df_omoi)
+n = 3
+km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
+labels_euclidean = km_euclidean.fit_predict(df_omoi.T)
+time_np = to_time_series_dataset(df_omoi.T)
+
+fig, ax = plt.subplots(1, n, figsize=(12, 4), sharex=True, sharey=True)
+for idx, label in enumerate(labels_euclidean):
+    ax[label].plot(time_np[idx].ravel())
+    
 
 # %% why doesn't it calculate degrees
 
