@@ -78,7 +78,9 @@ def train_test(clf, arr, ylabs):
     # acc_score = accuracy_score(y_test, y_pred)
     # print(acc_score)
 
-features = ['timerTrial', #]
+# be careful not to make tuples
+features = ['timerTrial', 
+            'posX', 'posY',
             'dist_from_start', 
             'dist_actual_ideal']
             #'dist_closest', ]
@@ -102,8 +104,23 @@ ylabs = np.array(['urgent', 'omoyari'] * 232)
 
 arr = make_arr_for_train_test(df_all, features, conds, ylabs)
 
-clf = tsKNTSC(n_neighbors=1, weights='uniform', metric='dtw')
-train_test(clf, arr, ylabs)
+clf = tsKNTSC(n_neighbors=3, weights='uniform', metric='dtw')
+
+repeat = 3
+for i in tqdm(range(repeat)):
+    X_train, X_test, y_train, y_test = train_test_split(arr, ylabs, test_size=0.25)
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    if i == 0:
+        summary = pd.DataFrame(
+            classification_report(y_test, y_pred, output_dict=True)
+        )
+    else:
+        summary += pd.DataFrame(
+            classification_report(y_test, y_pred, output_dict=True)
+        )
+summary /= repeat
+
 
 # %% plot data
 ID = 1
