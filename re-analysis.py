@@ -21,13 +21,30 @@ import myfuncs as mf
 
 # %% define global variables
 SUBJECTS = mf.SUBJECTS
-CONDITIONS = mf.CONDITIONS # [urgent, nonurgent, omoiyari]
+CONDITIONS = mf.CONDITIONS # [isogi, yukkuri, omoiyari]
 AGENTS = mf.AGENTS
 NUM_AGENTS = mf.NUM_AGENTS
 TRIALS = mf.TRIALS
 
 #%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
+
+# %% time series clustering 
+# per condition and look through what kind of patterns could be found
+df_clustering = mf.make_df_for_clustering(df_all, 5, 20, 'dist_actual_ideal')
+df = df_clustering.filter(like='omoiyari')
+
+mf.find_proper_num_clusters(df)
+
+n = 3
+km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
+labels_euclidean = km_euclidean.fit_predict(df.T)
+print(Counter(labels_euclidean))
+time_np = to_time_series_dataset(df.T)
+
+fig, ax = plt.subplots(1, n, figsize=(14, 6), sharex=True, sharey=True)
+for idx, label in enumerate(labels_euclidean):
+    ax[label].plot(time_np[idx].ravel())
 
 # %% KNeighborsTimeSeriesClassifier from tslean
 # ex. shape (40, 100, 6) = (data, timepoints, variables)
@@ -42,21 +59,17 @@ features = ['timerTrial',
             #'dist_closest', ]
             #'dist_top12_closest']
 
-conds = ['urgent', 'nonurgent', 'omoiyari']
-ylabs = np.array(['urgent', 'nonurgent', 'omoiyari'] * 232)
+conds = ['isogi', 'yukkuri', 'omoiyari']
+ylabs = np.array(['isogi', 'yukkuri', 'omoiyari'] * 232)
 
-ylabs = np.array(['urgent', 'not-urgent', 'not-urgent'] * 232)
-ylabs = np.array(['not-nonurgent', 'nonurgent', 'not-nonurgent'] * 232)
-ylabs = np.array(['not-omoiyari', 'not-omoiyari', 'omoiyari'] * 232)
+conds = ['yukkuri', 'omoiyari']
+ylabs = np.array(['yukkuri', 'omoiyari'] * 232)
 
-conds = ['nonurgent', 'omoiyari']
-ylabs = np.array(['nonurgent', 'omoiyari'] * 232)
+conds = ['isogi', 'yukkuri']
+ylabs = np.array(['isogi', 'yukkuri'] * 232)
 
-conds = ['urgent', 'nonurgent']
-ylabs = np.array(['urgent', 'nonurgent'] * 232)
-
-conds = ['urgent', 'omoiyari']
-ylabs = np.array(['urgent', 'omoyari'] * 232)
+conds = ['isogi', 'omoiyari']
+ylabs = np.array(['isogi', 'omoyari'] * 232)
 
 arr = mf.make_arr_for_train_test(df_all, features, conds, ylabs)
 
@@ -116,22 +129,12 @@ dist = "dist_from_start"
 dist = "dist_closest"
 dist = "dist_top12_closest"
 n_clusters = 3
-
-true_labels = ["omoiyari", "isogi", "yukkuri"] * 8
-
-dfs = pd.DataFrame()
-for ID in SUBJECTS:
-    for cond in CONDITIONS:
-        for trial in TRIALS:
-            df_tmp = df_all[f'ID{ID}'][cond]['agents20'][f'trial{trial}']['timerTrial']
-            dfs[f'ID{ID}cond{cond}tri{trial}timer'] = df_tmp**2
         
-        
-true_labels = ["urgent", "nonurgent", "omoiyari"] * 8        
+true_labels = ["isogi", "yukkuri", "omoiyari"] * 8        
 df = pd.DataFrame()
 for tri in TRIALS:
     for cond in CONDITIONS:
-        df_tmp = df_all['ID1'][cond]['agents20'][f'trial{tri}']['timerTrial']
+        df_tmp = df_all['ID1'][cond]['agents20'][f'trial{tri}'][dist]
         df_tmp = pd.Series(df_tmp, name=f'cond_{cond}_tri{tri}')
         df = pd.concat([df, df_tmp], axis=1)
 
@@ -203,8 +206,8 @@ def make_df_for_clustering_per_conditions(cond, feature):
     return df_cond
         
 df_omoi = make_df_for_clustering_per_conditions("omoiyari", 'dist_actual_ideal')
-df_isogi = make_df_for_clustering_per_conditions("urgent", 'dist_from_start')
-df_yukkuri = make_df_for_clustering_per_conditions("nonurgent", 'dist_from_start')
+df_isogi = make_df_for_clustering_per_conditions("isogi", 'dist_from_start')
+df_yukkuri = make_df_for_clustering_per_conditions("yukkuri", 'dist_from_start')
 
 def tsclustering(df, n_clusters, feature):
     km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
@@ -212,29 +215,15 @@ def tsclustering(df, n_clusters, feature):
     time_np = to_time_series_dataset(df.T)
     mf.plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_clusters)
 
+n = 3
 mf.find_proper_num_clusters(df_omoi)
-tsclustering(df_omoi, 3, 'dist_')
+tsclustering(df_omoi, n, 'dist_actual_ideal')
 
 mf.find_proper_num_clusters(df_isogi)
-tsclustering(df_isogi, 3, 'dist_from_start')
+tsclustering(df_isogi, n, 'dist_from_start')
 
 mf.find_proper_num_clusters(df_yukkuri)
-tsclustering(df_yukkuri, 3, 'dist_from_start')
-
-# %% time series clustering 
-# per condition and look through what kind of patterns could be found
-df_clustering = mf.make_df_for_clustering(df_all, 3, 20, 'dist_actual_ideal')
-df_omoi = df_clustering.filter(like='nonurgent')
-
-mf.find_proper_num_clusters(df_omoi)
-n = 3
-km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
-labels_euclidean = km_euclidean.fit_predict(df_omoi.T)
-time_np = to_time_series_dataset(df_omoi.T)
-
-fig, ax = plt.subplots(1, n, figsize=(12, 4), sharex=True, sharey=True)
-for idx, label in enumerate(labels_euclidean):
-    ax[label].plot(time_np[idx].ravel())
+tsclustering(df_yukkuri, n, 'dist_from_start')
     
 
 # %% why doesn't it calculate degrees

@@ -1,6 +1,6 @@
 # %% Global varibales
 SUBJECTS = [subject for subject in range(1, 30)]
-CONDITIONS = ['urgent', 'nonurgent', 'omoiyari']
+CONDITIONS = ['isogi', 'yukkuri', 'omoiyari']
 AGENTS = [agent for agent in range(1, 21)]
 NUM_AGENTS = [5, 10, 20]
 TRIALS = [trial for trial in range(1, 9)]
@@ -232,7 +232,7 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
     Make a dictionary that contains all subjects' records.
     The dictionary's hierarchy is: 
         1. participant's ID
-        2. experiment conditions (urgent, nonurgent, omoiyari)
+        2. experiment conditions (isogi, yukkuri, omoiyari)
         3. number of agents (5, 10, 20)
         4. trial (1-8)
                 
@@ -272,7 +272,7 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
 # %% 16
 def make_df_trial(df_all: pd.DataFrame, 
                   ID: int, 
-                  condition: Literal['urgent', 'nonurgent', 'omoiyari'], 
+                  condition: Literal['isogi', 'yukkuri', 'omoiyari'], 
                   num_agents: int, 
                   trial: int) -> pd.DataFrame:
     
@@ -290,12 +290,12 @@ def make_df_for_clustering(df_all: pd.DataFrame,
     df_clustering = pd.DataFrame()
     for trial in TRIALS:
         omoiyari = df_all[f"ID{ID}"]["omoiyari"][f"agents{agents}"][f"trial{trial}"][column]
-        urgent = df_all[f"ID{ID}"]["urgent"][f"agents{agents}"][f"trial{trial}"][column]
-        nonurgent = df_all[f"ID{ID}"]["nonurgent"][f"agents{agents}"][f"trial{trial}"][column]
+        isogi = df_all[f"ID{ID}"]["isogi"][f"agents{agents}"][f"trial{trial}"][column]
+        yukkuri = df_all[f"ID{ID}"]["yukkuri"][f"agents{agents}"][f"trial{trial}"][column]
         
         df_clustering[f"ID{ID}_omoiyari_dist_{trial}"] = omoiyari
-        df_clustering[f"ID{ID}_urgent_dist_{trial}"] = urgent
-        df_clustering[f"ID{ID}_nonurgent_dist_{trial}"] = nonurgent
+        df_clustering[f"ID{ID}_isogi_dist_{trial}"] = isogi
+        df_clustering[f"ID{ID}_yukkuri_dist_{trial}"] = yukkuri
         
         df_clustering.dropna(inplace=True)
     
@@ -389,7 +389,7 @@ def make_arr_for_train_test(df_all, features, conds, ylabs):
 # %%
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 
-                         conditions: Literal["urgent", "nonurgent", "omoiyari"], 
+                         conditions: Literal["isogi", "yukkuri", "omoiyari"], 
                          num_agents: Literal[5, 10, 20]) -> None:
     """
     Plot each trial's trajectory in different axes(2x4).
