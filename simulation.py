@@ -8,6 +8,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.animation as animation
+import tqdm
 import simfuncs
 from simfuncs import AGENT, COLOR, VIEWING_ANGLE, TRIAL, STEP, INTERVAL
 
@@ -23,7 +24,7 @@ ims = []
 
 for num in range(TRIAL):
     np.random.seed(num)
-    O = simfuncs.simulation()
+    O = simfuncs.simulation(method='simple')
 
     data = []
     column_label = []
@@ -49,7 +50,6 @@ for num in range(TRIAL):
     # 視野の八分の一の距離まで接近
     for i in range(AGENT):
         column_label.append('agent ' + str(i) + ' one_eighth')
-
 
     # 初期の位置と速度を記録
     row = []
@@ -89,11 +89,11 @@ for num in range(TRIAL):
 
 
     # シミュレーション
-    for t in range(STEP):
+    for t in tqdm.tqdm(range(STEP)):
         O.simulate(t + 1)
         index_label.append(t + 1)
         # どこまで進んでいるか分かる用、numは試行回数でt+1はステップ数
-        print(str(num) + "  " + str(t+1))
+        #print(str(num) + "  " + str(t+1))
 
         # シミュレーションごとに値を記録
         row = []
@@ -235,16 +235,17 @@ for num in range(TRIAL):
     
     # 各試行の結果のデータを保存
     row_label.append('seed_' + str(num))
-    values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, one_eighth_mean, collision_mean])
+    values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
+                   one_eighth_mean, collision_mean, O.method])
 
 # 値をまとめたcsvファイルの作成
-column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision']
+column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision', 'method']
                       
 df = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-df.to_csv(str(VIEWING_ANGLE) + '.csv')
+df.to_csv(f'{O.method}_{str(VIEWING_ANGLE)}.csv')
 print(df) # show results
 
 # %% plot animation
 ani = animation.ArtistAnimation(fig, ims, interval=INTERVAL, repeat=False)
-ani.save('ani.gif')
+ani.save(f'ani_{O.method}.gif')

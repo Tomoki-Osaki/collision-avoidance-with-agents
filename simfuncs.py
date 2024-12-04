@@ -1,18 +1,20 @@
 # %% functions and class
-# calc_rad(pos2, pos1)
-# rotate_vec(vec, rad)
-# define_fig_ax()
-# class: simulation
-#   __init__(self)
-#   findGoal(self, agent)
-#   distance(self)
-#   approach_detect(self, dist)
-#   simple_avoidance(self, num)
-#   dynamic_avoidance(self, num, goal)
-#   simulate(self, step)
-#   calc_completion_time(self, num, now_step)
-#   calc_last_completion_time(self, num)
-#   showImage(self)
+"""
+calc_rad(pos2, pos1)
+rotate_vec(vec, rad)
+define_fig_ax()
+class: simulation
+  __init__(self)
+  findGoal(self, agent)
+  distance(self)
+  approach_detect(self, dist)
+  simple_avoidance(self, num)
+  dynamic_avoidance(self, num, goal)
+  simulate(self, step)
+  calc_completion_time(self, num, now_step)
+  calc_last_completion_time(self, num)
+  showImage(self)
+"""
 
 # %%
 import numpy as np
@@ -33,7 +35,7 @@ AGENT_SIZE = 0.1 # エージェントの半径(目盛り) = 5px
 AGENT = 25 # エージェントの数
 COLOR = [] # エージェントの色
 for i in range(AGENT):
-    COLOR.append("blue")
+    COLOR.append('blue')
 
 VIEW = 1 # 視野の半径(目盛り) = 50px:エージェント5体分
 VIEWING_ANGLE = 360 # 視角
@@ -63,8 +65,11 @@ def calc_rad(pos2, pos1): # pos1からpos2のベクトルの角度を返す
     return np.arctan2(pos2[1] - pos1[1],  pos2[0] - pos1[0])
 
 def rotate_vec(vec, rad): # ベクトルをradだけ回転させる
-    return np.dot(np.array([[np.cos(rad), -np.sin(rad)], [np.sin(rad), np.cos(rad)]]), vec.T).T
+    return np.dot(np.array([[np.cos(rad), -np.sin(rad)], 
+                            [np.sin(rad), np.cos(rad)]]), 
+                  vec.T).T
 
+# %%
 def define_fig_ax():
     ax_w_px = WIDTH  # プロット領域の幅をピクセル単位で指定
     ax_h_px = HEIGHT  # プロット領域の高さをピクセル単位で指定
@@ -94,7 +99,8 @@ def define_fig_ax():
 
 # %% シミュレーションに関わるクラス
 class simulation():
-    def __init__(self):
+    def __init__(self, method):
+        self.method = method # 'simple' or 'dynamic'
         
         # all_agentは全エージェントの座標を記録、all_agent2はゴールの計算用、first_agentは初期位置記録用
         self.all_agent = []
@@ -110,8 +116,15 @@ class simulation():
             
             # 座標(0, 0)から座標velへのベクトルがエージェントの初期速度になる
             # self.all_agentの1つの要素に1体のエージェントの位置と速度が記録
-            self.all_agent.append({'p':pos, 'v':rotate_vec(np.array([GOAL_VEC, 0]), calc_rad(vel, np.array([0, 0])))})
-
+            self.all_agent.append(
+                {'p': pos, 
+                 'v':rotate_vec(
+                     np.array([GOAL_VEC, 0]), 
+                     calc_rad(vel, np.array([0, 0]))
+                     )
+                 }
+                )
+            
         # 初期位置と初期速度をコピー
         self.all_agent2 = deepcopy(self.all_agent)
         self.first_agent = deepcopy(self.all_agent)
@@ -253,11 +266,17 @@ class simulation():
             return avoid_vec
         
         # ゴールベクトルの角度を算出する
-        goal_angle = np.degrees(calc_rad(self.agent_goal[num][self.goal_count[num]], self.all_agent[num]['p']))
+        goal_angle = np.degrees(calc_rad(
+            self.agent_goal[num][self.goal_count[num]], 
+            self.all_agent[num]['p'])
+        )
 
         for i in near_agents:
             # 近づいたエージェントとの角度を算出
-            agent_angle = np.degrees(calc_rad(self.all_agent[i]['p'], self.all_agent[num]['p']))
+            agent_angle = np.degrees(calc_rad(
+                self.all_agent[i]['p'], 
+                self.all_agent[num]['p'])
+            )
             
             # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
             angle_difference = abs(goal_angle - agent_angle)
@@ -275,10 +294,10 @@ class simulation():
         for i in visible_agents:
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agent[num]['p'] - self.all_agent[i]['p']
-            d = d / (self.dist[num][i] + 2 * AGENT_SIZE)# 大きさ1のベクトルにする
-            d = d * SIMPLE_AVOID_VEC# 大きさを固定値にする
+            d = d / (self.dist[num][i] + 2 * AGENT_SIZE) # 大きさ1のベクトルにする
+            d = d * SIMPLE_AVOID_VEC # 大きさを固定値にする
             
-            avoid_vec += d# 回避ベクトルを合成する
+            avoid_vec += d # 回避ベクトルを合成する
             
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
@@ -287,19 +306,26 @@ class simulation():
     # 動的回避ベクトルの生成
     def dynamic_avoidance(self, num, goal):
         self.distance()
-        near_agents = [i for i, x in enumerate(self.dist[num]) if x != -(0.2) and x < VIEW]
-        visible_agents =[]
+        near_agents = [i for i, x in enumerate(self.dist[num]) 
+                       if x != -(0.2) and x < VIEW]
+        visible_agents = []
         avoid_vec = np.zeros(2)
         
         if not near_agents:
             return avoid_vec
         
         # ゴールベクトルの角度を算出する
-        goal_angle = np.degrees(calc_rad(self.agent_goal[num][self.goal_count[num]], self.all_agent[num]['p']))
+        goal_angle = np.degrees(calc_rad(
+            self.agent_goal[num][self.goal_count[num]], 
+            self.all_agent[num]['p'])
+        )
 
         for i in near_agents:
             # 近づいたエージェントとの角度を算出
-            agent_angle = np.degrees(calc_rad(self.all_agent[i]['p'], self.all_agent[num]['p']))
+            agent_angle = np.degrees(
+                calc_rad(self.all_agent[i]['p'], 
+                         self.all_agent[num]['p'])
+            )
             
             # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
             angle_difference = abs(goal_angle - agent_angle)
@@ -362,7 +388,8 @@ class simulation():
 
 
             # ブレーキ指標の算出
-            braking_index = (1/(1 + np.exp(-c1 - d1 * (tcpa/4000)))) * (1/(1 + np.exp(-b1 - a1 * (dcpa/50))))
+            braking_index = (1 / (1 + np.exp(-c1 - d1 * (tcpa/4000)))) * \
+                            (1 / (1 + np.exp(-b1 - a1 * (dcpa/50))))
             
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agent[num]['p'] - self.all_agent[i]['p']
@@ -380,32 +407,61 @@ class simulation():
     def simulate(self, step):
         
         # 単純回避
-        if METHOD == 0:
+        if self.method == 'simple':
             for i in range(AGENT):
                 # はみ出た時用のゴールが設定されていない
                 # 通常のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
                 if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
-                    self.all_agent[i]['v'] = rotate_vec(np.array([GOAL_VEC, 0]), calc_rad(self.agent_goal[i][self.goal_count[i]], self.all_agent[i]['p'])) + self.simple_avoidance(i)        
+                    self.all_agent[i]['v'] = rotate_vec(
+                        np.array([GOAL_VEC, 0]), 
+                        calc_rad(
+                            self.agent_goal[i][self.goal_count[i]], 
+                            self.all_agent[i]['p']
+                        )
+                    ) + self.simple_avoidance(i)        
 
                 # はみ出た時用のゴールが設定されている
                 # はみ出た時用のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
                 else:
-                    self.all_agent[i]['v'] = rotate_vec(np.array([GOAL_VEC, 0]), calc_rad(self.goal_temp[i], self.all_agent[i]['p'])) + self.simple_avoidance(i)            
+                    self.all_agent[i]['v'] = rotate_vec(
+                        np.array([GOAL_VEC, 0]), 
+                        calc_rad(self.goal_temp[i], self.all_agent[i]['p'])
+                    ) + self.simple_avoidance(i)            
         
         # 動的回避
-        if METHOD == 1:
+        if self.method == 'dynamic':
             for i in range(AGENT):
                 if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
-                    self.all_agent[i]['v'] = rotate_vec(np.array([GOAL_VEC, 0]), calc_rad(self.agent_goal[i][self.goal_count[i]], self.all_agent[i]['p'])) + self.dynamic_avoidance(i, self.agent_goal[i][self.goal_count[i]])
+                    self.all_agent[i]['v'] = rotate_vec(
+                        np.array([GOAL_VEC, 0]), 
+                        calc_rad(
+                            self.agent_goal[i][self.goal_count[i]], 
+                            self.all_agent[i]['p'])
+                        ) + self.dynamic_avoidance(
+                            i, self.agent_goal[i][self.goal_count[i]]
+                            )
                 else:
-                    self.all_agent[i]['v'] = rotate_vec(np.array([GOAL_VEC, 0]), calc_rad(self.goal_temp[i], self.all_agent[i]['p'])) + self.dynamic_avoidance(i, self.goal_temp[i])            
+                    self.all_agent[i]['v'] = rotate_vec(
+                        np.array([GOAL_VEC, 0]), 
+                        calc_rad(self.goal_temp[i], 
+                                 self.all_agent[i]['p'])
+                        ) + self.dynamic_avoidance(
+                            i, self.goal_temp[i]
+                            )            
         
         
         for i in range(AGENT):
             # x座標が左端をこえる
             if((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] < -SIZE):
                 # ゴールに到着
-                if(self.all_agent[i]['p'][0] > self.agent_goal[i][self.goal_count[i]][0] - 0.1 and self.all_agent[i]['p'][0] < self.agent_goal[i][self.goal_count[i]][0] + 0.1 and self.all_agent[i]['p'][1] > self.agent_goal[i][self.goal_count[i]][1] - 0.1 and self.all_agent[i]['p'][1] < self.agent_goal[i][self.goal_count[i]][1] + 0.1):
+                if(self.all_agent[i]['p'][0] > 
+                   self.agent_goal[i][self.goal_count[i]][0] - 0.1 and 
+                   self.all_agent[i]['p'][0] < 
+                   self.agent_goal[i][self.goal_count[i]][0] + 0.1 and 
+                   self.all_agent[i]['p'][1] > 
+                   self.agent_goal[i][self.goal_count[i]][1] - 0.1 and 
+                   self.all_agent[i]['p'][1] < 
+                   self.agent_goal[i][self.goal_count[i]][1] + 0.1):
                     
                     # 通常のゴールに到着
                     if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
@@ -437,14 +493,23 @@ class simulation():
                         self.goal_temp[i][1] = 0
                 
                 # エージェントを反対の端へ移動
-                self.all_agent[i]['p'][0] = SIZE + ((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] + SIZE)
+                self.all_agent[i]['p'][0] = SIZE + (
+                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[0] + SIZE
+                )
         
             
             # x座標が右端をこえる
             elif((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] > SIZE):
                 
                 # ゴール判定
-                if(self.all_agent[i]['p'][0] > self.agent_goal[i][self.goal_count[i]][0] - 0.1 and self.all_agent[i]['p'][0] < self.agent_goal[i][self.goal_count[i]][0] + 0.1 and self.all_agent[i]['p'][1] > self.agent_goal[i][self.goal_count[i]][1] - 0.1 and self.all_agent[i]['p'][1] < self.agent_goal[i][self.goal_count[i]][1] + 0.1):
+                if(self.all_agent[i]['p'][0] > 
+                   self.agent_goal[i][self.goal_count[i]][0] - 0.1 and 
+                   self.all_agent[i]['p'][0] < 
+                   self.agent_goal[i][self.goal_count[i]][0] + 0.1 and 
+                   self.all_agent[i]['p'][1] > 
+                   self.agent_goal[i][self.goal_count[i]][1] - 0.1 and 
+                   self.all_agent[i]['p'][1] < 
+                   self.agent_goal[i][self.goal_count[i]][1] + 0.1):
                     
                     # ゴールが調整されているか確認
                     if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
@@ -476,7 +541,14 @@ class simulation():
             elif((self.all_agent[i]['p']+self.all_agent[i]['v'])[1] < -SIZE):
                 
                 # ゴール判定
-                if(self.all_agent[i]['p'][0] > self.agent_goal[i][self.goal_count[i]][0] - 0.1 and self.all_agent[i]['p'][0] < self.agent_goal[i][self.goal_count[i]][0] + 0.1 and self.all_agent[i]['p'][1] > self.agent_goal[i][self.goal_count[i]][1] - 0.1 and self.all_agent[i]['p'][1] < self.agent_goal[i][self.goal_count[i]][1] + 0.1):
+                if(self.all_agent[i]['p'][0] > 
+                   self.agent_goal[i][self.goal_count[i]][0] - 0.1 and 
+                   self.all_agent[i]['p'][0] < 
+                   self.agent_goal[i][self.goal_count[i]][0] + 0.1 and 
+                   self.all_agent[i]['p'][1] > 
+                   self.agent_goal[i][self.goal_count[i]][1] - 0.1 and 
+                   self.all_agent[i]['p'][1] < 
+                   self.agent_goal[i][self.goal_count[i]][1] + 0.1):
                     
                     # ゴールが調整されているか確認
                     if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
@@ -501,13 +573,22 @@ class simulation():
                         self.goal_temp[i][0] = 0
                         self.goal_temp[i][1] = 0
                         
-                self.all_agent[i]['p'][1] = SIZE + ((self.all_agent[i]['p']+self.all_agent[i]['v'])[1] + SIZE)
+                self.all_agent[i]['p'][1] = SIZE + (
+                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[1] + SIZE
+                )
                 
             # y座標が上をこえる     
             elif((self.all_agent[i]['p']+self.all_agent[i]['v'])[1] > SIZE):
                 
                 # ゴール判定
-                if(self.all_agent[i]['p'][0] > self.agent_goal[i][self.goal_count[i]][0] - 0.1 and self.all_agent[i]['p'][0] < self.agent_goal[i][self.goal_count[i]][0] + 0.1 and self.all_agent[i]['p'][1] > self.agent_goal[i][self.goal_count[i]][1] - 0.1 and self.all_agent[i]['p'][1] < self.agent_goal[i][self.goal_count[i]][1] + 0.1):
+                if(self.all_agent[i]['p'][0] > 
+                   self.agent_goal[i][self.goal_count[i]][0] - 0.1 and 
+                   self.all_agent[i]['p'][0] < 
+                   self.agent_goal[i][self.goal_count[i]][0] + 0.1 and 
+                   self.all_agent[i]['p'][1] > 
+                   self.agent_goal[i][self.goal_count[i]][1] - 0.1 and 
+                   self.all_agent[i]['p'][1] < 
+                   self.agent_goal[i][self.goal_count[i]][1] + 0.1):
                     
                     # ゴールが調整されているか確認
                     if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
@@ -533,7 +614,9 @@ class simulation():
                         self.goal_temp[i][1] = 0
                         
 
-                self.all_agent[i]['p'][1] = -SIZE + ((self.all_agent[i]['p']+self.all_agent[i]['v'])[1] - SIZE)
+                self.all_agent[i]['p'][1] = -SIZE + (
+                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[1] - SIZE
+                )
 
                 
         for i in range(AGENT):
@@ -585,7 +668,8 @@ class simulation():
                 self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
                 
         # 完了時間を計算(ゴールまでのステップ/ゴールまでの距離)
-        completion_time = (self.goal_step[num] - self.start_step[num] + 1) / (np.linalg.norm(self.start_pos[num] - self.goal_pos[num]))
+        completion_time = (self.goal_step[num] - self.start_step[num] + 1) / \
+                          (np.linalg.norm(self.start_pos[num] - self.goal_pos[num]))
         
         # 外れ値を除外
         if(completion_time > 200):
@@ -641,7 +725,8 @@ class simulation():
         
         # スタートからゴールまでの直線の式を計算
         # 傾き
-        a = (self.start_pos[num][1] - self.goal_pos[num][1])/(self.start_pos[num][0] - self.goal_pos[num][0])
+        a = (self.start_pos[num][1] - self.goal_pos[num][1]) / \
+            (self.start_pos[num][0] - self.goal_pos[num][0])
         # 切片
         b = -(a * self.start_pos[num][0]) + self.start_pos[num][1]
         
