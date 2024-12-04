@@ -10,7 +10,7 @@ import pandas as pd
 import matplotlib.animation as animation
 import tqdm
 import simfuncs
-from simfuncs import AGENT, COLOR, VIEWING_ANGLE, TRIAL, STEP, INTERVAL
+from simfuncs import AGENT, COLOR, TRIAL, STEP, INTERVAL
 
 # %%
 fig, ax = simfuncs.define_fig_ax()
@@ -24,7 +24,7 @@ ims = []
 
 for num in range(TRIAL):
     np.random.seed(num)
-    O = simfuncs.simulation(method='simple')
+    O = simfuncs.simulation(method='simple', viewing_angle=360)
 
     data = []
     column_label = []
@@ -236,14 +236,15 @@ for num in range(TRIAL):
     # 各試行の結果のデータを保存
     row_label.append('seed_' + str(num))
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
-                   one_eighth_mean, collision_mean, O.method])
+                   one_eighth_mean, collision_mean, O.viewing_angle, O.method])
 
 # 値をまとめたcsvファイルの作成
-column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision', 'method']
+column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 
+                'collision', 'viewing_angle', 'method']
                       
 df = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-df.to_csv(f'{O.method}_{str(VIEWING_ANGLE)}.csv')
+df.to_csv(f'{O.method}_{str(O.viewing_angle)}.csv')
 print(df) # show results
 
 # %% plot animation

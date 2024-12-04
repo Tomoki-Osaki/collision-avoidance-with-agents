@@ -38,7 +38,6 @@ for i in range(AGENT):
     COLOR.append('blue')
 
 VIEW = 1 # 視野の半径(目盛り) = 50px:エージェント5体分
-VIEWING_ANGLE = 360 # 視角
 
 GOAL_VEC = 0.06 # ゴールベクトルの大きさ(目盛り)
 SIMPLE_AVOID_VEC = 0.06 # 単純回避での回避ベクトルの大きさ(目盛り)
@@ -47,8 +46,6 @@ DYNAMIC_AVOID_VEC = 0.06 # 動的回避での回避ベクトルの最大値(目�
 TRIAL = 1 # 試行回数
 STEP = 500 # 1回の試行で動かすステップの回数
 INTERVAL = 100 # 100msごとにグラフを更新してアニメーションを作成
-
-METHOD = 0 # 移動方法:0が単純回避で1が動的回避
 
 # 妨害指標の4係数は標準化したやつを使う
 a1 = -5.145
@@ -99,8 +96,9 @@ def define_fig_ax():
 
 # %% シミュレーションに関わるクラス
 class simulation():
-    def __init__(self, method):
+    def __init__(self, method, viewing_angle):
         self.method = method # 'simple' or 'dynamic'
+        self.viewing_angle = viewing_angle
         
         # all_agentは全エージェントの座標を記録、all_agent2はゴールの計算用、first_agentは初期位置記録用
         self.all_agent = []
@@ -118,12 +116,12 @@ class simulation():
             # self.all_agentの1つの要素に1体のエージェントの位置と速度が記録
             self.all_agent.append(
                 {'p': pos, 
-                 'v':rotate_vec(
-                     np.array([GOAL_VEC, 0]), 
-                     calc_rad(vel, np.array([0, 0]))
+                 'v': rotate_vec(
+                         np.array([GOAL_VEC, 0]), 
+                         calc_rad(vel, np.array([0, 0]))
                      )
                  }
-                )
+            )
             
         # 初期位置と初期速度をコピー
         self.all_agent2 = deepcopy(self.all_agent)
@@ -247,7 +245,8 @@ class simulation():
         
         # distより接近したエージェントの数を記録
         for t in range(AGENT):
-            visible_agents = [i for i, x in enumerate(self.dist[t]) if x != -(0.2) and x < dist]
+            visible_agents = [i for i, x in enumerate(self.dist[t]) 
+                              if x != -(0.2) and x < dist]
             approach_agent.append(len(visible_agents))
             
         return approach_agent
@@ -257,7 +256,8 @@ class simulation():
     def simple_avoidance(self, num):
         self.distance()
         # near_agentsは360度の視野に入ったエージェント、visible_agentsは視野を狭めた場合に視野に入ったエージェント
-        near_agents = [i for i, x in enumerate(self.dist[num]) if x != -(0.2) and x < VIEW]
+        near_agents = [i for i, x in enumerate(self.dist[num]) 
+                       if x != -(0.2) and x < VIEW]
         visible_agents =[]
         # 回避ベクトル
         avoid_vec = np.zeros(2)
@@ -285,7 +285,7 @@ class simulation():
                 angle_difference = 360 - angle_difference
                 
             # 視野に入っているエージェントをvisible_agentsに追加
-            if angle_difference <= VIEWING_ANGLE / 2:
+            if angle_difference <= self.viewing_angle / 2:
                 visible_agents.append(i)
                 
         if not visible_agents: 
@@ -334,7 +334,7 @@ class simulation():
                 angle_difference = 360 - angle_difference
             
             # 視界に入ったエージェントをvisible_agentsに追加
-            if angle_difference <= VIEWING_ANGLE / 2:
+            if angle_difference <= self.viewing_angle / 2:
                 visible_agents.append(i)
                 
         if not visible_agents:
@@ -483,7 +483,7 @@ class simulation():
                     # はみ出た時用のゴールが設定されていない
                     if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # はみ出た時用のゴールを設定
-                        self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0] + 2 * SIZE
+                        self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0] + 2*SIZE
                         self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1]
                         
                     # はみ出た時用のゴールが設定されている
@@ -534,7 +534,8 @@ class simulation():
                         self.goal_temp[i][0] = 0
                         self.goal_temp[i][1] = 0
                         
-                self.all_agent[i]['p'][0] = -SIZE + ((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] - SIZE)
+                self.all_agent[i]['p'][0] = -SIZE + \
+                    ((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] - SIZE)
 
                 
             # y座標が下をこえる
@@ -567,7 +568,7 @@ class simulation():
                     if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 境界をこえた用のゴールを設定
                         self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0]
-                        self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1] + 2 * SIZE
+                        self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1] + 2*SIZE
                     else:        
                         # はみ出た時用のゴールを初期化
                         self.goal_temp[i][0] = 0
