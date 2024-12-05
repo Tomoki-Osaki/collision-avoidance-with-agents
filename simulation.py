@@ -28,7 +28,7 @@ for num in range(TRIAL):
     O = simfuncs.simulation(agent_size=0.1, agent=25, view=1, 
                             viewing_angle=360, goal_vec=0.06, 
                             simple_avoid_vec=0.06, dynamic_avoid_vec=0.06, 
-                            step=500, avoidance='simple')
+                            step=500, avoidance='dynamic')
 
     data = []
     column_label = []
@@ -122,7 +122,7 @@ for num in range(TRIAL):
     # csvとしてステップごとに位置、速度、接近した回数を記録
     """
     df = pd.DataFrame(data, columns=column_label, index=index_label)
-    df.to_csv('/Users/mango/卒業研究/to_csv_out_' + str(num) + '.csv')
+    df.to_csv('to_csv_out_' + str(num) + '.csv')
     """
     
     # 最後の座標から完了時間を算出
@@ -140,7 +140,7 @@ for num in range(TRIAL):
     
     """
     df = pd.DataFrame(O.completion_time, columns=column_label, index=index_label)
-    df.to_csv('/Users/mango/卒業研究/to_csv_out_completion_time_' + str(num) + '.csv')
+    df.to_csv('to_csv_out_completion_time_' + str(num) + '.csv')
     """
     
     # 加速度はx, y速度の差からなるベクトルの大きさ
@@ -229,7 +229,7 @@ for num in range(TRIAL):
     row_label.append('seed_' + str(num))
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
-                   O.step, O.method])
+                   O.step, O.avoidance])
 
 # 値をまとめたcsvファイルの作成
 column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision', 
@@ -237,11 +237,11 @@ column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision',
                       
 df = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-df.to_csv(f'{O.method}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.csv')
+df.to_csv(f'{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.csv')
 print(df) # show results
 gc.collect()
 
 # %% save as an animation
 ani = animation.ArtistAnimation(fig, ims, interval=INTERVAL, repeat=False)
-ani.save(f'ani_{O.method}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.gif')
+ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.gif')
 gc.collect()

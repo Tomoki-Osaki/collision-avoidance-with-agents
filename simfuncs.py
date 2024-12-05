@@ -250,7 +250,8 @@ class simulation():
     # 単純な回避ベクトルの生成
     def simple_avoidance(self, num):
         self.distance()
-        # near_agentsは360度の視野に入ったエージェント、visible_agentsは視野を狭めた場合に視野に入ったエージェント
+        # near_agentsは360度の視野に入ったエージェント
+        # visible_agentsは視野を狭めた場合に視野に入ったエージェント
         near_agents = [i for i, x in enumerate(self.dist[num]) 
                        if x != -(0.2) and x < self.view]
         visible_agents =[]
@@ -261,16 +262,16 @@ class simulation():
             return avoid_vec
         
         # ゴールベクトルの角度を算出する
-        goal_angle = np.degrees(calc_rad(
-            self.agent_goal[num][self.goal_count[num]], 
-            self.all_agent[num]['p'])
+        goal_angle = np.degrees(
+            calc_rad(self.agent_goal[num][self.goal_count[num]], 
+                     self.all_agent[num]['p'])
         )
 
         for i in near_agents:
             # 近づいたエージェントとの角度を算出
-            agent_angle = np.degrees(calc_rad(
-                self.all_agent[i]['p'], 
-                self.all_agent[num]['p'])
+            agent_angle = np.degrees(
+                calc_rad(self.all_agent[i]['p'], 
+                         self.all_agent[num]['p'])
             )
             
             # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
@@ -310,9 +311,9 @@ class simulation():
             return avoid_vec
         
         # ゴールベクトルの角度を算出する
-        goal_angle = np.degrees(calc_rad(
-            self.agent_goal[num][self.goal_count[num]], 
-            self.all_agent[num]['p'])
+        goal_angle = np.degrees(
+            calc_rad(self.agent_goal[num][self.goal_count[num]], 
+                     self.all_agent[num]['p'])
         )
 
         for i in near_agents:
