@@ -28,7 +28,7 @@ for num in range(TRIAL):
     O = simfuncs.simulation(agent_size=0.1, agent=25, view=1, 
                             viewing_angle=360, goal_vec=0.06, 
                             simple_avoid_vec=0.06, dynamic_avoid_vec=0.06, 
-                            step=500, method='simple')
+                            step=500, avoidance='simple')
 
     data = []
     column_label = []
@@ -41,19 +41,10 @@ for num in range(TRIAL):
         column_label.append('agent ' + str(i) + ' pos_y')
         column_label.append('agent ' + str(i) + ' vel_x')
         column_label.append('agent ' + str(i) + ' vel_y')
-    
-    # 衝突(距離0以下)
-    for i in range(O.agent):
-        column_label.append('agent ' + str(i) + ' collision')
-    # 視野の半分の距離まで接近
-    for i in range(O.agent):
-        column_label.append('agent ' + str(i) + ' half')
-    # 視野の四分の一の距離まで接近
-    for i in range(O.agent):
-        column_label.append('agent ' + str(i) + ' quarter')
-    # 視野の八分の一の距離まで接近
-    for i in range(O.agent):
-        column_label.append('agent ' + str(i) + ' one_eighth')
+        column_label.append('agent ' + str(i) + ' collision') # 衝突(距離0以下)
+        column_label.append('agent ' + str(i) + ' half') # 視野の半分の距離まで接近
+        column_label.append('agent ' + str(i) + ' quarter') # 視野の四分の一の距離まで接近
+        column_label.append('agent ' + str(i) + ' one_eighth') # 視野の八分の一の距離まで接近
 
     # 初期の位置と速度を記録
     row = []
@@ -61,7 +52,6 @@ for num in range(TRIAL):
     # rowにはある時刻の全エージェントの位置と速度が入る
     for i in range(1, O.agent):
         row = np.concatenate([row, O.all_agent[i]['p'], O.all_agent[i]['v']])
-
 
     # 衝突したエージェントの数を記録
     collision_agent = O.approach_detect(0)
@@ -96,8 +86,6 @@ for num in range(TRIAL):
     for t in tqdm.tqdm(range(O.step)):
         O.simulate(t + 1)
         index_label.append(t + 1)
-        # どこまで進んでいるか分かる用、numは試行回数でt+1はステップ数
-        #print(str(num) + "  " + str(t+1))
 
         # シミュレーションごとに値を記録
         row = []
@@ -187,7 +175,7 @@ for num in range(TRIAL):
     
     df = pd.DataFrame(agents_accels, columns=index_label, index=column_label)
     df = df.T
-    # df.to_csv('/Users/mango/卒業研究/to_csv_out_accel_' + str(num) + '.csv')
+    # df.to_csv('to_csv_out_accel_' + str(num) + '.csv')
 
    
     # 衝突した数
@@ -249,11 +237,11 @@ column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision',
                       
 df = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-df.to_csv(f'{O.method}_{O.viewing_angle}_{O.agent}_{O.step}.csv')
+df.to_csv(f'{O.method}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.csv')
 print(df) # show results
 gc.collect()
 
 # %% save as an animation
 ani = animation.ArtistAnimation(fig, ims, interval=INTERVAL, repeat=False)
-ani.save(f'ani_{O.method}_{O.viewing_angle}_{O.agent}_{O.step}.gif')
+ani.save(f'ani_{O.method}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.gif')
 gc.collect()

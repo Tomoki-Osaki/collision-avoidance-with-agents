@@ -37,9 +37,15 @@ abcd = {'a1': -5.145, # -0.034298
         'c1': 4.286, # 4.252840
         'd1': -13.689} # -0.003423
 
+# %% DO NOT EDIT
+# a1: -5.145 (-0.034298)
+# b1: 3.348 (3.348394)
+# c1: 4.286 (4.252840)
+# d1: -13.689 (-0.003423)
+
 # %% functions
 def calc_rad(pos2, pos1): # pos1からpos2のベクトルの角度を返す
-    return np.arctan2(pos2[1] - pos1[1],  pos2[0] - pos1[0])
+    return np.arctan2(pos2[1] - pos1[1], pos2[0] - pos1[0])
 
 def rotate_vec(vec, rad): # ベクトルをradだけ回転させる
     return np.dot(np.array([[np.cos(rad), -np.sin(rad)], 
@@ -78,7 +84,7 @@ def define_fig_ax(width=500, height=500):
 class simulation():
     def __init__(self, agent_size=0.1, agent=25, view=1, viewing_angle=360, 
                  goal_vec=0.06, simple_avoid_vec=0.06, dynamic_avoid_vec=0.06, 
-                 step=500, method='simple'):
+                 step=500, avoidance='simple'):
         
         self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
         self.agent = agent # エージェント数
@@ -88,12 +94,11 @@ class simulation():
         self.simple_avoid_vec = simple_avoid_vec # 単純回避での回避ベクトルの大きさ(目盛り)
         self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
         self.step = step # 1回の試行で動かすステップの回数
-        self.method = method # 'simple' or 'dynamic'
+        self.avoidance = avoidance # 'simple' or 'dynamic'
 
-        # all_agentは全エージェントの座標を記録、all_agent2はゴールの計算用、first_agentは初期位置記録用
-        self.all_agent = []
-        self.all_agent2 = []
-        self.first_agent = []
+        self.all_agent = [] # 全エージェントの座標を記録
+        self.all_agent2 = [] # ゴールの計算用
+        self.first_agent = [] # 初期位置記録用
         self.agent_goal = []
         self.first_pos =[]
         
@@ -397,7 +402,7 @@ class simulation():
     def simulate(self, step):
         
         # 単純回避
-        if self.method == 'simple':
+        if self.avoidance == 'simple':
             for i in range(self.agent):
                 # はみ出た時用のゴールが設定されていない
                 # 通常のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
@@ -419,7 +424,7 @@ class simulation():
                     ) + self.simple_avoidance(i)            
         
         # 動的回避
-        if self.method == 'dynamic':
+        if self.avoidance == 'dynamic':
             for i in range(self.agent):
                 if(self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                     self.all_agent[i]['v'] = rotate_vec(
@@ -612,7 +617,7 @@ class simulation():
                 
         for i in range(self.agent):
             # 移動後の座標を確定      
-            self.all_agent[i]['p'] =  self.all_agent[i]['p'] + self.all_agent[i]['v']
+            self.all_agent[i]['p'] = self.all_agent[i]['p'] + self.all_agent[i]['v']
             
         
             
