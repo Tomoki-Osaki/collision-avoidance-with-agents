@@ -1,4 +1,3 @@
-# %% functions and class
 """
 calc_rad(pos2, pos1)
 rotate_vec(vec, rad)
@@ -394,7 +393,7 @@ class simulation():
             d = d * self.dynamic_avoid_vec # ベクトルの最大値を決定
             
             avoid_vec += d # ベクトルの合成
-        
+    
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
     
