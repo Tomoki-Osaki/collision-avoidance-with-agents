@@ -7,7 +7,20 @@ import glob
 path = 'crossing_exp/glob_shaped/*.csv'
 flist = glob.glob(path)
 
-df = pd.read_csv(flist[15])
+# 事例2　corssing1
+path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro2_index_7_8_9_to_12_1.bag.csv"
+
+# 事例1　crossing2
+path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro8_index_3_5_14_to_1_2.bag.csv"
+
+# 記載なし　crossing3
+path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro9_index_11_5_11_to_14_1.bag.csv"
+
+# 事例3　crossing4
+path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_8_9.bag.csv"
+
+#df = pd.read_csv(flist[3])
+df = pd.read_csv(path)
 df['ped0_body_posx'] = df['/vrpn_client_node/body_0/pose/field.pose.position.x']
 df['ped0_body_posy'] = df['/vrpn_client_node/body_0/pose/field.pose.position.z']
 df['ped1_body_posx'] = df['/vrpn_client_node/body_1/pose/field.pose.position.x']
@@ -45,7 +58,7 @@ frames= zip(df.index,
 fig = plt.figure()
 ax = fig.add_subplot(111)
 alpha = 0.5
-delay = 1
+delay = 0
 keep_former_step = False
 
 x1, y1, x2, y2 = [], [], [], []
@@ -62,23 +75,23 @@ def update(frame):
     
     # if you want to keep the former steps
     if keep_former_step == True:
-        ax.scatter(x1, y1, color='red', alpha=0.5)
-        ax.scatter(x2, y2, color='blue', alpha=0.5)
+        ax.scatter(x1, y1, color='blue', alpha=0.5)
+        ax.scatter(x2, y2, color='red', alpha=0.5)
     
     else:
         if frame[0] <= delay:
-            ax.scatter(x1, y1, color='red', alpha=0.5)
-            ax.scatter(x2, y2, color='blue', alpha=0.5)
+            ax.scatter(x1, y1, color='blue', alpha=0.5)
+            ax.scatter(x2, y2, color='red', alpha=0.5)
         else:
-            ax.scatter(x1[frame[0]-delay:], y1[frame[0]-delay:], color='red', alpha=alpha)
-            ax.scatter(x2[frame[0]-delay:], y2[frame[0]-delay:], color='blue', alpha=alpha)
+            ax.scatter(x1[frame[0]-delay:], y1[frame[0]-delay:], color='blue', alpha=alpha)
+            ax.scatter(x2[frame[0]-delay:], y2[frame[0]-delay:], color='red', alpha=alpha)
 
-    ax.text(xmax-1.2, ymax+1.2, f'time (100ms) : {frame[0]}')
+    ax.text(xmax, ymax+1.2, f'time: {frame[0]/10}s')
     
 anim = FuncAnimation(fig, update, frames=frames, interval=200, 
                      repeat=False, cache_frame_data=False)
 
-plt.show()
+#plt.show()
 
-# anim.save("crossing.mp4", writer='ffmpeg')
-# plt.close()
+anim.save("crossing.mp4", writer='ffmpeg')
+plt.close()
