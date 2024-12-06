@@ -95,3 +95,102 @@ anim = FuncAnimation(fig, update, frames=frames, interval=200,
 
 anim.save("crossing.mp4", writer='ffmpeg')
 plt.close()
+
+# %% calculate the braking rate
+df = pd.read_csv(flist[0])
+df = df[['/vrpn_client_node/body_0/pose/field.pose.position.x',
+         '/vrpn_client_node/body_0/pose/field.pose.position.z',
+         'body_0_vel_x', 
+         'body_0_vel_z',
+         '/vrpn_client_node/body_1/pose/field.pose.position.x',
+         '/vrpn_client_node/body_1/pose/field.pose.position.z',
+         'body_1_vel_x', 
+         'body_1_vel_z']]
+
+old_new_cols = {'/vrpn_client_node/body_0/pose/field.pose.position.x': 'B_posx1',
+                '/vrpn_client_node/body_0/pose/field.pose.position.z': 'C_posy1',
+                'body_0_vel_x': 'D_velx1',
+                'body_0_vel_z': 'E_vely1',
+                '/vrpn_client_node/body_1/pose/field.pose.position.x': 'F_posx2',
+                '/vrpn_client_node/body_1/pose/field.pose.position.z': 'G_posy2',
+                'body_1_vel_x': 'H_velx2',
+                'body_1_vel_z': 'I_vely2'}
+
+df = df.rename(columns=old_new_cols)
+
+def J_CPx():
+    nume = df['H_velx2']*df['$E_vely1']*df['$B_posx1'] - \
+           df['$D_velx1']*df['I_vely2']*df['F_posx2'] + \
+           df['$D_velx1']*df['H_velx2']*(df['G_posy2'] - df['$C_posy1'])
+           
+    deno = df['H_velx2']*df['$E_vely1'] - df['$D_velx1']*df['I_vely2']
+    
+    val = nume / deno
+    df['J_CPx'] = val
+    
+    return df
+
+def K_CPy():
+    val = (df['E_vely1'] / df['D_velx1']) * (df['J_CPx'] - df['B_posx1']) + df['C_posy1']
+    df['K_CPy'] = val
+    return df
+
+def L_TTCP0():
+    val = ...
+    df['L_TTCP0'] = val
+    return df 
+
+def M_TTCP1():
+    val = ...
+    df['M_TTCP1'] = val
+    return df 
+
+def N_deltaTTCP():
+    val = abs(df['L_TTCP0'] - df['M_TTCP1'])
+    df['N_deltaTTCP'] = val
+    
+    return df 
+
+def O_Judge():
+    val = ...
+    df['O_Judge'] = val
+    return df  
+
+def P_JudgeEntropy():
+    val = ...
+    df['P_JudgeEntropy'] = val
+    return df   
+
+def Q_equA():
+    val = (df['$D_velx1'] - df['H_velx2'])**2 + (df['$E_vely1'] - df['I_vely2'])**2
+    df['Q_equA'] = val
+    return df   
+    
+def R_equB():
+    val = (2 * (df['D_velx1'] - df['H_velx2']) * (df['$B_posx1'] - df['F_posx2'])) + \
+          (2 * (df['$E_vely1'] - df['I_vely2']) * (df['$C_posy1'] - df['G_posy2']))
+    df['R_equB'] = val
+    return df   
+
+def S_equC():
+    val = (df['$B_posx1'] - df['F_posx2'])**2 + (df['$C_posy1'] - df['G_posy2'])**2
+    df['S_equC'] = val
+    return df    
+
+def T_TCPA():
+    val = -(df['R_equB'] / 2*df['Q_equA'])
+    df['T_TCPA'] = val
+    return df 
+
+def U_DCPA():
+    val = np.sqrt((-df['R_equB']**2) + (4 * df['Q_equA'] * df['S_equC']) / 4 * df['Q_equA'])
+    df['U_DCPA'] = val
+    return df 
+
+def V_BreakingRate():
+    val = ...
+    df['V_BreakingRate'] = val
+    return df 
+
+
+
