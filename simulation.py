@@ -1,7 +1,3 @@
-# TODO
-# まずアルゴリズムの仕様を理解する
-# 後に、判断エントロピーやawarenessモデルをどのように組み込めば思いやりを実現できるかを考える
-
 # %%
 import numpy as np
 import pandas as pd
@@ -26,7 +22,7 @@ ims = []
 for num in range(TRIAL):
     np.random.seed(num)
     O = simfuncs.simulation(agent_size=0.1, agent=25, view=1, 
-                            viewing_angle=360, goal_vec=0.06, 
+                            viewing_angle=360, goal_vec=0.06,  
                             simple_avoid_vec=0.06, dynamic_avoid_vec=0.06, 
                             step=500, avoidance='dynamic')
 
