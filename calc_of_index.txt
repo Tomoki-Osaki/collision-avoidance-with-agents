@@ -1,0 +1,47 @@
+B. /vrpn_client_node/body_0/pose/field.pose.position.x	
+C. /vrpn_client_node/body_0/pose/field.pose.position.z	
+D. body_0_vel_x	
+E. body_0_vel_z	
+F. /vrpn_client_node/body_1/pose/field.pose.position.x	
+G. /vrpn_client_node/body_1/pose/field.pose.position.z	
+H. body_1_vel_x	
+I. body_1_vel_z
+
+J. CP_x
+(=IFERROR( (H2*$E2*$B2 - $D2*I2*F2 + $D2*H2*(G2-$C2)) / (H2*$E2 - $D2*I2), ""))
+
+K. CP_y
+(=IFERROR( (E2/D2) * (J2 - B2) + C2, ""))
+
+L. TTCP_0
+(=IF( AND (OR ( AND (B2 < J2, D2 > 0), AND (B2 >J2, D2 < 0)), OR ( AND (C2 < K2, E2 > 0), AND (C2 > K2, E2 < 0))), SQRT(( J2 - $B2 ) ^ 2 + (K2 - $C2) ^2) / ( SQRT(($D2 ^ 2 + $E2 ^ 2 ))), ""))
+
+M. TTCP_1
+(=IF( AND (OR ( AND (F2 < J2, H2 > 0), AND (F2 > J2, H2 < 0)), OR( AND (G2 < K2, I2 > 0), AND (G2 > K2, I2 < 0))), SQRT(( J2 - F2 )^2 + (K2 - G2)^2) / (SQRT(( H2^2 + I2^2))), ""))
+
+N. deltaTTCP
+(=IFERROR( ABS(L2 - M2), -1))
+
+O. Judge
+(=IFERROR (1 / (1 + EXP($DB$1 + $DC$1*(M2 - L2))), ""))
+
+P. JudgeEntropy
+(=IFERROR ( -O2*LOG(O2) - (1 - O2)*LOG(1 - O2), ""))
+
+Q. equA
+(= ($D2 - H2)^2 + ($E2 - I2)^2)
+
+R. equB
+(= (2*($D2 - H2)*($B2 - F2)) + (2*($E2 - I2)*($C2 - G2)))
+
+S. equC
+(= ($B2 - F2)^2 + ($C2 - G2)^2)
+
+T. TCPA
+(= -(R2 / (2*Q2)))
+
+U. DCPA
+(= SQRT((-(R2^2) + (4*Q2*S2)) /(4*Q2)))
+
+V. BreakingRate
+(=IF (T2 < 0, "", IFERROR((1 / (1 + EXP(-($DD$1 + ($DE$1*T2*1000))))) * (1 / (1 + EXP(-($DF$1 + ($DG$1*30*U2))))), "")))
