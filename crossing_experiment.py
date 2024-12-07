@@ -49,7 +49,7 @@ df['L_TTCP0'] = df.apply(ci.L_TTCP0, axis=1)
 df['M_TTCP1'] = df.apply(ci.M_TTCP1, axis=1)
 df['N_deltaTTCP'] = ci.N_deltaTTCP(df)
 df['O_Judge'] = ci.O_Judge(df)
-df['P_JudgeEntropy'] = ci.P_JudgeEntropy(df) # does not match!
+df['P_JudgeEntropy'] = ci.P_JudgeEntropy(df) 
 df['Q_equA'] = ci.Q_equA(df)
 df['R_equB'] = ci.R_equB(df)
 df['S_equC'] = ci.S_equC(df)
@@ -60,12 +60,7 @@ df['W_distance'] = df.apply(ci.W_distance, axis=1)
 
 # for col in df.columns: print(col)
 
-def plot_traj(df):
-    for x1, y1, x2, y2 in zip(df['B_posx1'], df['C_posy1'], 
-                              df['F_posx2'], df['G_posy2']):
-        plt.scatter(x1, y1, color='red')
-        plt.scatter(x2, y2, color='blue')
-    plt.show()
+# ci.plot_traj(df)
 
 # %%
 alpha = 0.5
