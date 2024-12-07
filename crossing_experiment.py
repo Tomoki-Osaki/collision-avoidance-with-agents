@@ -84,6 +84,8 @@ plt.close()
 
 # %% calculate the braking rate
 df = pd.read_csv(flist[0])
+path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_8_9.bag.csv"
+df = pd.read_csv(path)
 df = df[['/vrpn_client_node/body_0/pose/field.pose.position.x',
          '/vrpn_client_node/body_0/pose/field.pose.position.z',
          'body_0_vel_x', 
@@ -174,22 +176,22 @@ def N_deltaTTCP(df):
     val = abs(df['L_TTCP0'] - df['M_TTCP1'])
     return val
 
-def O_Judge(df):
+def O_Judge(df, eta1=-0.303, eta2=0.61):
     """
     =IFERROR(
-        1 / (1 + EXP($DB$1 + $DC$1*(M2 - L2)))
+        1 / (1 + EXP($DB$1[eta1] + $DC$1[eta2]*(M2 - L2)))
     , "")
     """
-    val = ...
+    val = 1 / (1 + np.exp(eta1 + eta2*(df['M_TTCP1'] - df['L_TTCP0'])))
     return val
 
-def P_JudgeEntropy(df):
+def P_JudgeEntropy(df): # does not match!
     """
     =IFERROR( 
         -O2*LOG(O2) - (1 - O2)*LOG(1 - O2)
     , "")
     """
-    val = -df['O_Judge']*np.log(df['O_Judge'] - (1 - df['O_Judge'])*np.log(1 - df['O_Judge']))
+    val = -df['O_Judge']*np.log(df['O_Judge']) - (1 - df['O_Judge'])*np.log(1 - df['O_Judge'])
     return val
 
 def Q_equA(df):
@@ -214,11 +216,11 @@ def S_equC(df):
     val = (df['B_posx1'] - df['F_posx2'])**2 + (df['C_posy1'] - df['G_posy2'])**2
     return val
 
-def T_TCPA(df):
+def T_TCPA(df): 
     """
     = -(R2 / (2*Q2))
     """
-    val = -(df['R_equB'] / 2*df['Q_equA'])
+    val = -(df['R_equB'] / (2*df['Q_equA']))
     return val
 
 def U_DCPA(df):
@@ -229,6 +231,7 @@ def U_DCPA(df):
     return val
 
 def V_BreakingRate(df, a1=-0.034298, b1=3.348394, c1=4.252840, d1=-0.003423):
+    # does not match!
     """
     a1: -5.145 (-0.034298)
     b1: 3.348 (3.348394)
@@ -237,8 +240,8 @@ def V_BreakingRate(df, a1=-0.034298, b1=3.348394, c1=4.252840, d1=-0.003423):
     
     =IF(T2 < 0, "", 
     IFERROR(
-        (1 / (1 + EXP(-($DD$1(c1) + ($DE$1(d1)*T2*1000))))) * 
-        (1 / (1 + EXP(-($DF$1(b1) + ($DG$1(a1)*30*U2)))))
+        (1 / (1 + EXP(-($DD$1[c1] + ($DE$1[d1]*T2*1000))))) * 
+        (1 / (1 + EXP(-($DF$1[b1] + ($DG$1[a1]*30*U2)))))
         , "")
     )
     """
@@ -252,11 +255,13 @@ df['K_CPy'] = K_CPy(df)
 df['L_TTCP0'] = L_TTCP0(df)
 df['M_TTCP1'] = M_TTCP1(df)
 df['N_deltaTTCP'] = N_deltaTTCP(df)
-df['O_Judge'] = ...
-df['P_JudgeEntropy'] = P_JudgeEntropy(df)
+df['O_Judge'] = O_Judge(df)
+df['P_JudgeEntropy'] = P_JudgeEntropy(df) # does not match!
 df['Q_equA'] = Q_equA(df)
 df['R_equB'] = R_equB(df)
 df['S_equC'] = S_equC(df)
-df['T_TCPA'] = T_TCPA(df)
+df['T_TCPA'] = T_TCPA(df) 
 df['U_DCPA'] = U_DCPA(df)
-df['V_BreakingRate'] = V_BreakingRate(df)
+df['V_BreakingRate'] = V_BreakingRate(df) # does not match!
+
+df.to_csv('res.csv')
