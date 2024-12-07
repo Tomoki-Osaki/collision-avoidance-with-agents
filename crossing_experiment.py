@@ -146,10 +146,20 @@ def L_TTCP0(df):
         SQRT(( J2 - $B2 )^2 + (K2 - $C2)^2) / ( SQRT(($D2^2 + $E2^2 )))
     , "")
     """
-    nume = np.sqrt((df['J_CPx'] - df['B_posx1'])**2 + (df['K_CPy'] - df['C_posy1'])**2)
-    deno = np.sqrt((df['D_velx1']**2 + df['E_vely1']**2))
-    val = nume / deno
-    return val 
+    if ( ((df['B_posx1'] < df['J_CPx'] and df['D_velx1'] > 0) or
+          (df['B_posx1'] > df['J_CPx'] and df['D_velx1'] < 0)) 
+        and
+         ((df['C_posy1'] < df['K_CPy'] and df['E_vely1'] > 0) or
+          (df['C_posy1'] > df['K_CPy'] and df['E_vely1'] < 0))
+        ):
+        
+        nume = np.sqrt((df['J_CPx'] - df['B_posx1'])**2 + (df['K_CPy'] - df['C_posy1'])**2)
+        deno = np.sqrt((df['D_velx1']**2 + df['E_vely1']**2))
+        val = nume / deno
+        return val 
+    
+    else:
+        return None
 
 def M_TTCP1(df):
     """
@@ -164,14 +174,26 @@ def M_TTCP1(df):
     , "")
 
     """
-    nume = np.sqrt((df['J_CPx'] - df['F_posx2'])**2 + (df['K_CPy'] - df['G_posy2'])**2)
-    deno = np.sqrt((df['H_velx2']**2 + df['I_vely2']**2))
-    val = nume / deno
-    return val
+    if ( ((df['F_posx2'] < df['J_CPx'] and df['H_velx2'] > 0) or
+          (df['F_posx2'] > df['J_CPx'] and df['H_velx2'] < 0)) 
+        and
+         ((df['G_posy2'] < df['K_CPy'] and df['I_vely2'] > 0) or
+          (df['G_posy2'] > df['K_CPy'] and df['I_vely2'] < 0))
+        ):
+        
+        nume = np.sqrt((df['J_CPx'] - df['F_posx2'])**2 + (df['K_CPy'] - df['G_posy2'])**2)
+        deno = np.sqrt((df['H_velx2']**2 + df['I_vely2']**2))
+        val = nume / deno
+        return val
+    
+    else:
+        return None 
 
 def N_deltaTTCP(df):
     """
-    =IFERROR( ABS(L2 - M2), -1)
+    =IFERROR( 
+        ABS(L2 - M2)
+    , -1)
     """
     val = abs(df['L_TTCP0'] - df['M_TTCP1'])
     return val
@@ -188,10 +210,10 @@ def O_Judge(df, eta1=-0.303, eta2=0.61):
 def P_JudgeEntropy(df): # does not match!
     """
     =IFERROR( 
-        -O2*LOG(O2) - (1 - O2)*LOG(1 - O2)
+        -O2 * LOG(O2) - (1 - O2) * LOG(1 - O2)
     , "")
     """
-    val = -df['O_Judge']*np.log(df['O_Judge']) - (1 - df['O_Judge'])*np.log(1 - df['O_Judge'])
+    val = -df['O_Judge'] * np.log(df['O_Judge']) - (1 - df['O_Judge']) * np.log(1 - df['O_Judge'])
     return val
 
 def Q_equA(df):
@@ -230,8 +252,7 @@ def U_DCPA(df):
     val = np.sqrt(((-df['R_equB']**2) + (4*df['Q_equA']*df['S_equC'])) / (4*df['Q_equA']))
     return val
 
-def V_BreakingRate(df, a1=-0.034298, b1=3.348394, c1=4.252840, d1=-0.003423):
-    # does not match!
+def V_BrakingRate(df, a1=-0.034, b1=3.348, c1=4.252, d1=-0.003):
     """
     a1: -5.145 (-0.034298)
     b1: 3.348 (3.348394)
@@ -245,15 +266,18 @@ def V_BreakingRate(df, a1=-0.034298, b1=3.348394, c1=4.252840, d1=-0.003423):
         , "")
     )
     """
-    term1 = (1 / (1 + np.exp(-(c1 + (d1*df['T_TCPA']*1000)))))
-    term2 = (1 / (1 + np.exp(-(b1 + (a1*df['U_DCPA']*30)))))
-    val = term1 * term2
-    return val
-
+    if df['T_TCPA'] < 0:
+        return None
+    else:
+        term1 = (1 / (1 + np.exp(-(c1 + (d1*df['T_TCPA']*1000)))))
+        term2 = (1 / (1 + np.exp(-(b1 + (a1*df['U_DCPA']*30)))))
+        val = term1 * term2
+        return val
+        
 df['J_CPx'] = J_CPx(df)
 df['K_CPy'] = K_CPy(df)
-df['L_TTCP0'] = L_TTCP0(df)
-df['M_TTCP1'] = M_TTCP1(df)
+df['L_TTCP0'] = df.apply(L_TTCP0, axis=1)
+df['M_TTCP1'] = df.apply(M_TTCP1, axis=1)
 df['N_deltaTTCP'] = N_deltaTTCP(df)
 df['O_Judge'] = O_Judge(df)
 df['P_JudgeEntropy'] = P_JudgeEntropy(df) # does not match!
@@ -262,6 +286,7 @@ df['R_equB'] = R_equB(df)
 df['S_equC'] = S_equC(df)
 df['T_TCPA'] = T_TCPA(df) 
 df['U_DCPA'] = U_DCPA(df)
-df['V_BreakingRate'] = V_BreakingRate(df) # does not match!
+df['V_BrakingRate'] = df.apply(V_BrakingRate(df))
 
 df.to_csv('res.csv')
+
