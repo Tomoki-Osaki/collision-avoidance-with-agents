@@ -58,7 +58,19 @@ df['U_DCPA'] = ci.U_DCPA(df)
 df['V_BrakingRate'] = df.apply(ci.V_BrakingRate, axis=1)
 df['W_distance'] = df.apply(ci.W_distance, axis=1)
 
-# for col in df.columns: print(col)
+ci.col(df)
+
+for i, val in enumerate(df['V_BrakingRate']):
+    if val == max(df['V_BrakingRate']):
+        brake_max = (i, val)
+
+for i, val in enumerate(df['W_distance']):
+    if val == min(df['W_distance']):
+        dist_min = (i, val)
+
+for i, val in enumerate(df['P_JudgeEntropy']):
+    if val == min(df['P_JudgeEntropy']):
+        judge_max = (i, val)
 
 # ci.plot_traj(df)
 
@@ -113,6 +125,7 @@ def update(frame):
     ax[0,1].set_ylim(0, dist_ymax+0.5)
     ax[0,1].grid()
     ax[0,1].plot(distance, lw=linewidth, color='orange')
+    ax[0,1].plot(df['W_distance'], lw=linewidth, color='orange', alpha=0.12)
     
     ax[1,0].cla()
     ax[1,0].set_title('ブレーキ率')
@@ -120,6 +133,7 @@ def update(frame):
     ax[1,0].set_ylim(-0.01, 1)
     ax[1,0].grid()
     ax[1,0].plot(BrakingRate, lw=linewidth, color='green')
+    ax[1,0].plot(df['V_BrakingRate'], lw=linewidth, color='green', alpha=0.08)
     
     ax[1,1].cla()
     ax[1,1].set_title('判断エントロピー')
@@ -127,62 +141,14 @@ def update(frame):
     ax[1,1].set_ylim(-0.01, 1)
     ax[1,1].grid()
     ax[1,1].plot(JudgeEntropy, lw=linewidth, color='purple')
+    ax[1,1].plot(df['P_JudgeEntropy'], lw=linewidth, color='purple', alpha=0.1)
+    
     ax[1,1].text(x=-0.22, y=-0.2, s=f'time: {frame[0]} (100ms)', 
                  size=13, transform=ax[1,1].transAxes)
 
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
                      interval=200, cache_frame_data=False)
 #plt.show()
-anim.save("crossing.mp4", writer='ffmpeg')
-plt.close()
-
-# %%
-xmax = max([max(df['ped0_body_posx']), max(df['ped1_body_posx'])])
-xmin = min([min(df['ped0_body_posx']), min(df['ped1_body_posx'])])
-ymax = max([max(df['ped0_body_posy']), max(df['ped1_body_posy'])])
-ymin = min([min(df['ped0_body_posy']), min(df['ped1_body_posy'])])
-
-frames= zip(df.index,
-            df['ped0_body_posx'], df['ped0_body_posy'], 
-            df['ped1_body_posx'], df['ped1_body_posy'])
-
-fig = plt.figure()
-ax = fig.add_subplot(111)
-delay = 0
-keep_former_step = False
-
-x1, y1, x2, y2 = [], [], [], []
-def update(frame):
-    ax.cla()
-    ax.set_xlim(xmin-1, xmax+1)
-    ax.set_ylim(ymin-1, ymax+1)
-    ax.grid()
-    
-    x1.append(frame[1])
-    y1.append(frame[2])
-    x2.append(frame[3])
-    y2.append(frame[4])
-    
-    # if you want to keep the former steps
-    if keep_former_step == True:
-        ax.scatter(x1, y1, color='blue', alpha=0.5)
-        ax.scatter(x2, y2, color='red', alpha=0.5)
-    
-    else:
-        if frame[0] <= delay:
-            ax.scatter(x1, y1, color='blue', alpha=0.5)
-            ax.scatter(x2, y2, color='red', alpha=0.5)
-        else:
-            ax.scatter(x1[frame[0]-delay:], y1[frame[0]-delay:], color='blue', alpha=alpha)
-            ax.scatter(x2[frame[0]-delay:], y2[frame[0]-delay:], color='red', alpha=alpha)
-
-    ax.text(xmax, ymax+1.2, f'time: {frame[0]/10}s')
-    
-anim = FuncAnimation(fig, update, frames=frames, interval=200, 
-                     repeat=False, cache_frame_data=False)
-
-#plt.show()
-
 anim.save("crossing.mp4", writer='ffmpeg')
 plt.close()
 

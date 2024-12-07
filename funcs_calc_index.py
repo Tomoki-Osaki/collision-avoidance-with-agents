@@ -191,3 +191,6 @@ def plot_traj(df):
         plt.scatter(x2, y2, color='blue')
     plt.show()
 
+def col(df):
+    for i in df.columns:
+        print(i)
