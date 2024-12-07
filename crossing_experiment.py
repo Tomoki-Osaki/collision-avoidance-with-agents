@@ -63,8 +63,11 @@ df['W_distance'] = df.apply(ci.W_distance, axis=1)
 # ci.plot_traj(df)
 
 # %%
+import matplotlib
+matplotlib.rc('font', family='BIZ UDGothic')
+
 alpha = 0.5
-fig, ax = plt.subplots(1, 3, figsize=(16, 6))
+fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 
 rep = 0
 headwidth = 8
@@ -72,51 +75,66 @@ headlength = 8
 linewidth = 3
 BrakingRate = []
 distance = []
+JudgeEntropy = []
 dist_ymax = max(df['W_distance'])
 xmax = len(df)
+
 def update(frame):
     global rep
+    JudgeEntropy.append(frame[1]['P_JudgeEntropy'])
     BrakingRate.append(frame[1]['V_BrakingRate'])
     distance.append(frame[1]['W_distance'])
-    rep += 1
-    ax[0].cla()
-    ax[0].set_title('Moving of pedestrians')
-    ax[0].set_xlim(-5, 5)
-    ax[0].set_ylim(-5, 5)
-    ax[0].grid()
-    ax[0].scatter(frame[1]['B_posx1'], frame[1]['C_posy1'], s=100, c='blue', alpha=alpha)
-    ax[0].scatter(frame[1]['F_posx2'], frame[1]['G_posy2'], s=100, c='red', alpha=alpha)
-    if not rep == len(df):
-        ax[0].annotate('', xy=(df['B_posx1'][frame[0]+1], df['C_posy1'][frame[0]+1]), 
-                       xytext=(frame[1]['B_posx1'], frame[1]['C_posy1']),
-                       arrowprops=dict(shrink=0, width=1, headwidth=headwidth, 
-                                       headlength=headlength,
-                                       facecolor='gray', edgecolor='blue'))
-        
-        ax[0].annotate('', xy=(df['F_posx2'][frame[0]+1], df['G_posy2'][frame[0]+1]), 
-                       xytext=(frame[1]['F_posx2'], frame[1]['G_posy2']),
-                       arrowprops=dict(shrink=0, width=1, headwidth=headwidth, 
-                                       headlength=headlength,
-                                       facecolor='gray', edgecolor='red'))
-    ax[1].cla()
-    ax[1].set_title('Braking rate')
-    ax[1].set_xlim(0, xmax+1)
-    ax[1].set_ylim(-0.01, 1)
-    ax[1].grid()
-    ax[1].plot(BrakingRate, lw=linewidth, color='green')
     
-    ax[2].cla()
-    ax[2].set_title('Distance between pedestrians')
-    ax[2].set_xlim(0, xmax+1)
-    ax[2].set_ylim(0, dist_ymax+0.5)
-    ax[2].grid()
-    ax[2].plot(distance, lw=linewidth, color='orange')
+    rep += 1
+    ax[0,0].cla()
+    ax[0,0].set_title('歩行者の動き')
+    ax[0,0].set_xlim(-5, 5)
+    ax[0,0].set_ylim(-5, 5)
+    ax[0,0].grid()
+    ax[0,0].scatter(frame[1]['B_posx1'], frame[1]['C_posy1'], s=80, c='blue', alpha=alpha)
+    ax[0,0].scatter(frame[1]['F_posx2'], frame[1]['G_posy2'], s=80, c='red', alpha=alpha)
+    ax[0,0].scatter(df['B_posx1'], df['C_posy1'], c='blue', alpha=0.03)
+    ax[0,0].scatter(df['F_posx2'], df['G_posy2'], c='red', alpha=0.03)
+    if not rep == len(df):
+        ax[0,0].annotate('', xy=(df['B_posx1'][frame[0]+1], df['C_posy1'][frame[0]+1]), 
+                         xytext=(frame[1]['B_posx1'], frame[1]['C_posy1']),
+                         arrowprops=dict(shrink=0, width=1, headwidth=headwidth, 
+                                         headlength=headlength,
+                                         facecolor='skyblue', edgecolor='blue'))
+        
+        ax[0,0].annotate('', xy=(df['F_posx2'][frame[0]+1], df['G_posy2'][frame[0]+1]), 
+                         xytext=(frame[1]['F_posx2'], frame[1]['G_posy2']),
+                         arrowprops=dict(shrink=0, width=1, headwidth=headwidth, 
+                                         headlength=headlength,
+                                         facecolor='pink', edgecolor='red'))
+    ax[0,1].cla()
+    ax[0,1].set_title('２者間の距離')
+    ax[0,1].set_xlim(0, xmax+1)
+    ax[0,1].set_ylim(0, dist_ymax+0.5)
+    ax[0,1].grid()
+    ax[0,1].plot(distance, lw=linewidth, color='orange')
+    
+    ax[1,0].cla()
+    ax[1,0].set_title('ブレーキ率')
+    ax[1,0].set_xlim(0, xmax+1)
+    ax[1,0].set_ylim(-0.01, 1)
+    ax[1,0].grid()
+    ax[1,0].plot(BrakingRate, lw=linewidth, color='green')
+    
+    ax[1,1].cla()
+    ax[1,1].set_title('判断エントロピー')
+    ax[1,1].set_xlim(0, xmax+1)
+    ax[1,1].set_ylim(-0.01, 1)
+    ax[1,1].grid()
+    ax[1,1].plot(JudgeEntropy, lw=linewidth, color='purple')
+    ax[1,1].text(x=-0.22, y=-0.2, s=f'time: {frame[0]} (100ms)', 
+                 size=13, transform=ax[1,1].transAxes)
 
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
                      interval=200, cache_frame_data=False)
-plt.show()
-# anim.save("crossing.mp4", writer='ffmpeg')
-# plt.close()
+#plt.show()
+anim.save("crossing.mp4", writer='ffmpeg')
+plt.close()
 
 # %%
 xmax = max([max(df['ped0_body_posx']), max(df['ped1_body_posx'])])
