@@ -18,7 +18,6 @@ path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro8_index_3_5_14_to_1_
 path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_8_9.bag.csv"
 
 #df = pd.read_csv(flist[3])
-df = pd.read_csv(path)
 df = pd.read_csv(flist[100])
 path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_8_9.bag.csv"
 df = pd.read_csv(path)
