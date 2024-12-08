@@ -19,7 +19,7 @@ path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_
 
 #df = pd.read_csv(flist[3])
 df = pd.read_csv(path)
-df = pd.read_csv(flist[0])
+df = pd.read_csv(flist[100])
 path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_8_9.bag.csv"
 df = pd.read_csv(path)
 
@@ -78,7 +78,6 @@ for i, val in enumerate(df['P_JudgeEntropy']):
 import matplotlib
 matplotlib.rc('font', family='BIZ UDGothic')
 
-alpha = 0.5
 fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 
 rep = 0
@@ -103,8 +102,8 @@ def update(frame):
     ax[0,0].set_xlim(-5, 5)
     ax[0,0].set_ylim(-5, 5)
     ax[0,0].grid()
-    ax[0,0].scatter(frame[1]['B_posx1'], frame[1]['C_posy1'], s=80, c='blue', alpha=alpha)
-    ax[0,0].scatter(frame[1]['F_posx2'], frame[1]['G_posy2'], s=80, c='red', alpha=alpha)
+    ax[0,0].scatter(frame[1]['B_posx1'], frame[1]['C_posy1'], s=80, c='blue', alpha=0.8)
+    ax[0,0].scatter(frame[1]['F_posx2'], frame[1]['G_posy2'], s=80, c='red', alpha=0.8)
     ax[0,0].scatter(df['B_posx1'], df['C_posy1'], c='blue', alpha=0.03)
     ax[0,0].scatter(df['F_posx2'], df['G_posy2'], c='red', alpha=0.03)
     if not rep == len(df):
@@ -143,7 +142,7 @@ def update(frame):
     ax[1,1].plot(JudgeEntropy, lw=linewidth, color='purple')
     ax[1,1].plot(df['P_JudgeEntropy'], lw=linewidth, color='purple', alpha=0.1)
     
-    ax[1,1].text(x=-0.22, y=-0.2, s=f'time: {frame[0]} (100ms)', 
+    ax[1,1].text(x=-0.22, y=-0.2, s=f'時間：{frame[0]} (100ms)', 
                  size=13, transform=ax[1,1].transAxes)
 
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
