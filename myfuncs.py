@@ -355,37 +355,6 @@ def make_arr_for_train_test(df_all, features, conds, ylabs):
         
     return arr
 
-# %% def make_arr_for_train_test(df_all, features, conds, ylabs):
-    max_length = find_max_length(df_all, return_as_list=False)  
-    
-    arr = np.zeros((232*len(conds), max_length, len(features)))
-    idx = 0
-    
-    for ID in tqdm(SUBJECTS):
-        df_tri = pd.DataFrame()
-        for trial in TRIALS:
-            for cond in conds:
-                df_tmp = make_df_trial(df_all, ID, cond, 20, trial)
-                df_tri = pd.concat([df_tri, df_tmp], axis=1)
-            
-        df_tri = df_tri[features]
-        
-        # standardize the values within the individual (0-1)
-        for feature in features:
-            df_tri[feature] /= np.max(df_tri[feature])  
-        
-        df_tri = pad_with_nan(df_tri, max_length)    
-            
-        data_per_person = len(TRIALS) * len(conds)
-        
-        for i in range(data_per_person):
-            cols_per_tri = [j for j in range(i, df_tri.shape[1], data_per_person)]
-            tmp_arr = df_tri.iloc[:, cols_per_tri]
-            arr[idx] = tmp_arr
-            idx += 1
-        
-    return arr
-
 # %%
 def plot_traj_per_trials(df_all: pd.DataFrame, 
                          ID: int, 

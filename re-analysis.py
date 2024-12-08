@@ -17,6 +17,7 @@ import warnings
 warnings.simplefilter('ignore')
 from collections import Counter
 from tqdm import tqdm
+import gc
 import myfuncs as mf
 
 # %% define global variables
@@ -31,8 +32,8 @@ df_all = mf.make_dict_of_all_info(SUBJECTS)
 
 # %% time series clustering 
 # per condition and look through what kind of patterns could be found
-df_clustering = mf.make_df_for_clustering(df_all, 5, 20, 'dist_actual_ideal')
-df = df_clustering.filter(like='omoiyari')
+df = mf.make_df_for_clustering(df_all, 20, 20, 'dist_actual_ideal')
+df = df.filter(like='omoiyari')
 
 mf.find_proper_num_clusters(df)
 
@@ -46,7 +47,7 @@ fig, ax = plt.subplots(1, n, figsize=(14, 6), sharex=True, sharey=True)
 for idx, label in enumerate(labels_euclidean):
     ax[label].plot(time_np[idx].ravel())
 
-# %% KNeighborsTimeSeriesClassifier from tslean
+# %% KNeighborsTimeSeriesClassifier from tslean (classification)
 # ex. shape (40, 100, 6) = (data, timepoints, variables)
 # each timepoint has 6 variables
 # thus, the prepared data's shape must be (696, 191, ?5)
@@ -55,8 +56,8 @@ for idx, label in enumerate(labels_euclidean):
 # be careful not to make tuples
 features = ['timerTrial', 
             'dist_from_start', 
-            'dist_actual_ideal']
-            #'dist_closest', ]
+            'dist_actual_ideal',
+            'dist_closest']
             #'dist_top12_closest']
 
 conds = ['isogi', 'yukkuri', 'omoiyari']
@@ -83,7 +84,7 @@ summary = pd.DataFrame(
 )
 print(summary.T)
 
-repeat = 10
+repeat = 7
 for i in tqdm(range(repeat)):
     X_train, X_test, y_train, y_test = train_test_split(arr, ylabs, test_size=0.25)
     clf.fit(X_train, y_train)
@@ -103,7 +104,7 @@ print(features)
 print(conds)
 
 # %% plot data
-ID = 1
+ID = 20
 agents = 20
 mf.plot_traj_per_trials(df_all, ID, "omoiyari", agents)
 mf.plot_traj_compare_conds(df_all, ID, agents)
