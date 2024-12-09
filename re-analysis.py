@@ -32,8 +32,13 @@ df_all = mf.make_dict_of_all_info(SUBJECTS)
 
 # %% time series clustering 
 # per condition and look through what kind of patterns could be found
-df = mf.make_df_for_clustering(df_all, 20, 20, 'dist_actual_ideal')
-df = df.filter(like='omoiyari')
+ID = 10
+# number of clumns must be fixed!
+df = mf.make_df_for_clustering(df_all, ID, 20, 'dist_actual_ideal')
+df = df.filter(like='yukkuri')
+
+mf.plot_dist_compare_conds(df_all, ID, 20, "dist_actual_ideal")
+mf.plot_dist_per_cond(df_all, ID, 20, "dist_actual_ideal")
 
 mf.find_proper_num_clusters(df)
 
@@ -42,10 +47,34 @@ km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
 labels_euclidean = km_euclidean.fit_predict(df.T)
 print(Counter(labels_euclidean))
 time_np = to_time_series_dataset(df.T)
+true_labs = ['omoiyari', 'isogi', 'yukkuri'] * 8
+colors =  ['tab:blue', 'tab:orange', 'tab:green']
+
+res_df = pd.DataFrame(data={'true_labels': true_labs, 
+                            'cluster': labels_euclidean})
+
+res_df = df.T.copy()
+res_df['clustered'] = labels_euclidean
+
+clus0 = Counter(res_df.query('cluster == 0')['true_labels'])
+clus1 = Counter(res_df.query('cluster == 1')['true_labels'])
+clus2 = Counter(res_df.query('cluster == 2')['true_labels'])
 
 fig, ax = plt.subplots(1, n, figsize=(14, 6), sharex=True, sharey=True)
-for idx, label in enumerate(labels_euclidean):
-    ax[label].plot(time_np[idx].ravel())
+for idx, data in enumerate(res_df.iterrows()):
+    if 'omoiyari' in data[0]: color = 'tab:green'
+    elif 'isogi' in data[0]: color='tab:blue'
+    elif 'yukkuri' in data[0]: color = 'tab:orange'
+    ax[int(data[1]['clustered'])].plot(data[1][:-1], color=color)
+
+# fig, ax = plt.subplots(1, n, figsize=(14, 6), sharex=True, sharey=True)
+# for idx, (label, true_lab) in enumerate(zip(labels_euclidean, true_labs)):
+#     if true_lab == 'omoiyari': color = 'tab:green'
+#     elif true_lab == 'isogi': color = 'tab:blue'
+#     elif true_lab == 'yukkuri': color = 'tab:orange'
+#     ax[label].plot(time_np[idx].ravel(), color=color)
+
+
 
 # %% KNeighborsTimeSeriesClassifier from tslean (classification)
 # ex. shape (40, 100, 6) = (data, timepoints, variables)
@@ -84,7 +113,7 @@ summary = pd.DataFrame(
 )
 print(summary.T)
 
-repeat = 7
+repeat = 6
 for i in tqdm(range(repeat)):
     X_train, X_test, y_train, y_test = train_test_split(arr, ylabs, test_size=0.25)
     clf.fit(X_train, y_train)
