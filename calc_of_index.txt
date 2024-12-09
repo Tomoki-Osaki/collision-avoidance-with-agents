@@ -57,6 +57,6 @@ T. TCPA
 U. DCPA
 = SQRT((-(R2^2) + (4*Q2*S2)) / (4*Q2)) 
 
-V. BreakingRate
+V. BrakingRate
 =IF (T2 < 0, "", 
     IFERROR((1 / (1 + EXP(-($DD$1 + ($DE$1*T2*1000))))) * (1 / (1 + EXP(-($DF$1 + ($DG$1*30*U2))))), ""))
