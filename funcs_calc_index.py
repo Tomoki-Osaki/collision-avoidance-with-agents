@@ -152,7 +152,9 @@ def U_DCPA(df):
     """
     = SQRT( (-(R2^2) + (4*Q2*S2)) / (4*Q2) ) 
     """
-    val = np.sqrt(((-df['R_equB']**2) + (4*df['Q_equA']*df['S_equC'])) / (4*df['Q_equA']))
+    val = np.sqrt(
+        ((-df['R_equB']**2) + (4*df['Q_equA']*df['S_equC'])) / (4*df['Q_equA'])
+    )
     return val
 
 def V_BrakingRate(df, a1=-0.034, b1=3.348, c1=4.252, d1=-0.003):
@@ -170,7 +172,7 @@ def V_BrakingRate(df, a1=-0.034, b1=3.348, c1=4.252, d1=-0.003):
     )
     """
     if df['T_TCPA'] < 0:
-        return 0
+        return None
     else:
         term1 = (1 / (1 + np.exp(-(c1 + (d1*df['T_TCPA']*1000)))))
         term2 = (1 / (1 + np.exp(-(b1 + (a1*df['U_DCPA']*30)))))

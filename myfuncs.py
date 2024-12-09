@@ -10,13 +10,16 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import seaborn as sns
-sns.set_theme()
 from tslearn.clustering import TimeSeriesKMeans
 
 from tqdm import tqdm
 from typing import Literal
-    
+
+# %%
+def col(df):
+    for i in df.columns:
+        print(i)
+
 # %% 
 def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -441,6 +444,7 @@ def plot_dist_per_cond(
                 ax[i].plot(df_small[f'trial{tri}'][dist], color=color, alpha=.7)
         ax[i].legend(loc="upper right")
     plt.suptitle(f"{dist} ID{ID} agents{agents}")
+    plt.tight_layout()
     plt.show()
 
 # %% 
@@ -471,13 +475,13 @@ def plot_all_dist_compare_conds(
 # %% 
 def find_proper_num_clusters(df):
     distortions = [] 
-    for i in range(1, 11): 
+    for i in range(1, 7): 
         ts_km = TimeSeriesKMeans(n_clusters=i, metric="dtw", random_state=42) 
         ts_km.fit_predict(df.T) 
         distortions.append(ts_km.inertia_) 
     
-    plt.plot(range(1, 11), distortions, marker="o") 
-    plt.xticks(range(1, 11)) 
+    plt.plot(range(1, 7), distortions, marker="o") 
+    plt.xticks(range(1, 7)) 
     plt.xlabel("Number of clusters") 
     plt.ylabel("Distortion") 
     plt.show()
@@ -496,4 +500,73 @@ def plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_cluster
     plt.suptitle('time series clustering')
     plt.show()
     
+# %% calculate the braking rate (experimental)
+def Q_equA(velx1, vely1, velx2, vely2):
+    """
+    = ($D2 - H2)^2 + ($E2 - I2)^2
+    """
+    val = (velx1 - velx2)**2 + (vely1 - vely2)**2
+    return val
+    
+def R_equB(velx1, vely1, posx1, posy1, 
+           velx2, vely2, posx2, posy2):
+    """
+    = (2*($D2 - H2)*($B2 - F2)) + (2*($E2 - I2)*($C2 - G2))
+    """
+    val = (2 * (velx1 - velx2) * (posx1 - posx2)) + \
+          (2 * (vely1 - vely2) * (posy1 - posy2))
+    return val
+
+def S_equC(posx1, posy1, posx2, posy2):
+    """
+    = ($B2 - F2)^2 + ($C2 - G2)^2
+    """
+    val = (posx1 - posx2)**2 + (posy1 - posy2)**2
+    return val
+
+def T_TCPA(equA, equB): 
+    """
+    = -(R2 / (2*Q2))
+    """
+    val = -(equB / (2*equA))
+    return val
+
+def U_DCPA(equA, equB, equC):
+    """
+    = SQRT( (-(R2^2) + (4*Q2*S2)) / (4*Q2) ) 
+    """
+    val = np.sqrt(
+        ((-equB**2) + (4*equA*equC)) / (4*equA)
+    )
+    return val
+
+def V_BrakingRate(velx1, vely1, posx1, posy1, 
+                  velx2, vely2, posx2, posy2, 
+                  a1=-0.034, b1=3.348, c1=4.252, d1=-0.003):
+    """
+    a1: -5.145 (-0.034298)
+    b1: 3.348 (3.348394)
+    c1: 4.286 (4.252840)
+    d1: -13.689 (-0.003423)
+    
+    =IF(T2 < 0, "", 
+    IFERROR(
+        (1 / (1 + EXP(-($DD$1[c1] + ($DE$1[d1]*T2*1000))))) * 
+        (1 / (1 + EXP(-($DF$1[b1] + ($DG$1[a1]*30*U2)))))
+        , "")
+    )
+    """
+    equA = Q_equA(velx1, vely1, velx2, vely2)
+    equB = R_equB(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    equC = S_equC(posx1, posy1, posx2, posy2)
+    TCPA = T_TCPA(equA, equB)
+    DCPA = U_DCPA(equA, equB, equC)
+    
+    if TCPA < 0:
+        return None
+    else:
+        term1 = (1 / (1 + np.exp(-(c1 + (d1*TCPA*1000)))))
+        term2 = (1 / (1 + np.exp(-(b1 + (a1*DCPA*30)))))
+        val = term1 * term2
+        return val
     

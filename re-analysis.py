@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
+# sns.set_theme()
+# sns.reset_orig()
 
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
@@ -17,27 +19,46 @@ import warnings
 warnings.simplefilter('ignore')
 from collections import Counter
 from tqdm import tqdm
-import gc
+from gc import collect as g
 import myfuncs as mf
-
-# %% define global variables
-SUBJECTS = mf.SUBJECTS
-CONDITIONS = mf.CONDITIONS # [isogi, yukkuri, omoiyari]
-AGENTS = mf.AGENTS
-NUM_AGENTS = mf.NUM_AGENTS
-TRIALS = mf.TRIALS
+from myfuncs import col, SUBJECTS, CONDITIONS, AGENTS, NUM_AGENTS, TRIALS
 
 #%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
+# %% try to calculate the braking rate
+tmp = mf.make_df_trial(df_all, 1, 'isogi', 20, 1)
+mf.V_BrakingRate(tmp['myMoveX'], tmp['myMoveY'], 
+                 tmp['myNextX'], tmp['myNextY'], 
+                 tmp['other1MoveX'], tmp['other1MoveY'], 
+                 tmp['other1NextX'], tmp['other1NextY'])
+
+braking = tmp.apply(lambda df: mf.V_BrakingRate(
+    df['myMoveX'], df['myMoveY'], 
+    df['myNextX'], df['myNextY'], 
+    df['other2MoveX'], df['other2MoveY'], 
+    df['other2NextX'], df['other2NextY']
+    ), axis=1
+)
+
 # %% time series clustering 
 # per condition and look through what kind of patterns could be found
-ID = 10
-# number of clumns must be fixed!
-df = mf.make_df_for_clustering(df_all, ID, 20, 'dist_actual_ideal')
-df = df.filter(like='yukkuri')
+ID = 27
 
-mf.plot_dist_compare_conds(df_all, ID, 20, "dist_actual_ideal")
+dist = 'dist_actual_ideal'
+dist = 'dist_from_start'
+df = pd.DataFrame()
+for trial in TRIALS:
+    for cond in CONDITIONS: # ['isogi', 'yukkuri', 'omoiyari']
+        tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)[dist]
+        if dist == 'dist_actual_ideal':
+            tmp = tmp.iloc[1:]
+        df = pd.concat([df, tmp], axis=1)
+
+# df = df.filter(like='yukkuri')
+
+for ID in SUBJECTS:
+    mf.plot_dist_compare_conds(df_all, ID, 20, dist)
 mf.plot_dist_per_cond(df_all, ID, 20, "dist_actual_ideal")
 
 mf.find_proper_num_clusters(df)
@@ -47,34 +68,62 @@ km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
 labels_euclidean = km_euclidean.fit_predict(df.T)
 print(Counter(labels_euclidean))
 time_np = to_time_series_dataset(df.T)
-true_labs = ['omoiyari', 'isogi', 'yukkuri'] * 8
+true_labs = CONDITIONS * 8
 colors =  ['tab:blue', 'tab:orange', 'tab:green']
-
-res_df = pd.DataFrame(data={'true_labels': true_labs, 
-                            'cluster': labels_euclidean})
 
 res_df = df.T.copy()
 res_df['clustered'] = labels_euclidean
+res_df['true_labels'] = true_labs
 
-clus0 = Counter(res_df.query('cluster == 0')['true_labels'])
-clus1 = Counter(res_df.query('cluster == 1')['true_labels'])
-clus2 = Counter(res_df.query('cluster == 2')['true_labels'])
+clus0 = Counter(res_df.query('clustered == 0')['true_labels'])
+clus1 = Counter(res_df.query('clustered == 1')['true_labels'])
+clus2 = Counter(res_df.query('clustered == 2')['true_labels'])
+print('clus0:', clus0)
+print('clus1:', clus1)
+print('clus2:', clus2)
 
-fig, ax = plt.subplots(1, n, figsize=(14, 6), sharex=True, sharey=True)
+fig, ax = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
 for idx, data in enumerate(res_df.iterrows()):
-    if 'omoiyari' in data[0]: color = 'tab:green'
-    elif 'isogi' in data[0]: color='tab:blue'
-    elif 'yukkuri' in data[0]: color = 'tab:orange'
-    ax[int(data[1]['clustered'])].plot(data[1][:-1], color=color)
-
-# fig, ax = plt.subplots(1, n, figsize=(14, 6), sharex=True, sharey=True)
-# for idx, (label, true_lab) in enumerate(zip(labels_euclidean, true_labs)):
-#     if true_lab == 'omoiyari': color = 'tab:green'
-#     elif true_lab == 'isogi': color = 'tab:blue'
-#     elif true_lab == 'yukkuri': color = 'tab:orange'
-#     ax[label].plot(time_np[idx].ravel(), color=color)
+    if data[1]['true_labels'] == 'omoiyari': color = 'tab:green'
+    elif data[1]['true_labels'] == 'isogi': color='tab:blue'
+    elif data[1]['true_labels'] == 'yukkuri': color = 'tab:orange'
+    ax[data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.7)
+plt.tight_layout()
+plt.show()
 
 
+dist = 'dist_closest'
+for ID in SUBJECTS:
+    df = pd.DataFrame()
+    for trial in TRIALS:
+        for cond in CONDITIONS: # ['isogi', 'yukkuri', 'omoiyari']
+            tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)[dist]
+            if dist == 'dist_actual_ideal':
+                tmp = tmp.iloc[1:]
+            df = pd.concat([df, tmp], axis=1)
+    
+    n = 3
+    km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
+    labels_euclidean = km_euclidean.fit_predict(df.T)
+    print(Counter(labels_euclidean))
+    time_np = to_time_series_dataset(df.T)
+    true_labs = CONDITIONS * 8
+    colors =  ['tab:blue', 'tab:orange', 'tab:green']
+    
+    res_df = df.T.copy()
+    res_df['clustered'] = labels_euclidean
+    res_df['true_labels'] = true_labs
+    
+    fig, ax = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
+    for idx, data in enumerate(res_df.iterrows()):
+        if data[1]['true_labels'] == 'omoiyari': color = 'tab:green'
+        elif data[1]['true_labels'] == 'isogi': color='tab:blue'
+        elif data[1]['true_labels'] == 'yukkuri': color = 'tab:orange'
+        ax[data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+    print('ID', ID)
+    
 
 # %% KNeighborsTimeSeriesClassifier from tslean (classification)
 # ex. shape (40, 100, 6) = (data, timepoints, variables)
