@@ -78,7 +78,7 @@ JudgeEntropy = []
 dist_ymax = max(df['W_distance'])
 xmax = len(df)
 
-df.fillna(0, inplace=True)
+df.fillna(-0.1, inplace=True)
 
 def update(frame):
     global rep
