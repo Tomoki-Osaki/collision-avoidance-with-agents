@@ -63,7 +63,7 @@ def L_TTCP0(df):
     
     else:
         return None
-
+        
 def M_TTCP1(df):
     """
     =IF( 
@@ -192,7 +192,3 @@ def plot_traj(df):
         plt.scatter(x1, y1, color='red')
         plt.scatter(x2, y2, color='blue')
     plt.show()
-
-def col(df):
-    for i in df.columns:
-        print(i)

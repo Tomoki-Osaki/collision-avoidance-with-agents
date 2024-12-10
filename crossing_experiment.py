@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import glob
+from myfuncs import col
 import funcs_calc_index as ci
 
 path = 'crossing_exp/glob_shaped/*.csv'
@@ -57,19 +58,7 @@ df['U_DCPA'] = ci.U_DCPA(df)
 df['V_BrakingRate'] = df.apply(ci.V_BrakingRate, axis=1)
 df['W_distance'] = df.apply(ci.W_distance, axis=1)
 
-ci.col(df)
-
-for i, val in enumerate(df['V_BrakingRate']):
-    if val == max(df['V_BrakingRate']):
-        brake_max = (i, val)
-
-for i, val in enumerate(df['W_distance']):
-    if val == min(df['W_distance']):
-        dist_min = (i, val)
-
-for i, val in enumerate(df['P_JudgeEntropy']):
-    if val == min(df['P_JudgeEntropy']):
-        judge_max = (i, val)
+col(df)
 
 # ci.plot_traj(df)
 
@@ -89,10 +78,18 @@ JudgeEntropy = []
 dist_ymax = max(df['W_distance'])
 xmax = len(df)
 
+df.fillna(0, inplace=True)
+
 def update(frame):
     global rep
-    JudgeEntropy.append(frame[1]['P_JudgeEntropy'])
-    BrakingRate.append(frame[1]['V_BrakingRate'])
+    if np.isnan(frame[1]['P_JudgeEntropy']) == False:
+        JudgeEntropy.append(frame[1]['P_JudgeEntropy'])
+    else:
+        JudgeEntropy.append(0)
+    if np.isnan(frame[1]['V_BrakingRate']) == False:
+        BrakingRate.append(frame[1]['V_BrakingRate'])
+    else:
+        BrakingRate.append(0)
     distance.append(frame[1]['W_distance'])
     
     rep += 1
