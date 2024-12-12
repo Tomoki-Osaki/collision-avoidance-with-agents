@@ -144,6 +144,11 @@ def _calc_distance(myX, myY, anotherX, anotherY):
     
     return distance
 
+# %% for calculating the braking index
+# tmp2 = tmp.filter(like='other')
+# tmp3 = tmp2.filter(like='Next')
+
+
 # %% 
 def add_cols_dist_others(df):
     df_tmp = pd.DataFrame()
@@ -272,7 +277,7 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                         
     return df_all
 
-# %% 16
+# %% 
 def make_df_trial(df_all: pd.DataFrame, 
                   ID: int, 
                   condition: Literal['isogi', 'yukkuri', 'omoiyari'], 
@@ -283,7 +288,7 @@ def make_df_trial(df_all: pd.DataFrame,
     
     return df
     
-# %% 17
+# %% 
 def make_df_for_clustering(df_all: pd.DataFrame,
                            ID: int, 
                            agents: Literal[5, 10, 20], 
@@ -475,7 +480,7 @@ def plot_all_dist_compare_conds(
 # %% 
 def find_proper_num_clusters(df):
     distortions = [] 
-    for i in range(1, 7): 
+    for i in tqdm(range(1, 7)): 
         ts_km = TimeSeriesKMeans(n_clusters=i, metric="dtw", random_state=42) 
         ts_km.fit_predict(df.T) 
         distortions.append(ts_km.inertia_) 
@@ -490,7 +495,7 @@ def find_proper_num_clusters(df):
 def plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_clusters):
     fig = plt.figure(figsize=(12, 4))
     for i in range(n_clusters):
-        ax = fig.add_subplot(1, 3, i+1)
+        ax = fig.add_subplot(1, n_clusters, i+1)
         clus_arr = time_np[labels_euclidean == i]
         for x in clus_arr:
             ax.plot(x.ravel(), 'k-', alpha=0.2)

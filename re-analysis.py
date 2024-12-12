@@ -28,10 +28,6 @@ df_all = mf.make_dict_of_all_info(SUBJECTS)
 
 # %% try to calculate the braking rate
 tmp = mf.make_df_trial(df_all, 1, 'isogi', 20, 1)
-mf.V_BrakingRate(tmp['myMoveX'], tmp['myMoveY'], 
-                 tmp['myNextX'], tmp['myNextY'], 
-                 tmp['other1MoveX'], tmp['other1MoveY'], 
-                 tmp['other1NextX'], tmp['other1NextY'])
 
 braking = tmp.apply(lambda df: mf.V_BrakingRate(
     df['myMoveX'], df['myMoveY'], 
@@ -57,8 +53,7 @@ for trial in TRIALS:
 
 # df = df.filter(like='yukkuri')
 
-for ID in SUBJECTS:
-    mf.plot_dist_compare_conds(df_all, ID, 20, dist)
+mf.plot_dist_compare_conds(df_all, ID, 20, dist)
 mf.plot_dist_per_cond(df_all, ID, 20, "dist_actual_ideal")
 
 mf.find_proper_num_clusters(df)
@@ -91,40 +86,104 @@ for idx, data in enumerate(res_df.iterrows()):
 plt.tight_layout()
 plt.show()
 
-
-dist = 'dist_closest'
-for ID in SUBJECTS:
-    df = pd.DataFrame()
-    for trial in TRIALS:
-        for cond in CONDITIONS: # ['isogi', 'yukkuri', 'omoiyari']
-            tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)[dist]
-            if dist == 'dist_actual_ideal':
-                tmp = tmp.iloc[1:]
-            df = pd.concat([df, tmp], axis=1)
+# look through all subjects' clustering patterns
+# dist = 'dist_closest'
+# for ID in SUBJECTS:
+#     df = pd.DataFrame()
+#     for trial in TRIALS:
+#         for cond in CONDITIONS: # ['isogi', 'yukkuri', 'omoiyari']
+#             tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)[dist]
+#             if dist == 'dist_actual_ideal':
+#                 tmp = tmp.iloc[1:]
+#             df = pd.concat([df, tmp], axis=1)
     
-    n = 3
+#     n = 3
+#     km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
+#     labels_euclidean = km_euclidean.fit_predict(df.T)
+#     print(Counter(labels_euclidean))
+#     time_np = to_time_series_dataset(df.T)
+#     true_labs = CONDITIONS * 8
+#     colors =  ['tab:blue', 'tab:orange', 'tab:green']
+    
+#     res_df = df.T.copy()
+#     res_df['clustered'] = labels_euclidean
+#     res_df['true_labels'] = true_labs
+    
+#     fig, ax = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
+#     for idx, data in enumerate(res_df.iterrows()):
+#         if data[1]['true_labels'] == 'omoiyari': color = 'tab:green'
+#         elif data[1]['true_labels'] == 'isogi': color='tab:blue'
+#         elif data[1]['true_labels'] == 'yukkuri': color = 'tab:orange'
+#         ax[data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.7)
+#     plt.tight_layout()
+#     plt.show()
+#     print('ID', ID)
+
+# %% plot data
+ID = 20
+agents = 20
+mf.plot_traj_per_trials(df_all, ID, "omoiyari", agents)
+mf.plot_traj_compare_conds(df_all, ID, agents)
+
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_actual_ideal")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_actual_ideal")
+
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_closest")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_closest")
+
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_top12_closest")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_top12_closest")
+
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_from_start")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
+
+mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
+mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
+
+# %% perform clusterings for each condition and hopefully find specific patterns for that condition
+def make_df_for_clustering_per_conditions(cond, feature):
+    df_cond = pd.DataFrame()
+    for ID in tqdm(SUBJECTS):
+        for trial in TRIALS:
+            df_cond_tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
+            df_cond_tmp = df_cond_tmp[feature]
+            df_cond = pd.concat([df_cond, df_cond_tmp], axis=1)
+            
+    if feature == 'dist_actual_ideal':
+        df_cond = df_cond.iloc[1:]
+    
+    return df_cond
+        
+df_omoi = make_df_for_clustering_per_conditions("omoiyari", 'dist_actual_ideal')
+df_isogi = make_df_for_clustering_per_conditions("isogi", 'dist_actual_ideal')
+df_yukkuri = make_df_for_clustering_per_conditions("yukkuri", 'dist_from_start')
+
+def tsclustering(df, n_clusters, feature):
+    km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
+    labels_euclidean = km_euclidean.fit_predict(df[feature].T)
+    time_np = to_time_series_dataset(df.T)
+    mf.plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_clusters)
+
+mf.find_proper_num_clusters(df_omoi)
+tsclustering(df_omoi, 3, 'dist_actual_ideal')
+
+mf.find_proper_num_clusters(df_isogi)
+tsclustering(df_isogi, 4, 'dist_actual_ideal')
+
+mf.find_proper_num_clusters(df_yukkuri)
+tsclustering(df_yukkuri, 3, 'dist_from_start')
+
+def tmpPlot(df, n):
     km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
     labels_euclidean = km_euclidean.fit_predict(df.T)
-    print(Counter(labels_euclidean))
-    time_np = to_time_series_dataset(df.T)
-    true_labs = CONDITIONS * 8
-    colors =  ['tab:blue', 'tab:orange', 'tab:green']
-    
-    res_df = df.T.copy()
-    res_df['clustered'] = labels_euclidean
-    res_df['true_labels'] = true_labs
-    
+    df_tmp = df.copy()
+    df_tmp['clustered'] = labels_euclidean
     fig, ax = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
-    for idx, data in enumerate(res_df.iterrows()):
-        if data[1]['true_labels'] == 'omoiyari': color = 'tab:green'
-        elif data[1]['true_labels'] == 'isogi': color='tab:blue'
-        elif data[1]['true_labels'] == 'yukkuri': color = 'tab:orange'
+    for idx, data in enumerate(df.iterrows()):
         ax[data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.7)
     plt.tight_layout()
     plt.show()
-    print('ID', ID)
     
-
 # %% KNeighborsTimeSeriesClassifier from tslean (classification)
 # ex. shape (40, 100, 6) = (data, timepoints, variables)
 # each timepoint has 6 variables
@@ -181,27 +240,6 @@ print(summary.T)
 print(features)
 print(conds)
 
-# %% plot data
-ID = 20
-agents = 20
-mf.plot_traj_per_trials(df_all, ID, "omoiyari", agents)
-mf.plot_traj_compare_conds(df_all, ID, agents)
-
-mf.plot_dist_compare_conds(df_all, ID, agents, "dist_actual_ideal")
-mf.plot_dist_per_cond(df_all, ID, agents, "dist_actual_ideal")
-
-mf.plot_dist_compare_conds(df_all, ID, agents, "dist_closest")
-mf.plot_dist_per_cond(df_all, ID, agents, "dist_closest")
-
-mf.plot_dist_compare_conds(df_all, ID, agents, "dist_top12_closest")
-mf.plot_dist_per_cond(df_all, ID, agents, "dist_top12_closest")
-
-mf.plot_dist_compare_conds(df_all, ID, agents, "dist_from_start")
-mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
-
-mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
-mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
-
 # %% time series clustering
 dist = "dist_actual_ideal"
 dist = "dist_from_start"
@@ -226,7 +264,8 @@ df_comp = pd.DataFrame({"true_labels": true_labels,
 # scaler_std = StandardScaler()
 # df_clustering = scaler_std.fit_transform(df_clustering)
 
-# because clusters for each subject are not related, this way of counting is not proper and must need to consider anothey way!!!
+# because clusters for each subject are not related, this way of counting is 
+# not proper and must need to consider anothey way!!!
 df_labels = pd.DataFrame(columns=["true_labels", "clustered_labels"])
 for ID in tqdm(SUBJECTS):
     df_clustering = mf.make_df_for_clustering(df_all, ID, 20, dist)
@@ -272,38 +311,6 @@ print(f'clus2({len(clus2)}): {Counter(clus2)}')
 
 mf.plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
 mf.find_proper_num_clusters(df_clustering)
-
-# %% perform clusterings for each condition and hopefully find specific patterns for that condition
-def make_df_for_clustering_per_conditions(cond, feature):
-    df_cond = pd.DataFrame()
-    for ID in tqdm(SUBJECTS):
-        for trial in TRIALS:
-            df_cond_tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
-            df_cond_tmp = df_cond_tmp[feature]
-            df_cond = pd.concat([df_cond, df_cond_tmp], axis=1)
-    
-    return df_cond
-        
-df_omoi = make_df_for_clustering_per_conditions("omoiyari", 'dist_actual_ideal')
-df_isogi = make_df_for_clustering_per_conditions("isogi", 'dist_from_start')
-df_yukkuri = make_df_for_clustering_per_conditions("yukkuri", 'dist_from_start')
-
-def tsclustering(df, n_clusters, feature):
-    km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
-    labels_euclidean = km_euclidean.fit_predict(df[feature].T)
-    time_np = to_time_series_dataset(df.T)
-    mf.plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_clusters)
-
-n = 3
-mf.find_proper_num_clusters(df_omoi)
-tsclustering(df_omoi, n, 'dist_actual_ideal')
-
-mf.find_proper_num_clusters(df_isogi)
-tsclustering(df_isogi, n, 'dist_from_start')
-
-mf.find_proper_num_clusters(df_yukkuri)
-tsclustering(df_yukkuri, n, 'dist_from_start')
-    
 
 # %% why doesn't it calculate degrees
 
