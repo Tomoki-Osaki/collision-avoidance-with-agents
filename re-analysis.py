@@ -10,9 +10,8 @@ import seaborn as sns
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
 
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import classification_report
 from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
 
 import warnings
@@ -21,20 +20,39 @@ from collections import Counter
 from tqdm import tqdm
 from gc import collect as g
 import myfuncs as mf
-from myfuncs import col, SUBJECTS, CONDITIONS, AGENTS, NUM_AGENTS, TRIALS
+from myfuncs import col, SUBJECTS, CONDITIONS, TRIALS
 
 #%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
 # %% try to calculate the braking rate
-tmp = mf.make_df_trial(df_all, 1, 'omoiyari', 20, 1)
-
-brakings = tmp.loc[:, tmp.columns.str.startswith('other')]
-myinfo = tmp.loc[:, tmp.columns.str.startswith('my')]
-brakings = pd.concat([myinfo, brakings], axis=1)    
-
-for data in brakings.iterrows():
+for cond in CONDITIONS:
+    tmp = mf.make_df_trial(df_all, 7, cond, 20, 1)
     
+    brakings = tmp.loc[:, tmp.columns.str.startswith('other')]
+    myinfo = tmp.loc[:, tmp.columns.str.startswith('my')]
+    brakings = pd.concat([myinfo, brakings], axis=1)    
+    
+    max_brake = []
+    for data in brakings.iterrows():
+        brakeRates = []
+        for i in range(1, 21):
+            brake = mf.V_BrakingRate(
+                data[1]['myMoveX'], data[1]['myMoveY'],
+                data[1]['myNextX'], data[1]['myNextY'],
+                data[1][f'other{i}MoveX'], data[1][f'other{i}MoveY'],
+                data[1][f'other{i}NextX'], data[1][f'other{i}NextY'],
+                return_when_undefined=-np.inf
+            )
+            brakeRates.append(brake)
+        max_brake.append(max(brakeRates))
+
+    tmp['BrakeRate'] = max_brake
+    if cond == 'omoiyari': color='tab:green'
+    elif cond == 'isogi': color='tab:blue'
+    elif cond == 'yukkuri': color='tab:orange'
+    plt.plot(max_brake)
+plt.show()
 
 # %%
 from matplotlib.animation import FuncAnimation

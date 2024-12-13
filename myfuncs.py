@@ -547,6 +547,7 @@ def U_DCPA(equA, equB, equC):
 
 def V_BrakingRate(velx1, vely1, posx1, posy1, 
                   velx2, vely2, posx2, posy2, 
+                  return_when_undefined=None,
                   a1=-0.034, b1=3.348, c1=4.252, d1=-0.003):
     """
     a1: -5.145 (-0.034298)
@@ -568,7 +569,7 @@ def V_BrakingRate(velx1, vely1, posx1, posy1,
     DCPA = U_DCPA(equA, equB, equC)
     
     if TCPA < 0:
-        return None
+        return return_when_undefined
     else:
         term1 = (1 / (1 + np.exp(-(c1 + (d1*TCPA)))))
         term2 = (1 / (1 + np.exp(-(b1 + (a1*DCPA)))))
