@@ -37,6 +37,96 @@ braking = tmp.apply(lambda df: mf.V_BrakingRate(
     ), axis=1
 )
 
+# %% perform clusterings for each condition and hopefully find specific patterns for that condition
+def make_df_for_clustering_per_conditions(cond, feature):
+    df_cond = pd.DataFrame()
+    for ID in tqdm(SUBJECTS):
+        for trial in TRIALS:
+            df_cond_tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
+            df_cond_tmp = df_cond_tmp[feature]
+            df_cond = pd.concat([df_cond, df_cond_tmp], axis=1)
+            
+    if feature == 'dist_actual_ideal':
+        df_cond = df_cond.iloc[1:]
+    
+    return df_cond
+        
+dist = 'dist_from_start'
+cond = 'isogi'
+df = make_df_for_clustering_per_conditions(cond, dist)
+
+#mf.find_proper_num_clusters(df)
+def clustering(df, cond, feature):
+    km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
+    labels_euclidean = km_euclidean.fit_predict(df[feature].T)
+    df_res = df.copy().T
+    #df_res['clustered'] = labels_euclidean.astype(int)
+    df_res['clustered'] = labels_euclidean
+    df_res['condition'] = cond
+    return df_res
+
+n = 3
+df_res = clustering(df, cond, dist)
+
+fig, axs = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
+for data in df_res.iterrows():
+    if data[1]['condition'] == 'omoiyari': color='tab:green'
+    elif data[1]['condition'] == 'isogi': color='tab:blue'
+    elif data[1]['condition'] == 'yukkuri': color='tab:orange'
+    axs[data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.5)
+for i in range(n):
+    axs[i].grid()
+plt.tight_layout()
+plt.show()
+print('\ndist:', dist); print('cond:', cond)
+
+dist = 'dist_from_start'
+df_res = pd.DataFrame()
+for cond in CONDITIONS:
+    df_tmp = make_df_for_clustering_per_conditions(cond, dist)
+    df_tmp = clustering(df_tmp, cond, dist)
+    df_res = pd.concat([df_res, df_tmp])
+clus_col = df_res.pop('clustered')
+cond_col = df_res.pop('condition')
+df_res['clustered'] = clus_col.astype(int)
+df_res['condition'] = cond_col
+
+xmax, ymax = (180, 1000) if dist == 'dist_actual_ideal' else (180, 1300)
+
+fig, axs = plt.subplots(3, 3, figsize=(10, 10), sharex=True, sharey=True)
+for data in df_res.iterrows():
+    if data[1]['condition'] == 'isogi': 
+        n = 0
+        color='tab:blue'
+    elif data[1]['condition'] == 'yukkuri': 
+        n = 1
+        color='tab:orange'
+    elif data[1]['condition'] == 'omoiyari': 
+        n = 2
+        color='tab:green'
+    axs[n, data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.5)
+    if data[1]['clustered'] == 1:
+        axs[n, data[1]['clustered']].set_title(data[1]['condition'])
+for i in range(3):
+    for j in range(3):
+        axs[i, j].grid()
+plt.show()
+
+    
+# %% plot all clusterings in one figure
+df_res = clustering(df, dist)
+fig, ax = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
+for data in df_res.iterrows():
+    if data[1]['clustered'] == 0: color='tab:green'
+    elif data[1]['clustered'] == 1: color='tab:blue'
+    elif data[1]['clustered'] == 2: color='tab:orange'
+    ax[int(data[1]['clustered'])].set_xlim(0, xmax)
+    ax[int(data[1]['clustered'])].set_ylim(0, ymax)
+    ax[int(data[1]['clustered'])].plot(data[1][:-1], color=color, alpha=0.5)
+for i in range(n):
+    ax[i].grid()
+plt.tight_layout()
+
 # %% time series clustering 
 # per condition and look through what kind of patterns could be found
 ID = 27
@@ -119,71 +209,6 @@ plt.show()
 #     plt.show()
 #     print('ID', ID)
 
-# %% plot data
-ID = 20
-agents = 20
-mf.plot_traj_per_trials(df_all, ID, "omoiyari", agents)
-mf.plot_traj_compare_conds(df_all, ID, agents)
-
-mf.plot_dist_compare_conds(df_all, ID, agents, "dist_actual_ideal")
-mf.plot_dist_per_cond(df_all, ID, agents, "dist_actual_ideal")
-
-mf.plot_dist_compare_conds(df_all, ID, agents, "dist_closest")
-mf.plot_dist_per_cond(df_all, ID, agents, "dist_closest")
-
-mf.plot_dist_compare_conds(df_all, ID, agents, "dist_top12_closest")
-mf.plot_dist_per_cond(df_all, ID, agents, "dist_top12_closest")
-
-mf.plot_dist_compare_conds(df_all, ID, agents, "dist_from_start")
-mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
-
-mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
-mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
-
-# %% perform clusterings for each condition and hopefully find specific patterns for that condition
-def make_df_for_clustering_per_conditions(cond, feature):
-    df_cond = pd.DataFrame()
-    for ID in tqdm(SUBJECTS):
-        for trial in TRIALS:
-            df_cond_tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)
-            df_cond_tmp = df_cond_tmp[feature]
-            df_cond = pd.concat([df_cond, df_cond_tmp], axis=1)
-            
-    if feature == 'dist_actual_ideal':
-        df_cond = df_cond.iloc[1:]
-    
-    return df_cond
-        
-df_omoi = make_df_for_clustering_per_conditions("omoiyari", 'dist_actual_ideal')
-df_isogi = make_df_for_clustering_per_conditions("isogi", 'dist_actual_ideal')
-df_yukkuri = make_df_for_clustering_per_conditions("yukkuri", 'dist_from_start')
-
-def tsclustering(df, n_clusters, feature):
-    km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
-    labels_euclidean = km_euclidean.fit_predict(df[feature].T)
-    time_np = to_time_series_dataset(df.T)
-    mf.plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_clusters)
-
-mf.find_proper_num_clusters(df_omoi)
-tsclustering(df_omoi, 3, 'dist_actual_ideal')
-
-mf.find_proper_num_clusters(df_isogi)
-tsclustering(df_isogi, 4, 'dist_actual_ideal')
-
-mf.find_proper_num_clusters(df_yukkuri)
-tsclustering(df_yukkuri, 3, 'dist_from_start')
-
-def tmpPlot(df, n):
-    km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
-    labels_euclidean = km_euclidean.fit_predict(df.T)
-    df_tmp = df.copy()
-    df_tmp['clustered'] = labels_euclidean
-    fig, ax = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
-    for idx, data in enumerate(df.iterrows()):
-        ax[data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.7)
-    plt.tight_layout()
-    plt.show()
-    
 # %% KNeighborsTimeSeriesClassifier from tslean (classification)
 # ex. shape (40, 100, 6) = (data, timepoints, variables)
 # each timepoint has 6 variables
@@ -312,7 +337,28 @@ print(f'clus2({len(clus2)}): {Counter(clus2)}')
 mf.plot_result_of_clustering(time_np, labels_euclidean, n_clusters)
 mf.find_proper_num_clusters(df_clustering)
 
-# %% why doesn't it calculate degrees
+# %% plot data
+ID = 20
+agents = 20
+mf.plot_traj_per_trials(df_all, ID, "omoiyari", agents)
+mf.plot_traj_compare_conds(df_all, ID, agents)
+
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_actual_ideal")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_actual_ideal")
+
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_closest")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_closest")
+
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_top12_closest")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_top12_closest")
+
+mf.plot_dist_compare_conds(df_all, ID, agents, "dist_from_start")
+mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
+
+mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
+mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
+
+# %% why doesn't it calculate degrees?
 
 # need to consider how to deal with unmoving degree.
 # when the position of time t and time t+1 is same, the degree will be None but 
