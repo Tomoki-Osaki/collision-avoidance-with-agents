@@ -27,7 +27,7 @@ df_all = mf.make_dict_of_all_info(SUBJECTS)
 
 # %% try to calculate the braking rate
 for cond in CONDITIONS:
-    tmp = mf.make_df_trial(df_all, 7, cond, 20, 1)
+    tmp = mf.make_df_trial(df_all, 8, cond, 20, 1)
     
     brakings = tmp.loc[:, tmp.columns.str.startswith('other')]
     myinfo = tmp.loc[:, tmp.columns.str.startswith('my')]
@@ -68,13 +68,13 @@ def update(data):
     ax.cla()
     ax.scatter(data[1]['myNextX'], data[1]['myNextY'], color='blue')
     ax.vlines(x=data[1]['goalX1'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'], 
-              color='gray', alpha=0.5, linestyles='dashed')
+              color='gray', alpha=0.5)
     ax.vlines(x=data[1]['goalX2'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'],
-              color='gray', alpha=0.5, linestyles='dashed')
+              color='gray', alpha=0.5)
     ax.hlines(y=data[1]['goalY1'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
-              color='gray', alpha=0.5, linestyles='dashed')
+              color='gray', alpha=0.5)
     ax.hlines(y=data[1]['goalY2'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
-              color='gray', alpha=0.5, linestyles='dashed')
+              color='gray', alpha=0.5)
     
     for i in range(1, 21):
         ax.scatter(data[1][f'other{i}NextX'], data[1][f'other{i}NextY'], color='gray')
@@ -82,7 +82,7 @@ def update(data):
     ax.set_ylim(0, 1000)
     
 anim = FuncAnimation(fig, update, frames=tmp.iterrows(), repeat=False, 
-                     interval=200, cache_frame_data=False)
+                     interval=100, cache_frame_data=False)
 anim.save('video.mp4')
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
