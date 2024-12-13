@@ -570,8 +570,8 @@ def V_BrakingRate(velx1, vely1, posx1, posy1,
     if TCPA < 0:
         return None
     else:
-        term1 = (1 / (1 + np.exp(-(c1 + (d1*TCPA*1000)))))
-        term2 = (1 / (1 + np.exp(-(b1 + (a1*DCPA*30)))))
+        term1 = (1 / (1 + np.exp(-(c1 + (d1*TCPA)))))
+        term2 = (1 / (1 + np.exp(-(b1 + (a1*DCPA)))))
         val = term1 * term2
         return val
     

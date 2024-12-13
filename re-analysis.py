@@ -27,15 +27,45 @@ from myfuncs import col, SUBJECTS, CONDITIONS, AGENTS, NUM_AGENTS, TRIALS
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
 # %% try to calculate the braking rate
-tmp = mf.make_df_trial(df_all, 1, 'isogi', 20, 1)
+tmp = mf.make_df_trial(df_all, 1, 'omoiyari', 20, 1)
 
-braking = tmp.apply(lambda df: mf.V_BrakingRate(
-    df['myMoveX'], df['myMoveY'], 
-    df['myNextX'], df['myNextY'], 
-    df['other2MoveX'], df['other2MoveY'], 
-    df['other2NextX'], df['other2NextY']
-    ), axis=1
-)
+brakings = tmp.loc[:, tmp.columns.str.startswith('other')]
+myinfo = tmp.loc[:, tmp.columns.str.startswith('my')]
+brakings = pd.concat([myinfo, brakings], axis=1)    
+
+for data in brakings.iterrows():
+    
+
+# %%
+from matplotlib.animation import FuncAnimation
+
+fig, ax = plt.subplots()
+
+for data in tmp.iterrows():
+    ax.scatter(data[1]['myNextX'], data[1]['myNextY'], color='blue')
+plt.show()
+
+fig, ax = plt.subplots()
+def update(data):
+    ax.cla()
+    ax.scatter(data[1]['myNextX'], data[1]['myNextY'], color='blue')
+    ax.vlines(x=data[1]['goalX1'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'], 
+              color='gray', alpha=0.5, linestyles='dashed')
+    ax.vlines(x=data[1]['goalX2'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'],
+              color='gray', alpha=0.5, linestyles='dashed')
+    ax.hlines(y=data[1]['goalY1'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
+              color='gray', alpha=0.5, linestyles='dashed')
+    ax.hlines(y=data[1]['goalY2'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
+              color='gray', alpha=0.5, linestyles='dashed')
+    
+    for i in range(1, 21):
+        ax.scatter(data[1][f'other{i}NextX'], data[1][f'other{i}NextY'], color='gray')
+    ax.set_xlim(0, 1000)
+    ax.set_ylim(0, 1000)
+    
+anim = FuncAnimation(fig, update, frames=tmp.iterrows(), repeat=False, 
+                     interval=200, cache_frame_data=False)
+anim.save('video.mp4')
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditions(cond, feature):
