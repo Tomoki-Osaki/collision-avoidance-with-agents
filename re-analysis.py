@@ -26,17 +26,17 @@ from myfuncs import col, SUBJECTS, CONDITIONS, TRIALS
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
 # %% implement the awareness model
-tmp = mf.make_df_trial(df_all, 1, 'isogi', 20, 1)
-tmp1 = tmp.iloc[20]
-tminus1 = tmp.iloc[19]
+tmp = mf.make_df_trial(df_all, 5, 'yukkuri', 20, 1)
+tmp1 = tmp.iloc[21]
+tminus1 = tmp.iloc[20]
 col(tmp1)
 
 def awareness_model(deltaTTCP, Px, Py, myVel, otherVel, theta, NiC):
     deno = 1 + np.exp(
-        -1.2 + 0.018*deltaTTCP - 0.1*Px - 1.1*Py - 0.25*myVel + \
-            0.29*otherVel - 2.5*theta - 0.62*NiC    
+        -1*(-1.2 + 0.018*deltaTTCP - 0.1*Px - 1.1*Py - 0.25*myVel + \
+             0.29*otherVel - 2.5*theta - 0.62*NiC)    
     )
-    val = 1/ deno
+    val = 1 / deno
     return val
 
 am = []
@@ -66,24 +66,38 @@ for other in range(1, 21):
     intercept2 = posy1 - slope2*posx1
     
     cos_nume = (slope1*intercept1) + (slope2*intercept2) 
-    cos_deno = np.exp(slope1**2 + slope2*2) + np.exp(intercept1**2 + intercept2**2)
+    cos_deno = np.exp(slope1**2 + slope2**2) + np.exp(intercept1**2 + intercept2**2)
     cos = cos_nume / cos_deno
     theta = np.arccos(cos)
     
-    NiC = 4
+    NiC = 3
     
-    am.append(
-        (other, awareness_model(deltaTTCP, Px, Py, velx1, velx2, theta, NiC))
-     )
+    dist1 = mf._calc_distance(tmp1['myNextX'], tmp1['myNextY'], 
+                              tminus1['myNextX'], tminus1['myNextY'])
+    speed1 = dist1 / 100
+    
+    dist2 = mf._calc_distance(tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY'], 
+                              tminus1[f'other{other}NextX'], tminus1[f'other{other}NextY'])
+    speed2 = dist2 / 100
+    
+    aw = awareness_model(deltaTTCP, Px, Py, speed1, speed2, theta, NiC)
+    am.append((other, aw))
+    print(other, 'theta', theta)
+    print('cos', cos)
+print(am)
 
 fig, ax = plt.subplots()
 ax.scatter(posx1, posy1, color='red')
+ax.scatter(posx_tminus1, posy_tminus1, color='pink')
 for other in range(1, 21):
     posx2, posy2 = tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY']
+    posx2tminus1, posy2tminus1 = tminus1[f'other{other}NextX'], tminus1[f'other{other}NextY']
     ax.scatter(posx2, posy2, color='gray')
-    if other == 18:
+    ax.text(posx2, posy2, str(other))
+    ax.scatter(posx2tminus1, posy2tminus1, color='blue', alpha=0.2)
+    if other == 12 or other == 14 or other == 16 or other == 18:
         ax.plot((posx1, posx2), (posy1, posy2))
-
+    
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditions(cond, feature):
     df_cond = pd.DataFrame()
