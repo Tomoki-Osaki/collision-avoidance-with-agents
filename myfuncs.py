@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.animation import FuncAnimation
 from tslearn.clustering import TimeSeriesKMeans
 
 from tqdm import tqdm
@@ -17,8 +18,10 @@ from typing import Literal
 
 # %%
 def col(df):
-    for i in df.columns:
-        print(i)
+    try:
+        for i, c in enumerate(df.columns): print(i, c)
+    except AttributeError:
+        for i, c in enumerate(df.index): print(i, c)
 
 # %% 
 def make_start_from_UL(df: pd.DataFrame) -> pd.DataFrame:
@@ -144,11 +147,6 @@ def _calc_distance(myX, myY, anotherX, anotherY):
     
     return distance
 
-# %% for calculating the braking index
-# tmp2 = tmp.filter(like='other')
-# tmp3 = tmp2.filter(like='Next')
-
-
 # %% 
 def add_cols_dist_others(df):
     df_tmp = pd.DataFrame()
@@ -197,6 +195,36 @@ def add_col_dist_top12_closest(df):
         lambda series: _dist_sum_1st2nd_closest(series), 
         axis=1)
     df['dist_top12_closest'] = dist_1st2nd_closest
+    
+    return df
+
+# %%
+def calc_BrakeRate(df):        
+    myinfo = df.loc[:, df.columns.str.startswith('my')]
+    brakings = df.loc[:, df.columns.str.startswith('other')]
+    brakings = pd.concat([myinfo, brakings], axis=1)    
+    
+    max_brake = []
+    sum_brake = []
+    for data in brakings.iterrows():
+        brakeRates = []
+        for i in range(1, 21):
+            brake = BrakingRate(
+                data[1]['myMoveX'], data[1]['myMoveY'],
+                data[1]['myNextX'], data[1]['myNextY'],
+                data[1][f'other{i}MoveX'], data[1][f'other{i}MoveY'],
+                data[1][f'other{i}NextX'], data[1][f'other{i}NextY'],
+                return_when_undefined=0
+            )
+            brakeRates.append(brake)
+        max_brake.append(max(brakeRates))
+        if not np.isnan(sum(brakeRates)): 
+            sum_brake.append(sum(brakeRates))
+        else:
+            sum_brake.append(0)
+        
+    df['BrakeRate_Max'] = max_brake
+    df['BrakeRate_Sum'] = sum_brake
     
     return df
 
@@ -272,6 +300,8 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
                     
                     df_tri = df_agent.query('trial == @trialnum[@trial]')
                     df_tri = preprocess(df_tri)
+                    if agent == 20:
+                        df_tri = calc_BrakeRate(df_tri)
 
                     df_all[f"ID{ID}"][cond][f"agents{agent}"][f"trial{trial+1}"] = df_tri
                         
@@ -504,8 +534,171 @@ def plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_cluster
         ax.text(0.5, max(clus_arr[1])*0.8, f'Cluster{i} : n = {datanum}')
     plt.suptitle('time series clustering')
     plt.show()
+
+# %%
+def anim_movements(df_tri, save_name='video.mp4'): 
+    fig, ax = plt.subplots()
+    def update(data):
+        ax.cla()
+        
+        ax.scatter(data[1]['myNextX'], data[1]['myNextY'], color='blue')
+        for i in range(1, 21):
+            ax.scatter(data[1][f'other{i}NextX'], data[1][f'other{i}NextY'], color='gray')
+            
+        ax.vlines(x=data[1]['goalX1'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'], 
+                  color='gray', alpha=0.5)
+        ax.vlines(x=data[1]['goalX2'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'],
+                  color='gray', alpha=0.5)
+        ax.hlines(y=data[1]['goalY1'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
+                  color='gray', alpha=0.5)
+        ax.hlines(y=data[1]['goalY2'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
+                  color='gray', alpha=0.5)
+        ax.set_xlim(0, 1000)
+        ax.set_ylim(0, 1000)
+        ax.tick_params(left=False, right=False, labelleft=False, 
+                       labelbottom=False, bottom=False) 
+        
+    anim = FuncAnimation(fig, update, frames=df_tri.iterrows(), repeat=False, 
+                         interval=100, cache_frame_data=False)
+    anim.save(save_name)    
     
-# %% calculate the braking rate (experimental)
+# %% calculate the judge entropy
+def J_CPx(velx1, vely1, posx1, posy1, 
+          velx2, vely2, posx2, posy2):
+    """
+    =IFERROR( 
+        (H2*$E2*$B2 - $D2*I2*F2 + $D2*H2*(G2-$C2)) / (H2*$E2 - $D2*I2)
+    , "")
+    """
+    nume = velx2*vely1*posx1 - velx1*vely2*posx2 + velx1*velx2*(posy2 - posy1)
+    deno = velx2*vely1 - velx1*vely2
+    val = nume / deno    
+    return val
+
+def K_CPy(velx1, vely1, posx1, posy1, 
+          velx2, vely2, posx2, posy2):
+    """
+    =IFERROR( 
+        (E2/D2) * (J2 - B2) + C2
+    , "")
+    """
+    CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    
+    val = (vely1 / velx1) * (CPx - posx1) + posy1
+    return val
+
+def L_TTCP0(velx1, vely1, posx1, posy1, 
+            velx2, vely2, posx2, posy2):
+    """
+    =IF(
+        AND (
+            OR ( AND (B2 < J2, D2 > 0), 
+                 AND (B2 > J2, D2 < 0)), 
+            OR ( AND (C2 < K2, E2 > 0), 
+                 AND (C2 > K2, E2 < 0))
+            ), 
+        SQRT(( J2 - $B2 )^2 + (K2 - $C2)^2) / ( SQRT(($D2^2 + $E2^2 )))
+    , "")
+    """
+    CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    CPy = K_CPy(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    
+    if ( 
+            ( (posx1 < CPx and velx1 > 0) or (posx1 > CPx and velx1 < 0) ) 
+        and
+            ( (posy1 < CPy and vely1 > 0) or (posy1 > CPy and vely1 < 0) )
+        ):
+        
+        nume = np.sqrt(
+            (CPx - posx1)**2 + (CPy - posy1)**2
+        )
+        deno = np.sqrt(
+            (velx1**2 + vely1**2)
+        )
+        
+        val = nume / deno
+        return val 
+    
+    else:
+        return None
+        
+def M_TTCP1(velx1, vely1, posx1, posy1, 
+            velx2, vely2, posx2, posy2):
+    """
+    =IF( 
+        AND (
+            OR ( AND (F2 < J2, H2 > 0), 
+                 AND (F2 > J2, H2 < 0)), 
+            OR ( AND (G2 < K2, I2 > 0), 
+                 AND (G2 > K2, I2 < 0))
+            ), 
+        SQRT( (J2 - F2)^2 + (K2 - G2)^2 ) / (SQRT( (H2^2 + I2^2) ))
+    , "")
+
+    """
+    CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    CPy = K_CPy(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    
+    if ( 
+            ( (posx2 < CPx and velx2 > 0) or (posx2 > CPx and velx2 < 0) ) 
+        and
+            ( (posy2 < CPy and vely2 > 0) or (posy2 > CPy and vely2 < 0) )
+        ):
+        
+        nume = np.sqrt(
+            (CPx - posx2)**2 + (CPy - posy2)**2
+        )
+        deno = np.sqrt(
+            (velx2**2 + vely2**2)
+        )
+        
+        val = nume / deno
+        return val
+    
+    else:
+        return None 
+
+def N_deltaTTCP(velx1, vely1, posx1, posy1, 
+                velx2, vely2, posx2, posy2):
+    """
+    =IFERROR( 
+        ABS(L2 - M2)
+    , -1)
+    """
+    TTCP0 = L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    TTCP1 = M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    
+    val = abs(TTCP0 - TTCP1)
+    return val
+
+def O_Judge(velx1, vely1, posx1, posy1, 
+            velx2, vely2, posx2, posy2, 
+            eta1=-0.303, eta2=0.61):
+    """
+    =IFERROR(
+        1 / (1 + EXP($DB$1[eta1] + $DC$1[eta2]*(M2 - L2)))
+    , "")
+    """
+    TTCP0 = L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    TTCP1 = M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    
+    deno = 1 + np.exp(eta1 + eta2*(TTCP1 - TTCP0))
+    val = 1 / deno
+    return val
+
+def JudgeEntropy(velx1, vely1, posx1, posy1, 
+                 velx2, vely2, posx2, posy2):
+    """
+    =IFERROR( 
+        -O2 * LOG(O2) - (1 - O2) * LOG(1 - O2)
+    , "")
+    """
+    Judge = O_Judge(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    
+    val = -Judge * np.log10(Judge) - (1 - Judge) * np.log10(1 - Judge)
+    return val
+
+# %% calculate the braking rate
 def Q_equA(velx1, vely1, velx2, vely2):
     """
     = ($D2 - H2)^2 + ($E2 - I2)^2
@@ -541,14 +734,14 @@ def U_DCPA(equA, equB, equC):
     = SQRT( (-(R2^2) + (4*Q2*S2)) / (4*Q2) ) 
     """
     val = np.sqrt(
-        ((-equB**2) + (4*equA*equC)) / (4*equA)
+        (-(equB**2) + (4*equA*equC)) / (4*equA)
     )
     return val
 
-def V_BrakingRate(velx1, vely1, posx1, posy1, 
-                  velx2, vely2, posx2, posy2, 
-                  return_when_undefined=None,
-                  a1=-0.034, b1=3.348, c1=4.252, d1=-0.003):
+def BrakingRate(velx1, vely1, posx1, posy1, 
+                velx2, vely2, posx2, posy2, 
+                return_when_undefined=None,
+                a1=-0.034, b1=3.348, c1=4.252, d1=-0.003):
     """
     a1: -5.145 (-0.034298)
     b1: 3.348 (3.348394)

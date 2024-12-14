@@ -218,8 +218,8 @@ def update(frame):
     ax[0,1].set_xlim(0, xmax+1)
     ax[0,1].set_ylim(0, TCPA_ymax+0.5)
     ax[0,1].grid()
-    ax[0,1].plot(TCPA, lw=linewidth, color='pink')
-    ax[0,1].plot(df['T_TCPA'], lw=linewidth, color='pink', alpha=0.3)
+    ax[0,1].plot(TCPA, lw=linewidth, color='chocolate', alpha=0.7)
+    ax[0,1].plot(df['T_TCPA'], lw=linewidth, color='chocolate', alpha=0.1)
     
     ax[1,1].cla()
     ax[1,1].set_title('DCPA')
@@ -228,6 +228,9 @@ def update(frame):
     ax[1,1].grid()
     ax[1,1].plot(DCPA, lw=linewidth, color='gray')
     ax[1,1].plot(df['U_DCPA'], lw=linewidth, color='gray', alpha=0.12)
+    ax[1,1].text(x=0.3, y=-0.2, s=f'時間：{frame[0]} (100ms)', 
+                 size=13, transform=ax[1,1].transAxes)    
+
     
     ax[0,2].cla()
     ax[0,2].set_title('ブレーキ率')
@@ -245,9 +248,6 @@ def update(frame):
     ax[1,2].plot(JudgeEntropy, lw=linewidth, color='purple', alpha=0.7)
     ax[1,2].plot(df['P_JudgeEntropy'], lw=linewidth, color='purple', alpha=0.1)
     
-    ax[1,2].text(x=-0.22, y=-0.2, s=f'時間：{frame[0]} (100ms)', 
-                 size=13, transform=ax[1,1].transAxes)    
-
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
                      interval=200, cache_frame_data=False)
 # plt.show()

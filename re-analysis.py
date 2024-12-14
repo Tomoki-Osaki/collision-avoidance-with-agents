@@ -25,65 +25,64 @@ from myfuncs import col, SUBJECTS, CONDITIONS, TRIALS
 #%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
-# %% try to calculate the braking rate
-for cond in CONDITIONS:
-    tmp = mf.make_df_trial(df_all, 8, cond, 20, 1)
-    
-    brakings = tmp.loc[:, tmp.columns.str.startswith('other')]
-    myinfo = tmp.loc[:, tmp.columns.str.startswith('my')]
-    brakings = pd.concat([myinfo, brakings], axis=1)    
-    
-    max_brake = []
-    for data in brakings.iterrows():
-        brakeRates = []
-        for i in range(1, 21):
-            brake = mf.V_BrakingRate(
-                data[1]['myMoveX'], data[1]['myMoveY'],
-                data[1]['myNextX'], data[1]['myNextY'],
-                data[1][f'other{i}MoveX'], data[1][f'other{i}MoveY'],
-                data[1][f'other{i}NextX'], data[1][f'other{i}NextY'],
-                return_when_undefined=-np.inf
-            )
-            brakeRates.append(brake)
-        max_brake.append(max(brakeRates))
+# %% implement the awareness model
+tmp = mf.make_df_trial(df_all, 1, 'isogi', 20, 1)
+tmp1 = tmp.iloc[20]
+tminus1 = tmp.iloc[19]
+col(tmp1)
 
-    tmp['BrakeRate'] = max_brake
-    if cond == 'omoiyari': color='tab:green'
-    elif cond == 'isogi': color='tab:blue'
-    elif cond == 'yukkuri': color='tab:orange'
-    plt.plot(max_brake)
-plt.show()
+def awareness_model(deltaTTCP, Px, Py, myVel, otherVel, theta, NiC):
+    deno = 1 + np.exp(
+        -1.2 + 0.018*deltaTTCP - 0.1*Px - 1.1*Py - 0.25*myVel + \
+            0.29*otherVel - 2.5*theta - 0.62*NiC    
+    )
+    val = 1/ deno
+    return val
 
-# %%
-from matplotlib.animation import FuncAnimation
+am = []
+for other in range(1, 21):
+    velx1, vely1 = tmp1['myMoveX'], tmp1['myMoveY']
+    posx1, posy1 = tmp1['myNextX'], tmp1['myNextY']
+    velx2, vely2 = tmp1[f'other{other}MoveX'], tmp1[f'other{other}MoveY']
+    posx2, posy2 = tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY']
+    
+    posx_tminus1 = tminus1['myNextX']
+    posy_tminus1 = tminus1['myNextY']
+    
+    TTCP0 = mf.L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    TTCP1 = mf.M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    try:
+        deltaTTCP = mf.N_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    except TypeError:
+        continue
+    Px = posx2 - posx1
+    Py = posy2 - posy1
+    
+    # linear equations
+    slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
+    intercept1 = posy_tminus1 - slope1*posx_tminus1
+    
+    slope2 = (posy2 - posy1) / (posx2 - posx1)
+    intercept2 = posy1 - slope2*posx1
+    
+    cos_nume = (slope1*intercept1) + (slope2*intercept2) 
+    cos_deno = np.exp(slope1**2 + slope2*2) + np.exp(intercept1**2 + intercept2**2)
+    cos = cos_nume / cos_deno
+    theta = np.arccos(cos)
+    
+    NiC = 4
+    
+    am.append(
+        (other, awareness_model(deltaTTCP, Px, Py, velx1, velx2, theta, NiC))
+     )
 
 fig, ax = plt.subplots()
-
-for data in tmp.iterrows():
-    ax.scatter(data[1]['myNextX'], data[1]['myNextY'], color='blue')
-plt.show()
-
-fig, ax = plt.subplots()
-def update(data):
-    ax.cla()
-    ax.scatter(data[1]['myNextX'], data[1]['myNextY'], color='blue')
-    ax.vlines(x=data[1]['goalX1'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'], 
-              color='gray', alpha=0.5)
-    ax.vlines(x=data[1]['goalX2'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'],
-              color='gray', alpha=0.5)
-    ax.hlines(y=data[1]['goalY1'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
-              color='gray', alpha=0.5)
-    ax.hlines(y=data[1]['goalY2'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
-              color='gray', alpha=0.5)
-    
-    for i in range(1, 21):
-        ax.scatter(data[1][f'other{i}NextX'], data[1][f'other{i}NextY'], color='gray')
-    ax.set_xlim(0, 1000)
-    ax.set_ylim(0, 1000)
-    
-anim = FuncAnimation(fig, update, frames=tmp.iterrows(), repeat=False, 
-                     interval=100, cache_frame_data=False)
-anim.save('video.mp4')
+ax.scatter(posx1, posy1, color='red')
+for other in range(1, 21):
+    posx2, posy2 = tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY']
+    ax.scatter(posx2, posy2, color='gray')
+    if other == 18:
+        ax.plot((posx1, posx2), (posy1, posy2))
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditions(cond, feature):
@@ -99,11 +98,12 @@ def make_df_for_clustering_per_conditions(cond, feature):
     
     return df_cond
         
-dist = 'dist_from_start'
+feature = 'dist_from_start'
+feature = 'BrakeRate_Sum'
 cond = 'isogi'
-df = make_df_for_clustering_per_conditions(cond, dist)
+df = make_df_for_clustering_per_conditions(cond, feature)
+df.fillna(0, inplace=True)
 
-#mf.find_proper_num_clusters(df)
 def clustering(df, cond, feature):
     km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
     labels_euclidean = km_euclidean.fit_predict(df[feature].T)
@@ -113,8 +113,9 @@ def clustering(df, cond, feature):
     df_res['condition'] = cond
     return df_res
 
-n = 3
-df_res = clustering(df, cond, dist)
+mf.find_proper_num_clusters(df)
+n = 5
+df_res = clustering(df, cond, feature)
 
 fig, axs = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
 for data in df_res.iterrows():
@@ -126,20 +127,20 @@ for i in range(n):
     axs[i].grid()
 plt.tight_layout()
 plt.show()
-print('\ndist:', dist); print('cond:', cond)
+print('\nfeature:', feature); print('cond:', cond)
 
-dist = 'dist_from_start'
+feature = 'dist_from_start'
 df_res = pd.DataFrame()
 for cond in CONDITIONS:
-    df_tmp = make_df_for_clustering_per_conditions(cond, dist)
-    df_tmp = clustering(df_tmp, cond, dist)
+    df_tmp = make_df_for_clustering_per_conditions(cond, feature)
+    df_tmp = clustering(df_tmp, cond, feature)
     df_res = pd.concat([df_res, df_tmp])
 clus_col = df_res.pop('clustered')
 cond_col = df_res.pop('condition')
 df_res['clustered'] = clus_col.astype(int)
 df_res['condition'] = cond_col
 
-xmax, ymax = (180, 1000) if dist == 'dist_actual_ideal' else (180, 1300)
+xmax, ymax = (180, 1000) if feature == 'dist_actual_ideal' else (180, 1300)
 
 fig, axs = plt.subplots(3, 3, figsize=(10, 10), sharex=True, sharey=True)
 for data in df_res.iterrows():
@@ -160,9 +161,8 @@ for i in range(3):
         axs[i, j].grid()
 plt.show()
 
-    
 # %% plot all clusterings in one figure
-df_res = clustering(df, dist)
+df_res = clustering(df, feature)
 fig, ax = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
 for data in df_res.iterrows():
     if data[1]['clustered'] == 0: color='tab:green'
@@ -179,19 +179,19 @@ plt.tight_layout()
 # per condition and look through what kind of patterns could be found
 ID = 27
 
-dist = 'dist_actual_ideal'
-dist = 'dist_from_start'
+feature = 'dist_actual_ideal'
+feature= 'dist_from_start'
 df = pd.DataFrame()
 for trial in TRIALS:
     for cond in CONDITIONS: # ['isogi', 'yukkuri', 'omoiyari']
-        tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)[dist]
-        if dist == 'dist_actual_ideal':
+        tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)[feature]
+        if feature== 'dist_actual_ideal':
             tmp = tmp.iloc[1:]
         df = pd.concat([df, tmp], axis=1)
 
 # df = df.filter(like='yukkuri')
 
-mf.plot_dist_compare_conds(df_all, ID, 20, dist)
+mf.plot_dist_compare_conds(df_all, ID, 20, feature)
 mf.plot_dist_per_cond(df_all, ID, 20, "dist_actual_ideal")
 
 mf.find_proper_num_clusters(df)
@@ -225,13 +225,13 @@ plt.tight_layout()
 plt.show()
 
 # look through all subjects' clustering patterns
-# dist = 'dist_closest'
+# feature= 'dist_closest'
 # for ID in SUBJECTS:
 #     df = pd.DataFrame()
 #     for trial in TRIALS:
 #         for cond in CONDITIONS: # ['isogi', 'yukkuri', 'omoiyari']
 #             tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)[dist]
-#             if dist == 'dist_actual_ideal':
+#             if feature== 'dist_actual_ideal':
 #                 tmp = tmp.iloc[1:]
 #             df = pd.concat([df, tmp], axis=1)
     
@@ -314,17 +314,17 @@ print(features)
 print(conds)
 
 # %% time series clustering
-dist = "dist_actual_ideal"
-dist = "dist_from_start"
-dist = "dist_closest"
-dist = "dist_top12_closest"
+feature= "dist_actual_ideal"
+feature= "dist_from_start"
+feature= "dist_closest"
+feature= "dist_top12_closest"
 n_clusters = 3
         
 true_labels = ["isogi", "yukkuri", "omoiyari"] * 8        
 df = pd.DataFrame()
 for tri in TRIALS:
     for cond in CONDITIONS:
-        df_tmp = df_all['ID1'][cond]['agents20'][f'trial{tri}'][dist]
+        df_tmp = df_all['ID1'][cond]['agents20'][f'trial{tri}'][feature]
         df_tmp = pd.Series(df_tmp, name=f'cond_{cond}_tri{tri}')
         df = pd.concat([df, df_tmp], axis=1)
 
@@ -341,7 +341,7 @@ df_comp = pd.DataFrame({"true_labels": true_labels,
 # not proper and must need to consider anothey way!!!
 df_labels = pd.DataFrame(columns=["true_labels", "clustered_labels"])
 for ID in tqdm(SUBJECTS):
-    df_clustering = mf.make_df_for_clustering(df_all, ID, 20, dist)
+    df_clustering = mf.make_df_for_clustering(df_all, ID, 20, feature)
     km_euclidean = TimeSeriesKMeans(n_clusters=n_clusters, metric='dtw', random_state=2)
     labels_euclidean = km_euclidean.fit_predict(df_clustering.T)
         
@@ -364,7 +364,7 @@ ax = sns.histplot(data=df_labels,
                   alpha=0.65,
                   shrink=0.5)
 sns.set(rc={'figure.figsize':(10, 6)})
-ax.set(title=dist)
+ax.set(title=feature)
 plt.show()
 
 time_np = to_time_series_dataset(df_clustering.T)

@@ -153,7 +153,7 @@ def U_DCPA(df):
     = SQRT( (-(R2^2) + (4*Q2*S2)) / (4*Q2) ) 
     """
     val = np.sqrt(
-        ((-df['R_equB']**2) + (4*df['Q_equA']*df['S_equC'])) / (4*df['Q_equA'])
+        (-(df['R_equB']**2) + (4*df['Q_equA']*df['S_equC'])) / (4*df['Q_equA'])
     )
     return val
 
