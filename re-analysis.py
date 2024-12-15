@@ -46,9 +46,7 @@ for data in df.iterrows():
             posx_tminus1 = tminus1[1]['myNextX']
             posy_tminus1 = tminus1[1]['myNextY']
             
-            TTCP0 = mf.L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-            TTCP1 = mf.M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-            deltaTTCP = mf.N_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+            deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
             Px = posx2 - posx1
             Py = posy2 - posy1
             
@@ -125,15 +123,22 @@ def update(data):
     
     focused = data[1]['focused_other']
     if not focused == 0:
-        ax.plot((data[1]['myNextX'], data[1][f'other{focused}NextX']),
-                (data[1]['myNextY'], data[1][f'other{focused}NextY']), 
-                color='red')
+        # ax.plot((data[1]['myNextX'], data[1][f'other{focused}NextX']),
+        #         (data[1]['myNextY'], data[1][f'other{focused}NextY']), 
+        #         color='red')
+        ax.annotate('', 
+                    xy=(data[1][f'other{focused}NextX'], 
+                        data[1][f'other{focused}NextY']), 
+                    xytext=(data[1]['myNextX'],
+                            data[1]['myNextY']),
+                    arrowprops=dict(width=0.5, headwidth=5,
+                                    facecolor='red', edgecolor='red'))
     
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
                      interval=250, cache_frame_data=False)
 anim.save('awareness.mp4')    
 
-# %% implement the awareness model
+# %% implement the awareness model for at one time
 tmp = mf.make_df_trial(df_all, 10, 'omoiyari', 20, 1)
 idx = 39
 tmp1 = tmp.iloc[idx]
