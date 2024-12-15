@@ -140,7 +140,7 @@ def drop_unnecessary_cols(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # %% 
-def _calc_distance(myX, myY, anotherX, anotherY):
+def calc_distance(myX, myY, anotherX, anotherY):
     mypos = np.array([myX, myY])
     anotherpos = np.array([anotherX, anotherY])
     distance = np.linalg.norm(mypos - anotherpos)
@@ -152,7 +152,7 @@ def add_cols_dist_others(df):
     df_tmp = pd.DataFrame()
     for i in AGENTS:
         try:
-            dist_others = df.apply(lambda df_: _calc_distance(
+            dist_others = df.apply(lambda df_: calc_distance(
                df_["myNextX"], df_["myNextY"], 
                df_[f"other{i}NextX"], df_[f"other{i}NextY"]
                ), axis=1)
@@ -166,7 +166,7 @@ def add_cols_dist_others(df):
 
 # %% 
 def add_col_dist_from_start(df):
-    dist_from_start = df.apply(lambda df_: _calc_distance(
+    dist_from_start = df.apply(lambda df_: calc_distance(
         df_["posX"], df_["posY"], 30, 30
         ), axis=1)
     df["dist_from_start"] = dist_from_start
@@ -562,8 +562,8 @@ def anim_movements(df_tri, save_name='video.mp4'):
     anim.save(save_name)    
     
 # %% calculate the judge entropy
-def J_CPx(velx1, vely1, posx1, posy1, 
-          velx2, vely2, posx2, posy2):
+def CPx(velx1, vely1, posx1, posy1, 
+        velx2, vely2, posx2, posy2):
     """
     =IFERROR( 
         (H2*$E2*$B2 - $D2*I2*F2 + $D2*H2*(G2-$C2)) / (H2*$E2 - $D2*I2)
@@ -577,23 +577,23 @@ def J_CPx(velx1, vely1, posx1, posy1,
     except ZeroDivisionError:
         return None
 
-def K_CPy(velx1, vely1, posx1, posy1, 
-          velx2, vely2, posx2, posy2):
+def CPy(velx1, vely1, posx1, posy1, 
+        velx2, vely2, posx2, posy2):
     """
     =IFERROR( 
         (E2/D2) * (J2 - B2) + C2
     , "")
     """
-    CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    CPx_ = CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
     try:
-        val = (vely1 / velx1) * (CPx - posx1) + posy1
+        val = (vely1 / velx1) * (CPx_ - posx1) + posy1
         return val
     except:
         return None
 
-def L_TTCP0(velx1, vely1, posx1, posy1, 
-            velx2, vely2, posx2, posy2):
+def TTCP0(velx1, vely1, posx1, posy1, 
+          velx2, vely2, posx2, posy2):
     """
     =IF(
         AND (
@@ -605,18 +605,18 @@ def L_TTCP0(velx1, vely1, posx1, posy1,
         SQRT(( J2 - $B2 )^2 + (K2 - $C2)^2) / ( SQRT(($D2^2 + $E2^2 )))
     , "")
     """
-    CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    CPy = K_CPy(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    CPx_ = CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    CPy_ = CPy(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
     try:
         if ( 
-                ( (posx1 < CPx and velx1 > 0) or (posx1 > CPx and velx1 < 0) ) 
+                ( (posx1 < CPx_ and velx1 > 0) or (posx1 > CPx_ and velx1 < 0) ) 
             and
-                ( (posy1 < CPy and vely1 > 0) or (posy1 > CPy and vely1 < 0) )
+                ( (posy1 < CPy_ and vely1 > 0) or (posy1 > CPy_ and vely1 < 0) )
             ):
             
             nume = np.sqrt(
-                (CPx - posx1)**2 + (CPy - posy1)**2
+                (CPx_ - posx1)**2 + (CPy_ - posy1)**2
             )
             deno = np.sqrt(
                 (velx1**2 + vely1**2)
@@ -630,8 +630,8 @@ def L_TTCP0(velx1, vely1, posx1, posy1,
     else:
         return None
         
-def M_TTCP1(velx1, vely1, posx1, posy1, 
-            velx2, vely2, posx2, posy2):
+def TTCP1(velx1, vely1, posx1, posy1, 
+          velx2, vely2, posx2, posy2):
     """
     =IF( 
         AND (
@@ -644,18 +644,18 @@ def M_TTCP1(velx1, vely1, posx1, posy1,
     , "")
 
     """
-    CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    CPy = K_CPy(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    CPx_ = CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    CPy_ = CPy(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
     try:
         if ( 
-                ( (posx2 < CPx and velx2 > 0) or (posx2 > CPx and velx2 < 0) ) 
+                ( (posx2 < CPx_ and velx2 > 0) or (posx2 > CPx_ and velx2 < 0) ) 
             and
-                ( (posy2 < CPy and vely2 > 0) or (posy2 > CPy and vely2 < 0) )
+                ( (posy2 < CPy_ and vely2 > 0) or (posy2 > CPy_ and vely2 < 0) )
             ):
             
             nume = np.sqrt(
-                (CPx - posx2)**2 + (CPy - posy2)**2
+                (CPx_ - posx2)**2 + (CPy_ - posy2)**2
             )
             deno = np.sqrt(
                 (velx2**2 + vely2**2)
@@ -669,34 +669,34 @@ def M_TTCP1(velx1, vely1, posx1, posy1,
     else:
         return None 
 
-def N_deltaTTCP(velx1, vely1, posx1, posy1, 
-                velx2, vely2, posx2, posy2):
+def deltaTTCP(velx1, vely1, posx1, posy1, 
+              velx2, vely2, posx2, posy2):
     """
     =IFERROR( 
         ABS(L2 - M2)
     , -1)
     """
-    TTCP0 = L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    TTCP1 = M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    TTCP0_ = TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    TTCP1_ = TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
     try:
-        val = abs(TTCP0 - TTCP1)
+        val = abs(TTCP0_ - TTCP1_)
         return val
     except:
         return -1
 
-def O_Judge(velx1, vely1, posx1, posy1, 
-            velx2, vely2, posx2, posy2, 
-            eta1=-0.303, eta2=0.61):
+def Judge(velx1, vely1, posx1, posy1, 
+          velx2, vely2, posx2, posy2, 
+          eta1=-0.303, eta2=0.61):
     """
     =IFERROR(
         1 / (1 + EXP($DB$1[eta1] + $DC$1[eta2]*(M2 - L2)))
     , "")
     """
-    TTCP0 = L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    TTCP1 = M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    TTCP0_ = TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    TTCP1_ = TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
-    deno = 1 + np.exp(eta1 + eta2*(TTCP1 - TTCP0))
+    deno = 1 + np.exp(eta1 + eta2*(TTCP1_ - TTCP0_))
     val = 1 / deno
     return val
 
@@ -707,21 +707,21 @@ def JudgeEntropy(velx1, vely1, posx1, posy1,
         -O2 * LOG(O2) - (1 - O2) * LOG(1 - O2)
     , "")
     """
-    Judge = O_Judge(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    Judge_ = Judge(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
-    val = -Judge * np.log10(Judge) - (1 - Judge) * np.log10(1 - Judge)
+    val = -Judge_ * np.log10(Judge_) - (1 - Judge_) * np.log10(1 - Judge_)
     return val
 
 # %% calculate the braking rate
-def Q_equA(velx1, vely1, velx2, vely2):
+def equA(velx1, vely1, velx2, vely2):
     """
     = ($D2 - H2)^2 + ($E2 - I2)^2
     """
     val = (velx1 - velx2)**2 + (vely1 - vely2)**2
     return val
     
-def R_equB(velx1, vely1, posx1, posy1, 
-           velx2, vely2, posx2, posy2):
+def equB(velx1, vely1, posx1, posy1, 
+         velx2, vely2, posx2, posy2):
     """
     = (2*($D2 - H2)*($B2 - F2)) + (2*($E2 - I2)*($C2 - G2))
     """
@@ -729,26 +729,26 @@ def R_equB(velx1, vely1, posx1, posy1,
           (2 * (vely1 - vely2) * (posy1 - posy2))
     return val
 
-def S_equC(posx1, posy1, posx2, posy2):
+def equC(posx1, posy1, posx2, posy2):
     """
     = ($B2 - F2)^2 + ($C2 - G2)^2
     """
     val = (posx1 - posx2)**2 + (posy1 - posy2)**2
     return val
 
-def T_TCPA(equA, equB): 
+def TCPA(equA_, equB_): 
     """
     = -(R2 / (2*Q2))
     """
-    val = -(equB / (2*equA))
+    val = -(equB_ / (2*equA_))
     return val
 
-def U_DCPA(equA, equB, equC):
+def DCPA(equA_, equB_, equC_):
     """
     = SQRT( (-(R2^2) + (4*Q2*S2)) / (4*Q2) ) 
     """
     val = np.sqrt(
-        (-(equB**2) + (4*equA*equC)) / (4*equA)
+        (-(equB_**2) + (4*equA_*equC_)) / (4*equA_)
     )
     return val
 
@@ -769,17 +769,17 @@ def BrakingRate(velx1, vely1, posx1, posy1,
         , "")
     )
     """
-    equA = Q_equA(velx1, vely1, velx2, vely2)
-    equB = R_equB(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    equC = S_equC(posx1, posy1, posx2, posy2)
-    TCPA = T_TCPA(equA, equB)
-    DCPA = U_DCPA(equA, equB, equC)
+    equA_ = equA(velx1, vely1, velx2, vely2)
+    equB_ = equB(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    equC_ = equC(posx1, posy1, posx2, posy2)
+    TCPA_ = TCPA(equA_, equB_)
+    DCPA_ = DCPA(equA_, equB_, equC_)
     
     if TCPA < 0:
         return return_when_undefined
     else:
-        term1 = (1 / (1 + np.exp(-(c1 + (d1*TCPA)))))
-        term2 = (1 / (1 + np.exp(-(b1 + (a1*DCPA)))))
+        term1 = (1 / (1 + np.exp(-(c1 + (d1*TCPA_)))))
+        term2 = (1 / (1 + np.exp(-(b1 + (a1*DCPA_)))))
         val = term1 * term2
         return val
     

@@ -31,13 +31,12 @@ df = mf.make_df_trial(df_all, 17, 'omoiyari', 20, 6)
 col(df)
 
 #mf.anim_movements(tmp)
-rep = 0
 tminus1 = ...
 braking_rates_focused = [0]
 focused_other = [0]
 for data in df.iterrows():
     awm = []
-    if not rep == 0:
+    if not data[0] == 0:
         for other in range(1, 21):
             velx1, vely1 = data[1]['myMoveX'], data[1]['myMoveY']
             posx1, posy1 = data[1]['myNextX'], data[1]['myNextY']
@@ -63,12 +62,12 @@ for data in df.iterrows():
             
             NiC = 2
             
-            dist1 = mf._calc_distance(
+            dist1 = mf.calc_distance(
                 data[1]['myNextX'], data[1]['myNextY'], 
                 tminus1[1]['myNextX'], tminus1[1]['myNextY']
             )
             speed1 = dist1 / 100
-            dist2 = mf._calc_distance(
+            dist2 = mf.calc_distance(
                 data[1][f'other{other}NextX'], data[1][f'other{other}NextY'], 
                 tminus1[1][f'other{other}NextX'], tminus1[1][f'other{other}NextY']
             )
@@ -82,8 +81,10 @@ for data in df.iterrows():
         dist_other.sort(key=lambda tup: tup[1])
         try:
             focused = dist_other[0][0]
-            br_posx2, br_posy2 = data[1][f'other{focused}NextX'], data[1][f'other{focused}NextY']
-            br_velx2, br_vely2 = data[1][f'other{focused}MoveX'], data[1][f'other{focused}MoveY']
+            br_posx2 = data[1][f'other{focused}NextX']
+            br_posy2 = data[1][f'other{focused}NextY']
+            br_velx2 = data[1][f'other{focused}MoveX']
+            br_vely2 = data[1][f'other{focused}MoveY']
             braking_rate_focused = mf.BrakingRate(
                 velx1, vely1, posx1, posy1, 
                 br_velx2, br_vely2, br_posx2, br_posy2
@@ -95,16 +96,13 @@ for data in df.iterrows():
         focused_other.append(focused)
         braking_rates_focused.append(braking_rate_focused)
         
-            
     tminus1 = data
-    rep += 1
 
 df['BrakingRate_focused'] = braking_rates_focused
 df['focused_other'] = focused_other
 
 # %% try to animate how the focused others were selected
 fig, ax = plt.subplots()
-rep = 0
 tminus1 = ...
 def update(data):
     ax.cla()
@@ -134,8 +132,6 @@ def update(data):
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
                      interval=250, cache_frame_data=False)
 anim.save('awareness.mp4')    
-    
-
 
 # %% implement the awareness model
 tmp = mf.make_df_trial(df_all, 10, 'omoiyari', 20, 1)
@@ -170,12 +166,12 @@ for other in range(1, 21):
     
     NiC = 2
     
-    dist1 = mf._calc_distance(tmp1['myNextX'], tmp1['myNextY'], 
-                              tminus1['myNextX'], tminus1['myNextY'])
+    dist1 = mf.calc_distance(tmp1['myNextX'], tmp1['myNextY'], 
+                             tminus1['myNextX'], tminus1['myNextY'])
     speed1 = dist1 / 100
     
-    dist2 = mf._calc_distance(tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY'], 
-                              tminus1[f'other{other}NextX'], tminus1[f'other{other}NextY'])
+    dist2 = mf.calc_distance(tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY'], 
+                             tminus1[f'other{other}NextX'], tminus1[f'other{other}NextY'])
     speed2 = dist2 / 100
     
     aw = mf.awareness_model(deltaTTCP, Px, Py, speed1, speed2, theta, NiC)
