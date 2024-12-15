@@ -11,17 +11,21 @@ flist = glob.glob(path)
 
 # 事例2　corssing1
 path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro2_index_7_8_9_to_12_1.bag.csv"
+df = pd.read_csv(path)
+print('事例2')
 
 # 事例1　crossing2
 path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro8_index_3_5_14_to_1_2.bag.csv"
+df = pd.read_csv(path)
+print('事例1')
 
 # 事例3　crossing4
 path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_8_9.bag.csv"
+df = pd.read_csv(path)
+print('事例3')
 
 #df = pd.read_csv(flist[3])
 df = pd.read_csv(flist[100])
-path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_8_9.bag.csv"
-df = pd.read_csv(path)
 
 df = df[['/vrpn_client_node/body_0/pose/field.pose.position.x',
          '/vrpn_client_node/body_0/pose/field.pose.position.z',
@@ -60,7 +64,123 @@ df['W_distance'] = df.apply(ci.W_distance, axis=1)
 
 col(df)
 
-# ci.plot_traj(df)
+ci.plot_traj(df)
+
+# %% display TCPA and DCPA for understanding
+import matplotlib
+matplotlib.rc('font', family='BIZ UDGothic')
+
+fig, ax = plt.subplots(2, 3, figsize=(14, 10))
+
+rep = 0
+headwidth = 8
+headlength = 8
+linewidth = 3
+BrakingRate = []
+distance = []
+JudgeEntropy = []
+TCPA = []
+DCPA = []
+deltaTTCP = []
+dist_ymax = max(df['W_distance'])
+TCPA_ymax = max(df['T_TCPA'])
+DCPA_ymax = max(df['U_DCPA'])
+deltaTTCP_ymax = max(df['N_deltaTTCP'])
+xmax = len(df)
+
+df.fillna(-0.1, inplace=True)
+
+def update(frame):
+    global rep
+    if np.isnan(frame[1]['P_JudgeEntropy']) == False:
+        JudgeEntropy.append(frame[1]['P_JudgeEntropy'])
+    else:
+        JudgeEntropy.append(0)
+    if np.isnan(frame[1]['V_BrakingRate']) == False:
+        BrakingRate.append(frame[1]['V_BrakingRate'])
+    else:
+        BrakingRate.append(0)
+    distance.append(frame[1]['W_distance'])
+    TCPA.append(frame[1]['T_TCPA'])
+    DCPA.append(frame[1]['U_DCPA'])
+    deltaTTCP.append(frame[1]['N_deltaTTCP'])
+    
+    rep += 1
+    # ax[0,0] 歩行者の動き
+    ax[0,0].cla()
+    ax[0,0].set_title('歩行者の動き')
+    ax[0,0].set_xlim(-5, 5)
+    ax[0,0].set_ylim(-5, 5)
+    ax[0,0].grid()
+    ax[0,0].scatter(frame[1]['B_posx1'], frame[1]['C_posy1'], s=80, c='blue', alpha=0.8)
+    ax[0,0].scatter(frame[1]['F_posx2'], frame[1]['G_posy2'], s=80, c='red', alpha=0.8)
+    ax[0,0].scatter(df['B_posx1'], df['C_posy1'], c='blue', alpha=0.03)
+    ax[0,0].scatter(df['F_posx2'], df['G_posy2'], c='red', alpha=0.03)
+    if not rep == len(df):
+        ax[0,0].annotate('', xy=(df['B_posx1'][frame[0]+1], df['C_posy1'][frame[0]+1]), 
+                         xytext=(frame[1]['B_posx1'], frame[1]['C_posy1']),
+                         arrowprops=dict(shrink=0, width=1, headwidth=headwidth, 
+                                         headlength=headlength,
+                                         facecolor='skyblue', edgecolor='blue'))
+        
+        ax[0,0].annotate('', xy=(df['F_posx2'][frame[0]+1], df['G_posy2'][frame[0]+1]), 
+                         xytext=(frame[1]['F_posx2'], frame[1]['G_posy2']),
+                         arrowprops=dict(shrink=0, width=1, headwidth=headwidth, 
+                                         headlength=headlength,
+                                         facecolor='pink', edgecolor='red'))
+    
+    # ax[0,1] deltaTTCP (2者の交点までの時間差)
+    ax[0,1].cla()
+    ax[0,1].set_title('deltaTTCP (2者の交点までの時間差)')
+    ax[0,1].set_xlim(0, xmax+1)
+    ax[0,1].set_ylim(0, deltaTTCP_ymax+0.5)
+    ax[0,1].grid()
+    ax[0,1].plot(deltaTTCP, lw=linewidth, color='chocolate', alpha=0.7)
+    ax[0,1].plot(df['N_deltaTTCP'], lw=linewidth, color='chocolate', alpha=0.1)
+    
+    # ax[0,2] 判断エントロピー
+    ax[0,2].cla()
+    ax[0,2].set_title('判断エントロピー：0(確定的)～1(曖昧)')
+    ax[0,2].set_xlim(0, xmax+1)
+    ax[0,2].set_ylim(-0.01, 1)
+    ax[0,2].grid()
+    ax[0,2].plot(JudgeEntropy, lw=linewidth, color='green', alpha=0.7)
+    ax[0,2].plot(df['P_JudgeEntropy'], lw=linewidth, color='green', alpha=0.08)
+    
+    # ax[1,0] TCPA (最接近点までの時間)
+    ax[1,0].cla()
+    ax[1,0].set_title('TCPA (最接近点までの時間)')
+    ax[1,0].set_xlim(0, xmax+1)
+    ax[1,0].set_ylim(0, TCPA_ymax+0.5)
+    ax[1,0].grid()
+    ax[1,0].plot(TCPA, lw=linewidth, color='gray')
+    ax[1,0].plot(df['T_TCPA'], lw=linewidth, color='gray', alpha=0.12)
+    ax[1,0].text(x=0.3, y=-0.2, s=f'時間：{frame[0]} (100ms)', 
+                 size=13, transform=ax[1,1].transAxes)    
+    
+    # ax[1,1] DCPA (最接近距離)
+    ax[1,1].cla()
+    ax[1,1].set_title('DCPA (最接近距離)')
+    ax[1,1].set_xlim(0, xmax+1)
+    ax[1,1].set_ylim(0, DCPA_ymax+0.5)
+    ax[1,1].grid()
+    ax[1,1].plot(DCPA, lw=linewidth, color='orange', alpha=0.7)
+    ax[1,1].plot(df['U_DCPA'], lw=linewidth, color='orange', alpha=0.12)
+    
+    # ax[1,2] ブレーキ率
+    ax[1,2].cla()
+    ax[1,2].set_title('ブレーキ率：0(踏まない)～1(踏む)')
+    ax[1,2].set_xlim(0, xmax+1)
+    ax[1,2].set_ylim(-0.01, 1)
+    ax[1,2].grid()
+    ax[1,2].plot(BrakingRate, lw=linewidth, color='purple', alpha=0.7)
+    ax[1,2].plot(df['V_BrakingRate'], lw=linewidth, color='purple', alpha=0.1)
+    
+anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
+                     interval=250, cache_frame_data=False)
+# plt.show()
+anim.save("crossing.mp4", writer='ffmpeg')
+plt.close()
 
 # %%
 import matplotlib
@@ -144,112 +264,5 @@ def update(frame):
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
                      interval=200, cache_frame_data=False)
 #plt.show()
-anim.save("crossing.mp4", writer='ffmpeg')
-plt.close()
-
-# %% display TCPA and DCPA for understanding
-import matplotlib
-matplotlib.rc('font', family='BIZ UDGothic')
-
-fig, ax = plt.subplots(2, 3, figsize=(14, 10))
-
-rep = 0
-headwidth = 8
-headlength = 8
-linewidth = 3
-BrakingRate = []
-distance = []
-JudgeEntropy = []
-TCPA = []
-DCPA = []
-dist_ymax = max(df['W_distance'])
-TCPA_ymax = max(df['T_TCPA'])
-DCPA_ymax = max(df['U_DCPA'])
-xmax = len(df)
-
-df.fillna(-0.1, inplace=True)
-
-def update(frame):
-    global rep
-    if np.isnan(frame[1]['P_JudgeEntropy']) == False:
-        JudgeEntropy.append(frame[1]['P_JudgeEntropy'])
-    else:
-        JudgeEntropy.append(0)
-    if np.isnan(frame[1]['V_BrakingRate']) == False:
-        BrakingRate.append(frame[1]['V_BrakingRate'])
-    else:
-        BrakingRate.append(0)
-    distance.append(frame[1]['W_distance'])
-    TCPA.append(frame[1]['T_TCPA'])
-    DCPA.append(frame[1]['U_DCPA'])
-    
-    rep += 1
-    ax[0,0].cla()
-    ax[0,0].set_title('歩行者の動き')
-    ax[0,0].set_xlim(-5, 5)
-    ax[0,0].set_ylim(-5, 5)
-    ax[0,0].grid()
-    ax[0,0].scatter(frame[1]['B_posx1'], frame[1]['C_posy1'], s=80, c='blue', alpha=0.8)
-    ax[0,0].scatter(frame[1]['F_posx2'], frame[1]['G_posy2'], s=80, c='red', alpha=0.8)
-    ax[0,0].scatter(df['B_posx1'], df['C_posy1'], c='blue', alpha=0.03)
-    ax[0,0].scatter(df['F_posx2'], df['G_posy2'], c='red', alpha=0.03)
-    if not rep == len(df):
-        ax[0,0].annotate('', xy=(df['B_posx1'][frame[0]+1], df['C_posy1'][frame[0]+1]), 
-                         xytext=(frame[1]['B_posx1'], frame[1]['C_posy1']),
-                         arrowprops=dict(shrink=0, width=1, headwidth=headwidth, 
-                                         headlength=headlength,
-                                         facecolor='skyblue', edgecolor='blue'))
-        
-        ax[0,0].annotate('', xy=(df['F_posx2'][frame[0]+1], df['G_posy2'][frame[0]+1]), 
-                         xytext=(frame[1]['F_posx2'], frame[1]['G_posy2']),
-                         arrowprops=dict(shrink=0, width=1, headwidth=headwidth, 
-                                         headlength=headlength,
-                                         facecolor='pink', edgecolor='red'))
-    ax[1,0].cla()
-    ax[1,0].set_title('２者間の距離')
-    ax[1,0].set_xlim(0, xmax+1)
-    ax[1,0].set_ylim(0, dist_ymax+0.5)
-    ax[1,0].grid()
-    ax[1,0].plot(distance, lw=linewidth, color='orange', alpha=0.7)
-    ax[1,0].plot(df['W_distance'], lw=linewidth, color='orange', alpha=0.12)
-    
-    ax[0,1].cla()
-    ax[0,1].set_title('TCPA')
-    ax[0,1].set_xlim(0, xmax+1)
-    ax[0,1].set_ylim(0, TCPA_ymax+0.5)
-    ax[0,1].grid()
-    ax[0,1].plot(TCPA, lw=linewidth, color='chocolate', alpha=0.7)
-    ax[0,1].plot(df['T_TCPA'], lw=linewidth, color='chocolate', alpha=0.1)
-    
-    ax[1,1].cla()
-    ax[1,1].set_title('DCPA')
-    ax[1,1].set_xlim(0, xmax+1)
-    ax[1,1].set_ylim(0, DCPA_ymax+0.5)
-    ax[1,1].grid()
-    ax[1,1].plot(DCPA, lw=linewidth, color='gray')
-    ax[1,1].plot(df['U_DCPA'], lw=linewidth, color='gray', alpha=0.12)
-    ax[1,1].text(x=0.3, y=-0.2, s=f'時間：{frame[0]} (100ms)', 
-                 size=13, transform=ax[1,1].transAxes)    
-
-    
-    ax[0,2].cla()
-    ax[0,2].set_title('ブレーキ率')
-    ax[0,2].set_xlim(0, xmax+1)
-    ax[0,2].set_ylim(-0.01, 1)
-    ax[0,2].grid()
-    ax[0,2].plot(BrakingRate, lw=linewidth, color='green', alpha=0.7)
-    ax[0,2].plot(df['V_BrakingRate'], lw=linewidth, color='green', alpha=0.08)
-    
-    ax[1,2].cla()
-    ax[1,2].set_title('判断エントロピー')
-    ax[1,2].set_xlim(0, xmax+1)
-    ax[1,2].set_ylim(-0.01, 1)
-    ax[1,2].grid()
-    ax[1,2].plot(JudgeEntropy, lw=linewidth, color='purple', alpha=0.7)
-    ax[1,2].plot(df['P_JudgeEntropy'], lw=linewidth, color='purple', alpha=0.1)
-    
-anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
-                     interval=200, cache_frame_data=False)
-# plt.show()
 anim.save("crossing.mp4", writer='ffmpeg')
 plt.close()

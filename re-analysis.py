@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.animation import FuncAnimation
 import seaborn as sns
 # sns.set_theme()
 # sns.reset_orig()
@@ -25,21 +26,127 @@ from myfuncs import col, SUBJECTS, CONDITIONS, TRIALS
 #%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
+# %% generalized the awareness model
+df = mf.make_df_trial(df_all, 17, 'omoiyari', 20, 6)
+col(df)
+
+#mf.anim_movements(tmp)
+rep = 0
+tminus1 = ...
+braking_rates_focused = [0]
+focused_other = [0]
+for data in df.iterrows():
+    awm = []
+    if not rep == 0:
+        for other in range(1, 21):
+            velx1, vely1 = data[1]['myMoveX'], data[1]['myMoveY']
+            posx1, posy1 = data[1]['myNextX'], data[1]['myNextY']
+            velx2, vely2 = data[1][f'other{other}MoveX'], data[1][f'other{other}MoveY']
+            posx2, posy2 = data[1][f'other{other}NextX'], data[1][f'other{other}NextY']
+            
+            posx_tminus1 = tminus1[1]['myNextX']
+            posy_tminus1 = tminus1[1]['myNextY']
+            
+            TTCP0 = mf.L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+            TTCP1 = mf.M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+            deltaTTCP = mf.N_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+            Px = posx2 - posx1
+            Py = posy2 - posy1
+            
+            try:
+                slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
+                slope2 = (posy2 - posy1) / (posx2 - posx1)
+                theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
+            except ZeroDivisionError:
+                awm.append((other, 0))
+                continue
+            
+            NiC = 2
+            
+            dist1 = mf._calc_distance(
+                data[1]['myNextX'], data[1]['myNextY'], 
+                tminus1[1]['myNextX'], tminus1[1]['myNextY']
+            )
+            speed1 = dist1 / 100
+            dist2 = mf._calc_distance(
+                data[1][f'other{other}NextX'], data[1][f'other{other}NextY'], 
+                tminus1[1][f'other{other}NextX'], tminus1[1][f'other{other}NextY']
+            )
+            speed2 = dist2 / 100
+            
+            aw = mf.awareness_model(deltaTTCP, Px, Py, speed1, speed2, theta, NiC)
+            awm.append((other, aw))
+            
+        to_focus = [i for i, j in awm if j == 1.0]
+        dist_other = [(other, data[1][f'distOther{other}']) for other in to_focus]
+        dist_other.sort(key=lambda tup: tup[1])
+        try:
+            focused = dist_other[0][0]
+            br_posx2, br_posy2 = data[1][f'other{focused}NextX'], data[1][f'other{focused}NextY']
+            br_velx2, br_vely2 = data[1][f'other{focused}MoveX'], data[1][f'other{focused}MoveY']
+            braking_rate_focused = mf.BrakingRate(
+                velx1, vely1, posx1, posy1, 
+                br_velx2, br_vely2, br_posx2, br_posy2
+            )
+        except IndexError:
+            focused = 0
+            braking_rate_focused = 0
+            
+        focused_other.append(focused)
+        braking_rates_focused.append(braking_rate_focused)
+        
+            
+    tminus1 = data
+    rep += 1
+
+df['BrakingRate_focused'] = braking_rates_focused
+df['focused_other'] = focused_other
+
+# %% try to animate how the focused others were selected
+fig, ax = plt.subplots()
+rep = 0
+tminus1 = ...
+def update(data):
+    ax.cla()
+    ax.scatter(data[1]['myNextX'], data[1]['myNextY'], color='blue')
+    for i in range(1, 21):
+        ax.scatter(data[1][f'other{i}NextX'], data[1][f'other{i}NextY'], color='gray')
+        
+    ax.vlines(x=data[1]['goalX1'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'], 
+              color='gray', alpha=0.5)
+    ax.vlines(x=data[1]['goalX2'], ymin=data[1]['goalY1'], ymax=data[1]['goalY2'],
+              color='gray', alpha=0.5)
+    ax.hlines(y=data[1]['goalY1'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
+              color='gray', alpha=0.5)
+    ax.hlines(y=data[1]['goalY2'], xmin=data[1]['goalX1'], xmax=data[1]['goalX2'],
+              color='gray', alpha=0.5)
+    ax.set_xlim(0, 1000)
+    ax.set_ylim(0, 1000)
+    ax.tick_params(left=False, right=False, labelleft=False, 
+                   labelbottom=False, bottom=False) 
+    
+    focused = data[1]['focused_other']
+    if not focused == 0:
+        ax.plot((data[1]['myNextX'], data[1][f'other{focused}NextX']),
+                (data[1]['myNextY'], data[1][f'other{focused}NextY']), 
+                color='red')
+    
+anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
+                     interval=250, cache_frame_data=False)
+anim.save('awareness.mp4')    
+    
+
+
 # %% implement the awareness model
-tmp = mf.make_df_trial(df_all, 5, 'yukkuri', 20, 1)
-tmp1 = tmp.iloc[21]
-tminus1 = tmp.iloc[20]
+tmp = mf.make_df_trial(df_all, 10, 'omoiyari', 20, 1)
+idx = 39
+tmp1 = tmp.iloc[idx]
+tminus1 = tmp.iloc[idx-1]
 col(tmp1)
 
-def awareness_model(deltaTTCP, Px, Py, myVel, otherVel, theta, NiC):
-    deno = 1 + np.exp(
-        -1*(-1.2 + 0.018*deltaTTCP - 0.1*Px - 1.1*Py - 0.25*myVel + \
-             0.29*otherVel - 2.5*theta - 0.62*NiC)    
-    )
-    val = 1 / deno
-    return val
+#mf.anim_movements(tmp)
 
-am = []
+awm = []
 for other in range(1, 21):
     velx1, vely1 = tmp1['myMoveX'], tmp1['myMoveY']
     posx1, posy1 = tmp1['myNextX'], tmp1['myNextY']
@@ -51,26 +158,17 @@ for other in range(1, 21):
     
     TTCP0 = mf.L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     TTCP1 = mf.M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    try:
-        deltaTTCP = mf.N_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    except TypeError:
-        continue
+    deltaTTCP = mf.N_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     Px = posx2 - posx1
     Py = posy2 - posy1
     
-    # linear equations
     slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
-    intercept1 = posy_tminus1 - slope1*posx_tminus1
     
     slope2 = (posy2 - posy1) / (posx2 - posx1)
-    intercept2 = posy1 - slope2*posx1
+
+    theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
     
-    cos_nume = (slope1*intercept1) + (slope2*intercept2) 
-    cos_deno = np.exp(slope1**2 + slope2**2) + np.exp(intercept1**2 + intercept2**2)
-    cos = cos_nume / cos_deno
-    theta = np.arccos(cos)
-    
-    NiC = 3
+    NiC = 2
     
     dist1 = mf._calc_distance(tmp1['myNextX'], tmp1['myNextY'], 
                               tminus1['myNextX'], tminus1['myNextY'])
@@ -80,24 +178,41 @@ for other in range(1, 21):
                               tminus1[f'other{other}NextX'], tminus1[f'other{other}NextY'])
     speed2 = dist2 / 100
     
-    aw = awareness_model(deltaTTCP, Px, Py, speed1, speed2, theta, NiC)
-    am.append((other, aw))
+    aw = mf.awareness_model(deltaTTCP, Px, Py, speed1, speed2, theta, NiC)
+    awm.append((other, aw))
     print(other, 'theta', theta)
-    print('cos', cos)
-print(am)
+print(awm)
+
+to_focus = []
+for i, j in awm:
+    if j == 1.0:
+        to_focus.append(i)
+dist_other = []
+for other in to_focus:
+    dist_other.append((other, tmp1[f'distOther{other}']))
+dist_other.sort(key=lambda tup: tup[1])
+print(dist_other)
 
 fig, ax = plt.subplots()
 ax.scatter(posx1, posy1, color='red')
 ax.scatter(posx_tminus1, posy_tminus1, color='pink')
 for other in range(1, 21):
     posx2, posy2 = tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY']
+    velx2, vely2 = tmp1[f'other{other}MoveX'], tmp1[f'other{other}MoveY']
     posx2tminus1, posy2tminus1 = tminus1[f'other{other}NextX'], tminus1[f'other{other}NextY']
     ax.scatter(posx2, posy2, color='gray')
     ax.text(posx2, posy2, str(other))
     ax.scatter(posx2tminus1, posy2tminus1, color='blue', alpha=0.2)
-    if other == 12 or other == 14 or other == 16 or other == 18:
-        ax.plot((posx1, posx2), (posy1, posy2))
-    
+    try:
+        if other == dist_other[0][0]:
+            ax.plot((posx1, posx2), (posy1, posy2))
+            brakeRate = mf.BrakingRate(velx1, vely1, posx1, posy1, 
+                                       velx2, vely2, posx2, posy2)
+            print(brakeRate)
+    except IndexError:
+        print('There is no one to focus on')
+        
+
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditions(cond, feature):
     df_cond = pd.DataFrame()

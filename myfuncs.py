@@ -462,8 +462,7 @@ def plot_dist_per_cond(
         ID: int, 
         agents: Literal[5, 10, 20], 
         dist: Literal['dist_actual_ideal', 'dist_closest', 
-                      'dist_top12_closest', 'dist_from_start'],
-        nihongo = False
+                      'dist_top12_closest', 'dist_from_start']
         ) -> None:
     """
     Plot information of distance in separated axes (1, 3). 
@@ -572,8 +571,11 @@ def J_CPx(velx1, vely1, posx1, posy1,
     """
     nume = velx2*vely1*posx1 - velx1*vely2*posx2 + velx1*velx2*(posy2 - posy1)
     deno = velx2*vely1 - velx1*vely2
-    val = nume / deno    
-    return val
+    try:
+        val = nume / deno    
+        return val
+    except ZeroDivisionError:
+        return None
 
 def K_CPy(velx1, vely1, posx1, posy1, 
           velx2, vely2, posx2, posy2):
@@ -584,8 +586,11 @@ def K_CPy(velx1, vely1, posx1, posy1,
     """
     CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
-    val = (vely1 / velx1) * (CPx - posx1) + posy1
-    return val
+    try:
+        val = (vely1 / velx1) * (CPx - posx1) + posy1
+        return val
+    except:
+        return None
 
 def L_TTCP0(velx1, vely1, posx1, posy1, 
             velx2, vely2, posx2, posy2):
@@ -603,21 +608,24 @@ def L_TTCP0(velx1, vely1, posx1, posy1,
     CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     CPy = K_CPy(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
-    if ( 
-            ( (posx1 < CPx and velx1 > 0) or (posx1 > CPx and velx1 < 0) ) 
-        and
-            ( (posy1 < CPy and vely1 > 0) or (posy1 > CPy and vely1 < 0) )
-        ):
-        
-        nume = np.sqrt(
-            (CPx - posx1)**2 + (CPy - posy1)**2
-        )
-        deno = np.sqrt(
-            (velx1**2 + vely1**2)
-        )
-        
-        val = nume / deno
-        return val 
+    try:
+        if ( 
+                ( (posx1 < CPx and velx1 > 0) or (posx1 > CPx and velx1 < 0) ) 
+            and
+                ( (posy1 < CPy and vely1 > 0) or (posy1 > CPy and vely1 < 0) )
+            ):
+            
+            nume = np.sqrt(
+                (CPx - posx1)**2 + (CPy - posy1)**2
+            )
+            deno = np.sqrt(
+                (velx1**2 + vely1**2)
+            )
+            
+            val = nume / deno
+            return val 
+    except TypeError:
+        return None
     
     else:
         return None
@@ -639,21 +647,24 @@ def M_TTCP1(velx1, vely1, posx1, posy1,
     CPx = J_CPx(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     CPy = K_CPy(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
-    if ( 
-            ( (posx2 < CPx and velx2 > 0) or (posx2 > CPx and velx2 < 0) ) 
-        and
-            ( (posy2 < CPy and vely2 > 0) or (posy2 > CPy and vely2 < 0) )
-        ):
-        
-        nume = np.sqrt(
-            (CPx - posx2)**2 + (CPy - posy2)**2
-        )
-        deno = np.sqrt(
-            (velx2**2 + vely2**2)
-        )
-        
-        val = nume / deno
-        return val
+    try:
+        if ( 
+                ( (posx2 < CPx and velx2 > 0) or (posx2 > CPx and velx2 < 0) ) 
+            and
+                ( (posy2 < CPy and vely2 > 0) or (posy2 > CPy and vely2 < 0) )
+            ):
+            
+            nume = np.sqrt(
+                (CPx - posx2)**2 + (CPy - posy2)**2
+            )
+            deno = np.sqrt(
+                (velx2**2 + vely2**2)
+            )
+            
+            val = nume / deno
+            return val
+    except TypeError:
+        return None
     
     else:
         return None 
@@ -668,8 +679,11 @@ def N_deltaTTCP(velx1, vely1, posx1, posy1,
     TTCP0 = L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     TTCP1 = M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     
-    val = abs(TTCP0 - TTCP1)
-    return val
+    try:
+        val = abs(TTCP0 - TTCP1)
+        return val
+    except:
+        return -1
 
 def O_Judge(velx1, vely1, posx1, posy1, 
             velx2, vely2, posx2, posy2, 
@@ -769,3 +783,11 @@ def BrakingRate(velx1, vely1, posx1, posy1,
         val = term1 * term2
         return val
     
+# %%
+def awareness_model(deltaTTCP, Px, Py, myVel, otherVel, theta, NiC):
+    deno = 1 + np.exp(
+        -(-1.2 + 0.018*deltaTTCP - 0.1*Px - 1.1*Py - 0.25*myVel + \
+          0.29*otherVel - 2.5*theta - 0.62*NiC)    
+    )
+    val = 1 / deno
+    return val
