@@ -10,7 +10,6 @@ import seaborn as sns
 
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from tslearn.neighbors import KNeighborsTimeSeriesClassifier as tsKNTSC
@@ -26,14 +25,15 @@ from myfuncs import col, SUBJECTS, CONDITIONS, TRIALS
 #%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
-# %% generalized the awareness model
-df = mf.make_df_trial(df_all, 17, 'omoiyari', 20, 6)
+# %% try to calculate the Nic and complete the awareness model
+# must rescale the values. The parameters of Awareness model might be calculated 
+# using the different sclaes such as meter, m/s, and so on.
+df = mf.make_df_trial(df_all, 10, 'isogi', 20, 6)
 col(df)
 
-#mf.anim_movements(tmp)
 tminus1 = ...
-braking_rates_focused = [0]
 focused_other = [0]
+others_in_view = [i for i in range(1, 21)]
 for data in df.iterrows():
     awm = []
     if not data[0] == 0:
@@ -46,7 +46,8 @@ for data in df.iterrows():
             posx_tminus1 = tminus1[1]['myNextX']
             posy_tminus1 = tminus1[1]['myNextY']
             
-            deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+            deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, 
+                                       velx2, vely2, posx2, posy2)
             Px = posx2 - posx1
             Py = posy2 - posy1
             
@@ -54,11 +55,17 @@ for data in df.iterrows():
                 slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
                 slope2 = (posy2 - posy1) / (posx2 - posx1)
                 theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
+                if np.rad2deg(theta) > 90:
+                    others_in_view.pop(other+1)
             except ZeroDivisionError:
                 awm.append((other, 0))
                 continue
             
-            NiC = 2
+            Nic = -1
+            dist_to_the_other = data[1][f'distOther{other}']
+            for i in others_in_view:
+                if data[1][f'distOther{i}'] <= dist_to_the_other:
+                    Nic += 1
             
             dist1 = mf.calc_distance(
                 data[1]['myNextX'], data[1]['myNextY'], 
@@ -71,8 +78,9 @@ for data in df.iterrows():
             )
             speed2 = dist2 / 100
             
-            aw = mf.awareness_model(deltaTTCP, Px, Py, speed1, speed2, theta, NiC)
-            awm.append((other, aw))
+            aw = mf.awareness_model(deltaTTCP, Px, Py, speed1, speed2, theta, Nic)
+            if other in others_in_view:
+                awm.append((other, aw))
             
         to_focus = [i for i, j in awm if j == 1.0]
         dist_other = [(other, data[1][f'distOther{other}']) for other in to_focus]
@@ -92,11 +100,9 @@ for data in df.iterrows():
             braking_rate_focused = 0
             
         focused_other.append(focused)
-        braking_rates_focused.append(braking_rate_focused)
         
     tminus1 = data
 
-df['BrakingRate_focused'] = braking_rates_focused
 df['focused_other'] = focused_other
 
 # %% try to animate how the focused others were selected
@@ -137,82 +143,6 @@ def update(data):
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
                      interval=250, cache_frame_data=False)
 anim.save('awareness.mp4')    
-
-# %% implement the awareness model for at one time
-tmp = mf.make_df_trial(df_all, 10, 'omoiyari', 20, 1)
-idx = 39
-tmp1 = tmp.iloc[idx]
-tminus1 = tmp.iloc[idx-1]
-col(tmp1)
-
-#mf.anim_movements(tmp)
-
-awm = []
-for other in range(1, 21):
-    velx1, vely1 = tmp1['myMoveX'], tmp1['myMoveY']
-    posx1, posy1 = tmp1['myNextX'], tmp1['myNextY']
-    velx2, vely2 = tmp1[f'other{other}MoveX'], tmp1[f'other{other}MoveY']
-    posx2, posy2 = tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY']
-    
-    posx_tminus1 = tminus1['myNextX']
-    posy_tminus1 = tminus1['myNextY']
-    
-    TTCP0 = mf.L_TTCP0(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    TTCP1 = mf.M_TTCP1(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    deltaTTCP = mf.N_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    Px = posx2 - posx1
-    Py = posy2 - posy1
-    
-    slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
-    
-    slope2 = (posy2 - posy1) / (posx2 - posx1)
-
-    theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
-    
-    NiC = 2
-    
-    dist1 = mf.calc_distance(tmp1['myNextX'], tmp1['myNextY'], 
-                             tminus1['myNextX'], tminus1['myNextY'])
-    speed1 = dist1 / 100
-    
-    dist2 = mf.calc_distance(tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY'], 
-                             tminus1[f'other{other}NextX'], tminus1[f'other{other}NextY'])
-    speed2 = dist2 / 100
-    
-    aw = mf.awareness_model(deltaTTCP, Px, Py, speed1, speed2, theta, NiC)
-    awm.append((other, aw))
-    print(other, 'theta', theta)
-print(awm)
-
-to_focus = []
-for i, j in awm:
-    if j == 1.0:
-        to_focus.append(i)
-dist_other = []
-for other in to_focus:
-    dist_other.append((other, tmp1[f'distOther{other}']))
-dist_other.sort(key=lambda tup: tup[1])
-print(dist_other)
-
-fig, ax = plt.subplots()
-ax.scatter(posx1, posy1, color='red')
-ax.scatter(posx_tminus1, posy_tminus1, color='pink')
-for other in range(1, 21):
-    posx2, posy2 = tmp1[f'other{other}NextX'], tmp1[f'other{other}NextY']
-    velx2, vely2 = tmp1[f'other{other}MoveX'], tmp1[f'other{other}MoveY']
-    posx2tminus1, posy2tminus1 = tminus1[f'other{other}NextX'], tminus1[f'other{other}NextY']
-    ax.scatter(posx2, posy2, color='gray')
-    ax.text(posx2, posy2, str(other))
-    ax.scatter(posx2tminus1, posy2tminus1, color='blue', alpha=0.2)
-    try:
-        if other == dist_other[0][0]:
-            ax.plot((posx1, posx2), (posy1, posy2))
-            brakeRate = mf.BrakingRate(velx1, vely1, posx1, posy1, 
-                                       velx2, vely2, posx2, posy2)
-            print(brakeRate)
-    except IndexError:
-        print('There is no one to focus on')
-        
 
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditions(cond, feature):
@@ -354,46 +284,12 @@ for idx, data in enumerate(res_df.iterrows()):
 plt.tight_layout()
 plt.show()
 
-# look through all subjects' clustering patterns
-# feature= 'dist_closest'
-# for ID in SUBJECTS:
-#     df = pd.DataFrame()
-#     for trial in TRIALS:
-#         for cond in CONDITIONS: # ['isogi', 'yukkuri', 'omoiyari']
-#             tmp = mf.make_df_trial(df_all, ID, cond, 20, trial)[dist]
-#             if feature== 'dist_actual_ideal':
-#                 tmp = tmp.iloc[1:]
-#             df = pd.concat([df, tmp], axis=1)
-    
-#     n = 3
-#     km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
-#     labels_euclidean = km_euclidean.fit_predict(df.T)
-#     print(Counter(labels_euclidean))
-#     time_np = to_time_series_dataset(df.T)
-#     true_labs = CONDITIONS * 8
-#     colors =  ['tab:blue', 'tab:orange', 'tab:green']
-    
-#     res_df = df.T.copy()
-#     res_df['clustered'] = labels_euclidean
-#     res_df['true_labels'] = true_labs
-    
-#     fig, ax = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
-#     for idx, data in enumerate(res_df.iterrows()):
-#         if data[1]['true_labels'] == 'omoiyari': color = 'tab:green'
-#         elif data[1]['true_labels'] == 'isogi': color='tab:blue'
-#         elif data[1]['true_labels'] == 'yukkuri': color = 'tab:orange'
-#         ax[data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.7)
-#     plt.tight_layout()
-#     plt.show()
-#     print('ID', ID)
-
 # %% KNeighborsTimeSeriesClassifier from tslean (classification)
 # ex. shape (40, 100, 6) = (data, timepoints, variables)
 # each timepoint has 6 variables
 # thus, the prepared data's shape must be (696, 191, ?5)
 # where, 696=3x8x29, 191=max_length, ?5=len(features)
 
-# be careful not to make tuples
 features = ['timerTrial', 
             'dist_from_start', 
             'dist_actual_ideal',
@@ -535,9 +431,3 @@ mf.plot_dist_per_cond(df_all, ID, agents, "dist_from_start")
 
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_actual_ideal")
 mf.plot_all_dist_compare_conds(df_all, SUBJECTS, agents, "dist_from_start")
-
-# %% why doesn't it calculate degrees?
-
-# need to consider how to deal with unmoving degree.
-# when the position of time t and time t+1 is same, the degree will be None but 
-# it should be punished most, but how?

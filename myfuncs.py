@@ -784,10 +784,13 @@ def BrakingRate(velx1, vely1, posx1, posy1,
         return val
     
 # %%
-def awareness_model(deltaTTCP, Px, Py, myVel, otherVel, theta, NiC):
+def awareness_model(deltaTTCP, Px, Py, myVel, otherVel, theta, Nic):
+    """
+    need to rescale the values so that it will fit to the bird-view experiment
+    """
     deno = 1 + np.exp(
         -(-1.2 + 0.018*deltaTTCP - 0.1*Px - 1.1*Py - 0.25*myVel + \
-          0.29*otherVel - 2.5*theta - 0.62*NiC)    
+          0.29*otherVel - 2.5*theta - 0.62*Nic)    
     )
     val = 1 / deno
     return val
