@@ -72,9 +72,9 @@ df['W_distance'] = df.apply(ci.W_distance, axis=1)
 
 col(df)
 
-# %% display TCPA and DCPA for understanding
-import matplotlib
-matplotlib.rc('font', family='BIZ UDGothic')
+# %% animte the moving behaviors and the transactions of indexes
+plt.rcParams['font.size'] = 12
+plt.rcParams['font.family'] = 'BIZ UDGothic'
 
 fig, ax = plt.subplots(2, 3, figsize=(14, 10))
 
@@ -142,16 +142,16 @@ def update(frame):
     
     # ax[0,1] deltaTTCP (2者の交点までの時間差)
     ax[0,1].cla()
-    ax[0,1].set_title('deltaTTCP (2者の交点までの時間差)')
+    ax[0,1].set_title('ΔTTCP (2者の交点までの時間差)')
     ax[0,1].set_xlim(0, xmax+1)
     ax[0,1].set_ylim(0, deltaTTCP_ymax+0.5)
     ax[0,1].grid()
     ax[0,1].plot(deltaTTCP, lw=linewidth, color='chocolate', alpha=0.7)
     ax[0,1].plot(df['N_deltaTTCP'], lw=linewidth, color='chocolate', alpha=0.1)
     
-    # ax[0,2] 判断エントロピー
+    # ax[0,2] 判断エントロピー 
     ax[0,2].cla()
-    ax[0,2].set_title('判断エントロピー：0(確定的)～1(曖昧)')
+    ax[0,2].set_title('判断エントロピー：0(確定的)～1(曖昧)', size=13)
     ax[0,2].set_xlim(0, xmax+1)
     ax[0,2].set_ylim(-0.01, 1)
     ax[0,2].grid()
