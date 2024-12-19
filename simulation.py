@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 import tqdm, gc
 import simfuncs
 
@@ -21,10 +22,15 @@ ims = []
 
 for num in range(TRIAL):
     np.random.seed(num)
-    O = simfuncs.simulation(agent_size=0.1, agent=25, view=1, 
-                            viewing_angle=360, goal_vec=0.06,  
-                            simple_avoid_vec=0.06, dynamic_avoid_vec=0.06, 
-                            step=500, avoidance='dynamic')
+    O = simfuncs.simulation(agent_size=0.1, 
+                            agent=25, 
+                            view=1, 
+                            viewing_angle=360, 
+                            goal_vec=0.06,  
+                            simple_avoid_vec=0.06, 
+                            dynamic_avoid_vec=0.06, 
+                            step=500, 
+                            avoidance='simple')
 
     data = []
     column_label = []
@@ -237,7 +243,6 @@ df.to_csv(f'{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.csv')
 print(df) # show results
 gc.collect()
 
-# %% save as an animation
 ani = animation.ArtistAnimation(fig, ims, interval=INTERVAL, repeat=False)
-ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.gif')
+ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.mp4')
 gc.collect()

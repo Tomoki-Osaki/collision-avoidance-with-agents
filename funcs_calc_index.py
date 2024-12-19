@@ -116,7 +116,9 @@ def P_JudgeEntropy(df):
         -O2 * LOG(O2) - (1 - O2) * LOG(1 - O2)
     , "")
     """
-    val = -df['O_Judge'] * np.log10(df['O_Judge']) - (1 - df['O_Judge']) * np.log10(1 - df['O_Judge'])
+    # perhaps it should be calculated by loge instead of log10?
+    #val = -df['O_Judge'] * np.log10(df['O_Judge']) - (1 - df['O_Judge']) * np.log10(1 - df['O_Judge'])
+    val = -df['O_Judge'] * np.log(df['O_Judge']) - (1 - df['O_Judge']) * np.log(1 - df['O_Judge'])    
     return val
 
 def Q_equA(df):
@@ -187,8 +189,18 @@ def W_distance(df):
     
 
 def plot_traj(df):
-    for x1, y1, x2, y2 in zip(df['B_posx1'], df['C_posy1'], 
-                              df['F_posx2'], df['G_posy2']):
-        plt.scatter(x1, y1, color='red')
-        plt.scatter(x2, y2, color='blue')
+    for x1, y1, x2, y2 in zip(
+            df['/vrpn_client_node/body_0/pose/field.pose.position.x'], 
+            df['/vrpn_client_node/body_0/pose/field.pose.position.z'], 
+            df['/vrpn_client_node/body_1/pose/field.pose.position.x'], 
+            df['/vrpn_client_node/body_1/pose/field.pose.position.z']
+            ):
+        plt.scatter(x1, y1, color='red', alpha=0.3)
+        plt.scatter(x2, y2, color='blue', alpha=0.3)
+    plt.scatter(df['/vrpn_client_node/body_0/pose/field.pose.position.x'][0], 
+                df['/vrpn_client_node/body_0/pose/field.pose.position.z'][0], 
+                color='red', s=150)
+    plt.scatter(df['/vrpn_client_node/body_1/pose/field.pose.position.x'][0], 
+                df['/vrpn_client_node/body_1/pose/field.pose.position.z'][0],
+                color='blue', s=150)
     plt.show()

@@ -164,7 +164,7 @@ cond = 'isogi'
 df = make_df_for_clustering_per_conditions(cond, feature)
 df.fillna(0, inplace=True)
 
-def clustering(df, cond, feature):
+def clustering(df, n, cond, feature):
     km_euclidean = TimeSeriesKMeans(n_clusters=n, metric='dtw', random_state=2)
     labels_euclidean = km_euclidean.fit_predict(df[feature].T)
     df_res = df.copy().T
@@ -175,7 +175,7 @@ def clustering(df, cond, feature):
 
 mf.find_proper_num_clusters(df)
 n = 5
-df_res = clustering(df, cond, feature)
+df_res = clustering(df, n, cond, feature)
 
 fig, axs = plt.subplots(1, n, figsize=(15, 5), sharex=True, sharey=True)
 for data in df_res.iterrows():
@@ -189,11 +189,15 @@ plt.tight_layout()
 plt.show()
 print('\nfeature:', feature); print('cond:', cond)
 
+
+# plot the results of all conditions in one figure (3x3)
 feature = 'dist_from_start'
+feature = 'dist_actual_ideal'
+n = 3
 df_res = pd.DataFrame()
 for cond in CONDITIONS:
     df_tmp = make_df_for_clustering_per_conditions(cond, feature)
-    df_tmp = clustering(df_tmp, cond, feature)
+    df_tmp = clustering(df_tmp, n, cond, feature)
     df_res = pd.concat([df_res, df_tmp])
 clus_col = df_res.pop('clustered')
 cond_col = df_res.pop('condition')
@@ -214,11 +218,12 @@ for data in df_res.iterrows():
         n = 2
         color='tab:green'
     axs[n, data[1]['clustered']].plot(data[1][:-2], color=color, alpha=0.5)
-    if data[1]['clustered'] == 1:
-        axs[n, data[1]['clustered']].set_title(data[1]['condition'])
+    # if data[1]['clustered'] == 1:
+    #     axs[n, data[1]['clustered']].set_title(data[1]['condition'])
 for i in range(3):
     for j in range(3):
         axs[i, j].grid()
+#plt.tight_layout()
 plt.show()
 
 # %% plot all clusterings in one figure

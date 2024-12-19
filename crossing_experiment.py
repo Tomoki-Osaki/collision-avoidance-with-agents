@@ -146,8 +146,8 @@ def update(frame):
     ax[0,1].set_xlim(0, xmax+1)
     ax[0,1].set_ylim(0, deltaTTCP_ymax+0.5)
     ax[0,1].grid()
-    ax[0,1].plot(deltaTTCP, lw=linewidth, color='chocolate', alpha=0.7)
-    ax[0,1].plot(df['N_deltaTTCP'], lw=linewidth, color='chocolate', alpha=0.1)
+    ax[0,1].plot(deltaTTCP, lw=linewidth, color='green', alpha=0.7)
+    ax[0,1].plot(df['N_deltaTTCP'], lw=linewidth, color='green', alpha=0.1)
     
     # ax[0,2] 判断エントロピー 
     ax[0,2].cla()
@@ -155,8 +155,8 @@ def update(frame):
     ax[0,2].set_xlim(0, xmax+1)
     ax[0,2].set_ylim(-0.01, 1)
     ax[0,2].grid()
-    ax[0,2].plot(JudgeEntropy, lw=linewidth, color='green', alpha=0.7)
-    ax[0,2].plot(df['P_JudgeEntropy'], lw=linewidth, color='green', alpha=0.08)
+    ax[0,2].plot(JudgeEntropy, lw=linewidth, color='crimson', alpha=0.7)
+    ax[0,2].plot(df['P_JudgeEntropy'], lw=linewidth, color='crimson', alpha=0.08)
     
     # ax[1,0] TCPA (最接近点までの時間)
     ax[1,0].cla()
@@ -164,7 +164,7 @@ def update(frame):
     ax[1,0].set_xlim(0, xmax+1)
     ax[1,0].set_ylim(0, TCPA_ymax+0.5)
     ax[1,0].grid()
-    ax[1,0].plot(TCPA, lw=linewidth, color='gray')
+    #ax[1,0].plot(TCPA, lw=linewidth, color='gray')
     ax[1,0].plot(df['T_TCPA'], lw=linewidth, color='gray', alpha=0.12)
     ax[1,0].text(x=0.3, y=-0.2, s=f'時間：{frame[0]} (100ms)', 
                  size=13, transform=ax[1,1].transAxes)    
@@ -175,8 +175,8 @@ def update(frame):
     ax[1,1].set_xlim(0, xmax+1)
     ax[1,1].set_ylim(0, DCPA_ymax+0.5)
     ax[1,1].grid()
-    ax[1,1].plot(DCPA, lw=linewidth, color='orange', alpha=0.7)
-    ax[1,1].plot(df['U_DCPA'], lw=linewidth, color='orange', alpha=0.12)
+    #ax[1,1].plot(DCPA, lw=linewidth, color='chocolate', alpha=0.7)
+    ax[1,1].plot(df['U_DCPA'], lw=linewidth, color='chocolate', alpha=0.12)
     
     # ax[1,2] ブレーキ率
     ax[1,2].cla()
@@ -184,7 +184,7 @@ def update(frame):
     ax[1,2].set_xlim(0, xmax+1)
     ax[1,2].set_ylim(-0.01, 1)
     ax[1,2].grid()
-    ax[1,2].plot(BrakingRate, lw=linewidth, color='purple', alpha=0.7)
+    #ax[1,2].plot(BrakingRate, lw=linewidth, color='purple', alpha=0.7)
     ax[1,2].plot(df['V_BrakingRate'], lw=linewidth, color='purple', alpha=0.1)
     
 anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False, 
