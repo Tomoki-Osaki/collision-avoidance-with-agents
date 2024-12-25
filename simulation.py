@@ -7,7 +7,7 @@ import tqdm, gc
 import simfuncs
 
 # %%
-INTERVAL = simfuncs.INTERVAL
+INTERVAL = simfuncs.INTERVAL # 100
 TRIAL = 1 # number of trials
 
 # %%
@@ -30,7 +30,7 @@ for num in range(TRIAL):
                             simple_avoid_vec=0.06, 
                             dynamic_avoid_vec=0.06, 
                             step=500, 
-                            avoidance='simple')
+                            avoidance='dynamic')
 
     data = []
     column_label = []
@@ -82,7 +82,6 @@ for num in range(TRIAL):
     plot_data = O.showImage()
     im = ax.scatter(*plot_data, marker="o", s=40, c='blue')
     ims.append([im])
-
 
     # シミュレーション
     for t in tqdm.tqdm(range(O.step)):
@@ -241,8 +240,6 @@ df = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
 df.to_csv(f'{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.csv')
 print(df) # show results
-gc.collect()
 
 ani = animation.ArtistAnimation(fig, ims, interval=INTERVAL, repeat=False)
 ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.mp4')
-gc.collect()

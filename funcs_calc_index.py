@@ -116,9 +116,10 @@ def P_JudgeEntropy(df):
         -O2 * LOG(O2) - (1 - O2) * LOG(1 - O2)
     , "")
     """
-    # perhaps it should be calculated by loge instead of log10?
+    # must confirm what the base is (e, 10, 2)
     #val = -df['O_Judge'] * np.log10(df['O_Judge']) - (1 - df['O_Judge']) * np.log10(1 - df['O_Judge'])
-    val = -df['O_Judge'] * np.log(df['O_Judge']) - (1 - df['O_Judge']) * np.log(1 - df['O_Judge'])    
+    #val = -df['O_Judge'] * np.log(df['O_Judge']) - (1 - df['O_Judge']) * np.log(1 - df['O_Judge'])    
+    val = -df['O_Judge'] * np.log2(df['O_Judge']) - (1 - df['O_Judge']) * np.log2(1 - df['O_Judge'])    
     return val
 
 def Q_equA(df):

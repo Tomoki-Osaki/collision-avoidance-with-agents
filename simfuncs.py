@@ -73,12 +73,14 @@ def define_fig_ax(width=500, height=500):
 
 # %% functions to calculate the vectors
 def calc_rad(pos2, pos1): # pos1からpos2のベクトルの角度を返す
-    return np.arctan2(pos2[1] - pos1[1], pos2[0] - pos1[0])
+    val = np.arctan2(pos2[1] - pos1[1], pos2[0] - pos1[0])
+    return val
 
 def rotate_vec(vec, rad): # ベクトルをradだけ回転させる
-    return np.dot(np.array([[np.cos(rad), -np.sin(rad)], 
-                            [np.sin(rad), np.cos(rad)]]), 
-                  vec.T).T
+    rotation = np.array([[np.cos(rad), -np.sin(rad)], 
+                         [np.sin(rad), np.cos(rad)]])
+    val = np.dot(rotation, vec.T).T
+    return val
 
 # %% シミュレーションに関わるクラス
 class simulation():
