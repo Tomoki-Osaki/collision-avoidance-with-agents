@@ -23,10 +23,11 @@ import myfuncs as mf
 from myfuncs import col, SUBJECTS, CONDITIONS, TRIALS
 
 #%% loading the data
-df_all = mf.make_dict_of_all_info(SUBJECTS)
+#df_all = mf.make_dict_of_all_info(SUBJECTS)
+df_all = mf.make_dict_of_all_info([1, 2, 3, 4, 5])
 
 # %% practice of implement of the awareness model
-df = mf.make_df_trial(df_all, 10, 'isogi', 20, 6)
+df = mf.make_df_trial(df_all, 5, 'isogi', 20, 1)
 df = df[20:50]
 mf.anim_movements(df)
 df = df.iloc[45, :]
@@ -54,7 +55,7 @@ def calc_nic(df, agent):
     
     return Nic_agents
     
-calc_nic(df, 3)
+calc_nic(df, 12)
 
 # %% try to calculate the Nic and complete the awareness model
 # must rescale the values. The parameters of Awareness model might be calculated 

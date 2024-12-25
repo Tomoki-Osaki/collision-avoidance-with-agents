@@ -275,9 +275,9 @@ def make_dict_of_all_info(subjects: list[int] = SUBJECTS,
     """
     pd.options.mode.chained_assignment = None # otherwise there'll be many warnings
     
-    df_all = make_empty_hierarchical_df(SUBJECTS, CONDITIONS, NUM_AGENTS)
+    df_all = make_empty_hierarchical_df(subjects, CONDITIONS, NUM_AGENTS)
         
-    for ID in tqdm(SUBJECTS):
+    for ID in tqdm(subjects):
         for cond in CONDITIONS:
         
             df = pd.read_csv(f'{folder_path}/{ID}_{cond}.csv')
