@@ -12,9 +12,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.animation import FuncAnimation
 from tslearn.clustering import TimeSeriesKMeans
-
-from tqdm import tqdm
 from typing import Literal
+from tqdm import tqdm
 
 # %%
 def col(df):
@@ -558,7 +557,7 @@ def anim_movements(df_tri, save_name='video.mp4'):
                        labelbottom=False, bottom=False) 
         
     anim = FuncAnimation(fig, update, frames=df_tri.iterrows(), repeat=False, 
-                         interval=100, cache_frame_data=False)
+                         interval=200, cache_frame_data=False)
     anim.save(save_name)    
     
 # %% calculate the judge entropy
@@ -784,13 +783,20 @@ def BrakingRate(velx1, vely1, posx1, posy1,
         return val
     
 # %%
-def awareness_model(deltaTTCP, Px, Py, myVel, otherVel, theta, Nic):
+def awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic):
     """
-    need to rescale the values so that it will fit to the bird-view experiment
+    may need to rescale the values so that it will fit to the bird-view experiment
+    deltaTTCP: 自分のTTCPから相手のTTCPを引いた値
+    Px: 自分から見た相手の相対位置 (x座標)
+    Py: 自分から見た相手の相対位置 (y座標)
+    Vself: 自分の歩行速度
+    Vother: 相手の歩行速度
+    theta: 自分の向いている方向と相手の位置の角度差
+    Nic: 円内他歩行者数
     """
     deno = 1 + np.exp(
-        -(-1.2 + 0.018*deltaTTCP - 0.1*Px - 1.1*Py - 0.25*myVel + \
-          0.29*otherVel - 2.5*theta - 0.62*Nic)    
+        -(-1.2 + 0.018*deltaTTCP - 0.1*Px - 1.1*Py - 0.25*Vself + \
+          0.29*Vother - 2.5*theta - 0.62*Nic)    
     )
     val = 1 / deno
     return val

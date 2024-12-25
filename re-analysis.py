@@ -25,6 +25,37 @@ from myfuncs import col, SUBJECTS, CONDITIONS, TRIALS
 #%% loading the data
 df_all = mf.make_dict_of_all_info(SUBJECTS)
 
+# %% practice of implement of the awareness model
+df = mf.make_df_trial(df_all, 10, 'isogi', 20, 6)
+df = df[20:50]
+mf.anim_movements(df)
+df = df.iloc[45, :]
+
+def plot_pos(df):
+    plt.scatter(df['myNextX'], df['myNextY'], color='blue')
+    for i in range(1, 21):
+        plt.scatter(df[f'other{i}NextX'], df[f'other{i}NextY'], color='gray')
+        plt.annotate(i, xy=(df[f'other{i}NextX'], df[f'other{i}NextY']))
+
+plot_pos(df)
+
+def calc_nic(df, agent):
+    my_pos = (df['myNextX'], df['myNextY'])
+    agent_pos = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
+    cp = ( (my_pos[0] + agent_pos[0]) / 2, (my_pos[1] + agent_pos[1]) / 2 )
+    dist_cp_me = mf.calc_distance(cp[0], cp[1], my_pos[0], my_pos[1])
+    
+    Nic_agents = []
+    for i in range(1, 21):
+        other_pos = (df[f'other{i}NextX'], df[f'other{i}NextY'])
+        dist_cp_other = mf.calc_distance(cp[0], cp[1], other_pos[0], other_pos[1])
+        if dist_cp_other <= dist_cp_me and not i == agent:
+            Nic_agents.append(i)
+    
+    return Nic_agents
+    
+calc_nic(df, 3)
+
 # %% try to calculate the Nic and complete the awareness model
 # must rescale the values. The parameters of Awareness model might be calculated 
 # using the different sclaes such as meter, m/s, and so on.
@@ -144,6 +175,9 @@ anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False,
                      interval=250, cache_frame_data=False)
 anim.save('awareness.mp4')    
 
+
+
+################################################################################
 # %% perform clusterings for each condition and hopefully find specific patterns for that condition
 def make_df_for_clustering_per_conditions(cond, feature):
     df_cond = pd.DataFrame()
