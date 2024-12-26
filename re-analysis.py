@@ -31,7 +31,7 @@ df_ori = mf.make_df_trial(df_all, 5, 'isogi', 20, 1)
 #df = df[20:50]
 #mf.anim_movements(df)
 df = df_ori.iloc[45, :]
-df2 = df_ori.iloc[46, :]
+df2 = df_ori.iloc[44, :]
 
 def plot_pos(df):
     plt.scatter(df['myNextX'], df['myNextY'], color='blue')
@@ -54,27 +54,31 @@ def calc_nic(df, agent):
         if dist_cp_other <= dist_cp_me and not i == agent:
             Nic_agents.append(i)
     
-    plot_pos(df)
-    
     return Nic_agents
     
-agent = 16
-nic = len(calc_nic(df, agent))
-posx1, posy1 = (df['myNextX'], df['myNextY'])
-velx1, vely1 = (df['myNextX'], df['myNextY'])
-posx2, posy2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
-velx2, vely2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
-Px = posx2 - posx1
-Py = posy2 - posy1
-dist1 = mf.calc_distance(df2['myMoveX'], df2['myMoveY'], 
-                         df['myMoveX'], df['myMoveY'])
-Vself = dist1 / 100
-dist2 = mf.calc_distance(df2[f'other{agent}MoveX'], df2[f'other{agent}MoveY'], 
-                         df[f'other{agent}MoveX'], df[f'other{agent}MoveY'])
-Vother = dist2 / 100
-
-deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)  
+for agent in range(1, 21):
+    Nic = len(calc_nic(df, agent))
+    posx1, posy1 = (df['myNextX'], df['myNextY'])
+    velx1, vely1 = (df['myNextX'], df['myNextY'])
+    posx_tminus1, posy_tminus1 = (df2['myNextX'], df2['myNextY'])
+    posx2, posy2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
+    velx2, vely2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
+    Px = posx2 - posx1
+    Py = posy2 - posy1
+    dist1 = mf.calc_distance(df2['myMoveX'], df2['myMoveY'], 
+                             df['myMoveX'], df['myMoveY'])
+    Vself = dist1 / 100
+    dist2 = mf.calc_distance(df2[f'other{agent}MoveX'], df2[f'other{agent}MoveY'], 
+                             df[f'other{agent}MoveX'], df[f'other{agent}MoveY'])
+    Vother = dist2 / 100
+    
+    slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
+    slope2 = (posy2 - posy1) / (posx2 - posx1)
+    theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
+    
+    deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)  
+    print(agent, awm, Nic)
 
 # %% try to calculate the Nic and complete the awareness model
 # must rescale the values. The parameters of Awareness model might be calculated 
