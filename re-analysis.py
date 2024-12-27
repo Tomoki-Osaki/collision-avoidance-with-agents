@@ -30,8 +30,8 @@ df_all = mf.make_dict_of_all_info([1, 2, 3, 4, 5])
 df_ori = mf.make_df_trial(df_all, 5, 'isogi', 20, 1)
 #df = df[20:50]
 #mf.anim_movements(df)
-df = df_ori.iloc[45, :]
-df2 = df_ori.iloc[44, :]
+df = df_ori.iloc[25, :]
+df2 = df_ori.iloc[24, :]
 
 def plot_pos(df):
     plt.scatter(df['myNextX'], df['myNextY'], color='blue')
@@ -67,10 +67,10 @@ for agent in range(1, 21):
     Py = posy2 - posy1
     dist1 = mf.calc_distance(df2['myMoveX'], df2['myMoveY'], 
                              df['myMoveX'], df['myMoveY'])
-    Vself = dist1 / 100
+    Vself = dist1
     dist2 = mf.calc_distance(df2[f'other{agent}MoveX'], df2[f'other{agent}MoveY'], 
                              df[f'other{agent}MoveX'], df[f'other{agent}MoveY'])
-    Vother = dist2 / 100
+    Vother = dist2
     
     slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
     slope2 = (posy2 - posy1) / (posx2 - posx1)
@@ -78,7 +78,9 @@ for agent in range(1, 21):
     
     deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)  
-    print(agent, awm, Nic)
+    print('\ndeltaTTCP, Px, Py, Vself, Vother, theta, Nic')
+    print(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
+    print(agent, awm)
 
 # %% try to calculate the Nic and complete the awareness model
 # must rescale the values. The parameters of Awareness model might be calculated 

@@ -5,22 +5,23 @@ from matplotlib.animation import FuncAnimation
 import glob
 from myfuncs import col
 import funcs_calc_index as ci
+from tqdm import tqdm
 
 # %% choose data
 path = 'crossing_exp/glob_shaped/*.csv'
 flist = glob.glob(path)
 
-# 事例2　corssing1
-path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro2_index_7_8_9_to_12_1.bag.csv"
-df = pd.read_csv(path)
-print('事例2')
-ci.plot_traj(df)
+# # 事例2　corssing1
+# path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro2_index_7_8_9_to_12_1.bag.csv"
+# df = pd.read_csv(path)
+# print('事例2')
+# ci.plot_traj(df)
 
-# 事例1　crossing2
-path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro8_index_3_5_14_to_1_2.bag.csv"
-df = pd.read_csv(path)
-print('事例1')
-ci.plot_traj(df)
+# # 事例1　crossing2
+# path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro8_index_3_5_14_to_1_2.bag.csv"
+# df = pd.read_csv(path)
+# print('事例1')
+# ci.plot_traj(df)
 
 # 事例3　crossing4
 path = "crossing_exp/glob_shaped/20220405_all_group_ha_keiro10_index_10_14_1_to_8_9.bag.csv"
@@ -28,33 +29,39 @@ df = pd.read_csv(path)
 print('事例3')
 ci.plot_traj(df)
 
-#df = pd.read_csv(flist[3])
-df = pd.read_csv(flist[100])
-ci.plot_traj(df)
+# #df = pd.read_csv(flist[3])
+# df = pd.read_csv(flist[100])
+# ci.plot_traj(df)
 
 # %% preprocessing
-df = df[['/vrpn_client_node/body_0/pose/field.pose.position.x',
-         '/vrpn_client_node/body_0/pose/field.pose.position.z',
-         'body_0_vel_x', 
-         'body_0_vel_z',
-         '/vrpn_client_node/body_1/pose/field.pose.position.x',
-         '/vrpn_client_node/body_1/pose/field.pose.position.z',
-         'body_1_vel_x', 
-         'body_1_vel_z']]
+def make_column_names_shorter(df):
+    df = df[['/vrpn_client_node/body_0/pose/field.pose.position.x',
+             '/vrpn_client_node/body_0/pose/field.pose.position.z',
+             'body_0_vel_x', 
+             'body_0_vel_z',
+             '/vrpn_client_node/body_1/pose/field.pose.position.x',
+             '/vrpn_client_node/body_1/pose/field.pose.position.z',
+             'body_1_vel_x', 
+             'body_1_vel_z']]
+    
+    old_new_cols = {
+        '/vrpn_client_node/body_0/pose/field.pose.position.x': 'B_posx1',
+        '/vrpn_client_node/body_0/pose/field.pose.position.z': 'C_posy1',
+        'body_0_vel_x': 'D_velx1',
+        'body_0_vel_z': 'E_vely1',
+        '/vrpn_client_node/body_1/pose/field.pose.position.x': 'F_posx2',
+        '/vrpn_client_node/body_1/pose/field.pose.position.z': 'G_posy2',
+        'body_1_vel_x': 'H_velx2',
+        'body_1_vel_z': 'I_vely2'
+    }
+    
+    df = df.rename(columns=old_new_cols)
+    
+    return df
 
-old_new_cols = {
-    '/vrpn_client_node/body_0/pose/field.pose.position.x': 'B_posx1',
-    '/vrpn_client_node/body_0/pose/field.pose.position.z': 'C_posy1',
-    'body_0_vel_x': 'D_velx1',
-    'body_0_vel_z': 'E_vely1',
-    '/vrpn_client_node/body_1/pose/field.pose.position.x': 'F_posx2',
-    '/vrpn_client_node/body_1/pose/field.pose.position.z': 'G_posy2',
-    'body_1_vel_x': 'H_velx2',
-    'body_1_vel_z': 'I_vely2'
-}
+df = make_column_names_shorter(df)
 
-df = df.rename(columns=old_new_cols)
-
+# %% add columns of indexes
 df['J_CPx'] = ci.J_CPx(df)
 df['K_CPy'] = ci.K_CPy(df)
 df['L_TTCP0'] = df.apply(ci.L_TTCP0, axis=1)
@@ -192,3 +199,80 @@ anim = FuncAnimation(fig, update, frames=df.iterrows(), repeat=False,
 # plt.show()
 anim.save("crossing.mp4", writer='ffmpeg')
 plt.close()
+
+# %% try to implement the awareness model and confirm the scale
+import myfuncs as mf
+
+def calc_nic(df, agent):
+    my_pos = (df['B_posx1'], df['C_posy1'])
+    other_pos = (df['F_posx2'], df['G_posy2'])
+    cp = ( (my_pos[0] + other_pos[0]) / 2, (my_pos[1] + other_pos[1]) / 2 )
+    dist_cp_me = mf.calc_distance(cp[0], cp[1], my_pos[0], my_pos[1])
+    
+    Nic_agents = []
+    for i in range(1, 21):
+        other_pos = (df[f'other{i}NextX'], df[f'other{i}NextY'])
+        dist_cp_other = mf.calc_distance(cp[0], cp[1], other_pos[0], other_pos[1])
+        if dist_cp_other <= dist_cp_me and not i == agent:
+            Nic_agents.append(i)
+    
+    return Nic_agents
+    
+posx1, posy1 = (df['myNextX'], df['myNextY'])
+velx1, vely1 = (df['myNextX'], df['myNextY'])
+posx_tminus1, posy_tminus1 = (df2['myNextX'], df2['myNextY'])
+posx2, posy2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
+velx2, vely2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
+Px = posx2 - posx1
+Py = posy2 - posy1
+dist1 = mf.calc_distance(df2['myMoveX'], df2['myMoveY'], 
+                         df['myMoveX'], df['myMoveY'])
+Vself = dist1
+dist2 = mf.calc_distance(df2[f'other{agent}MoveX'], df2[f'other{agent}MoveY'], 
+                         df[f'other{agent}MoveX'], df[f'other{agent}MoveY'])
+Vother = dist2
+
+slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
+slope2 = (posy2 - posy1) / (posx2 - posx1)
+theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
+deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic) 
+
+for agent in range(1, 21):
+    Nic = len(calc_nic(df, agent))
+    posx1, posy1 = (df['myNextX'], df['myNextY'])
+    velx1, vely1 = (df['myNextX'], df['myNextY'])
+    posx_tminus1, posy_tminus1 = (df2['myNextX'], df2['myNextY'])
+    posx2, posy2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
+    velx2, vely2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
+    Px = posx2 - posx1
+    Py = posy2 - posy1
+    dist1 = mf.calc_distance(df2['myMoveX'], df2['myMoveY'], 
+                             df['myMoveX'], df['myMoveY'])
+    Vself = dist1
+    dist2 = mf.calc_distance(df2[f'other{agent}MoveX'], df2[f'other{agent}MoveY'], 
+                             df[f'other{agent}MoveX'], df[f'other{agent}MoveY'])
+    Vother = dist2
+    
+    slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
+    slope2 = (posy2 - posy1) / (posx2 - posx1)
+    theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
+    
+    deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)  
+    print('\ndeltaTTCP, Px, Py, Vself, Vother, theta, Nic')
+    print(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
+    print(agent, awm)
+
+# %%
+velx, vely = [], []
+for i in tqdm(range(200)):
+    df = pd.read_csv(flist[i])
+    df = make_column_names_shorter(df)
+    for x1, x2, y1, y2 in zip(
+            df['D_velx1'], df['H_velx2'], df['E_vely1'], df['I_vely2']
+        ):
+        velx.append(x1)
+        velx.append(x2)
+        vely.append(y1)
+        vely.append(y2)
