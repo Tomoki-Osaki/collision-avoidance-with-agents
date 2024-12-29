@@ -33,6 +33,8 @@ ci.plot_traj(df)
 # df = pd.read_csv(flist[100])
 # ci.plot_traj(df)
 
+df_ori = df.copy()
+
 # %% preprocessing
 def make_column_names_shorter(df):
     df = df[['/vrpn_client_node/body_0/pose/field.pose.position.x',
@@ -218,25 +220,55 @@ def calc_nic(df, agent):
     
     return Nic_agents
     
-posx1, posy1 = (df['myNextX'], df['myNextY'])
-velx1, vely1 = (df['myNextX'], df['myNextY'])
-posx_tminus1, posy_tminus1 = (df2['myNextX'], df2['myNextY'])
-posx2, posy2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
-velx2, vely2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
+df_t = df.iloc[30, :-1]
+df_tminus5 = df.iloc[25, :-1]
+posx1, posy1 = (df_t['B_posx1'], df_t['C_posy1'])
+velx1, vely1 = (df_t['D_velx1'], df_t['E_vely1'])
+posx_tminus5, posy_tminus5 = (df_tminus5['B_posx1'], df_tminus5['C_posy1'])
+
+# calculate velocity by dividing the distance by the peds proceeded for 0.5 sec (m/s)
+# compare to df.D_velx1
+e = [None] * 3
+for i in range(df.shape[0]):
+    try:
+        a = df.B_posx1[i]
+        b = df.B_posx1[i-5]
+        e.append((a - b) * 10/5)
+    except KeyError:
+        pass
+e = pd.Series(e)
+plt.plot(df.D_velx1); plt.plot(e)
+
+# compare to df.E_vely1
+f = [None] * 3
+for i in range(df.shape[0]):
+    try:
+        a = df.C_posy1[i]
+        b = df.C_posy1[i-5]
+        f.append((a - b) * 10/5)
+    except KeyError:
+        pass
+f = pd.Series(f)
+plt.plot(df.E_vely1); plt.plot(f)
+
+posx2, posy2 = (df_t['F_posx2'], df_t['G_posy2'])
+velx2, vely2 = (df_t['H_velx2'], df_t['I_vely2'])
 Px = posx2 - posx1
 Py = posy2 - posy1
-dist1 = mf.calc_distance(df2['myMoveX'], df2['myMoveY'], 
-                         df['myMoveX'], df['myMoveY'])
-Vself = dist1
-dist2 = mf.calc_distance(df2[f'other{agent}MoveX'], df2[f'other{agent}MoveY'], 
-                         df[f'other{agent}MoveX'], df[f'other{agent}MoveY'])
-Vother = dist2
+dist1 = mf.calc_distance(df_t['B_posx1'], df_t['C_posy1'], 
+                         df_tminus5['B_posx1'], df_tminus5['C_posy1'])
+Vself = dist1 * 10/5
+dist2 = mf.calc_distance(df_t['F_posx2'], df_t['G_posy2'], 
+                         df_tminus5['F_posx2'], df_tminus5['G_posy2'])
+Vother = dist2 * 10/5
 
-slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
+posx_tminus5, posy_tminus5 = df_tminus5['F_posx2'], df_tminus5['G_posy2']
+
+slope1 = (posy1 - posy_tminus5) / (posx1 - posx_tminus5)
 slope2 = (posy2 - posy1) / (posx2 - posx1)
 theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
 deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic) 
+awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic=1) 
 
 for agent in range(1, 21):
     Nic = len(calc_nic(df, agent))
