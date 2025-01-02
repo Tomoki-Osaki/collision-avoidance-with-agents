@@ -118,8 +118,8 @@ def P_JudgeEntropy(df):
     """
     # must confirm what the base is (e, 10, 2)
     #val = -df['O_Judge'] * np.log10(df['O_Judge']) - (1 - df['O_Judge']) * np.log10(1 - df['O_Judge'])
-    #val = -df['O_Judge'] * np.log(df['O_Judge']) - (1 - df['O_Judge']) * np.log(1 - df['O_Judge'])    
-    val = -df['O_Judge'] * np.log2(df['O_Judge']) - (1 - df['O_Judge']) * np.log2(1 - df['O_Judge'])    
+    val = -df['O_Judge'] * np.log(df['O_Judge']) - (1 - df['O_Judge']) * np.log(1 - df['O_Judge'])
+    
     return val
 
 def Q_equA(df):
@@ -190,18 +190,23 @@ def W_distance(df):
     
 
 def plot_traj(df):
+    plt.figure(figsize=(8, 8))
     for x1, y1, x2, y2 in zip(
             df['/vrpn_client_node/body_0/pose/field.pose.position.x'], 
             df['/vrpn_client_node/body_0/pose/field.pose.position.z'], 
             df['/vrpn_client_node/body_1/pose/field.pose.position.x'], 
             df['/vrpn_client_node/body_1/pose/field.pose.position.z']
             ):
-        plt.scatter(x1, y1, color='red', alpha=0.3)
-        plt.scatter(x2, y2, color='blue', alpha=0.3)
+        plt.scatter(x1, y1, color='blue', alpha=0.3)
+        plt.scatter(x2, y2, color='red', alpha=0.3)
     plt.scatter(df['/vrpn_client_node/body_0/pose/field.pose.position.x'][0], 
                 df['/vrpn_client_node/body_0/pose/field.pose.position.z'][0], 
-                color='red', s=150)
+                color='blue', s=150, label='ped0')
     plt.scatter(df['/vrpn_client_node/body_1/pose/field.pose.position.x'][0], 
                 df['/vrpn_client_node/body_1/pose/field.pose.position.z'][0],
-                color='blue', s=150)
+                color='red', s=150, label='ped1')
+    plt.xlim(-5, 5)
+    plt.ylim(-5, 5)
+    plt.grid()
+    plt.legend()
     plt.show()
