@@ -90,10 +90,11 @@ for i, j in enumerate(range(5, df.shape[0])):
 
     dir_to_other = (posy2 - posy1) / (posx2 - posx1)
     theta = np.arctan(np.abs(mydir - dir_to_other) / (1 + mydir * dir_to_other))
-    angles.append(theta)
     deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic=0) 
     awms.append(awm)
+    print('deltaTTCP, Px, Py, Vother, theta')
+    print(deltaTTCP, Px, Py, Vother, theta)
     
 plt.ylim(0, 1)
 plt.plot(awms)

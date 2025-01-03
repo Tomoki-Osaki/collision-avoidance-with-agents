@@ -24,27 +24,21 @@ from myfuncs import col, SUBJECTS, CONDITIONS, TRIALS
 
 #%% loading the data
 #df_all = mf.make_dict_of_all_info(SUBJECTS)
-df_all = mf.make_dict_of_all_info([1, 2, 3, 4, 5])
+df_all = mf.make_dict_of_all_info([1, 2, 3])
 
 # %% practice of implement of the awareness model
-df_ori = mf.make_df_trial(df_all, 5, 'isogi', 20, 1)
+df_ori = mf.make_df_trial(df_all, 3, 'isogi', 20, 1)
 #df = df[20:50]
-#mf.anim_movements(df)
+#mf.animate_movements(df)
 df = df_ori.iloc[25, :]
 df2 = df_ori.iloc[24, :]
 
-def plot_pos(df):
-    plt.scatter(df['myNextX'], df['myNextY'], color='blue')
-    for i in range(1, 21):
-        plt.scatter(df[f'other{i}NextX'], df[f'other{i}NextY'], color='gray')
-        plt.annotate(i, xy=(df[f'other{i}NextX'], df[f'other{i}NextY']))
+mf.plot_positions(df_ori, 25)
 
-plot_pos(df)
-
-def calc_nic(df, agent):
+def calc_Nic(df, agent):
     my_pos = (df['myNextX'], df['myNextY'])
     agent_pos = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
-    cp = ( (my_pos[0] + agent_pos[0]) / 2, (my_pos[1] + agent_pos[1]) / 2 )
+    cp = ( (my_pos[0]+agent_pos[0])/2, (my_pos[1]+agent_pos[1])/2 ) # center point
     dist_cp_me = mf.calc_distance(cp[0], cp[1], my_pos[0], my_pos[1])
     
     Nic_agents = []
@@ -57,7 +51,7 @@ def calc_nic(df, agent):
     return Nic_agents
     
 for agent in range(1, 21):
-    Nic = len(calc_nic(df, agent))
+    Nic = len(calc_Nic(df, agent))
     posx1, posy1 = (df['myNextX'], df['myNextY'])
     velx1, vely1 = (df['myNextX'], df['myNextY'])
     posx_tminus1, posy_tminus1 = (df2['myNextX'], df2['myNextY'])
@@ -65,22 +59,24 @@ for agent in range(1, 21):
     velx2, vely2 = (df[f'other{agent}NextX'], df[f'other{agent}NextY'])
     Px = posx2 - posx1
     Py = posy2 - posy1
-    dist1 = mf.calc_distance(df2['myMoveX'], df2['myMoveY'], 
-                             df['myMoveX'], df['myMoveY'])
+    dist1 = mf.calc_distance(df2['myNextX'], df2['myNextY'], 
+                             df['myNextX'], df['myNextY'])
     Vself = dist1
-    dist2 = mf.calc_distance(df2[f'other{agent}MoveX'], df2[f'other{agent}MoveY'], 
-                             df[f'other{agent}MoveX'], df[f'other{agent}MoveY'])
+    dist2 = mf.calc_distance(df2[f'other{agent}NextX'], df2[f'other{agent}NextY'], 
+                             df[f'other{agent}NextX'], df[f'other{agent}NextY'])
     Vother = dist2
     
     slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
     slope2 = (posy2 - posy1) / (posx2 - posx1)
     theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
+    theta = np.rad2deg(theta)
     
     deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)  
-    print('\ndeltaTTCP, Px, Py, Vself, Vother, theta, Nic')
-    print(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
-    print(agent, awm)
+    awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic) 
+    print('\n', agent, awm)
+    print('deltaTTCP, Px, Py, Vother, theta, Nic')
+    print(deltaTTCP, Px, Py, Vother, theta, Nic)
+    
 
 # %% try to calculate the Nic and complete the awareness model
 # must rescale the values. The parameters of Awareness model might be calculated 
