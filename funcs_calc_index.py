@@ -2,16 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 """
-B_posx1, 
-C_posy1, 
-D_velx1, 
-E_vely1, 
-F_posx2, 
-G_posy2, 
-H_velx2,
-I_vely2, 
-J_CPx, 
-K_CPy
+B_posx1, C_posy1, D_velx1, E_vely1, 
+F_posx2, G_posy2, H_velx2, I_vely2, 
 """
 
 def J_CPx(df):
@@ -189,21 +181,21 @@ def W_distance(df):
     return distance
     
 
-def plot_traj(df):
+def plot_traj(df_ori):
     plt.figure(figsize=(8, 8))
     for x1, y1, x2, y2 in zip(
-            df['/vrpn_client_node/body_0/pose/field.pose.position.x'], 
-            df['/vrpn_client_node/body_0/pose/field.pose.position.z'], 
-            df['/vrpn_client_node/body_1/pose/field.pose.position.x'], 
-            df['/vrpn_client_node/body_1/pose/field.pose.position.z']
+            df_ori['/vrpn_client_node/body_0/pose/field.pose.position.x'], 
+            df_ori['/vrpn_client_node/body_0/pose/field.pose.position.z'], 
+            df_ori['/vrpn_client_node/body_1/pose/field.pose.position.x'], 
+            df_ori['/vrpn_client_node/body_1/pose/field.pose.position.z']
             ):
         plt.scatter(x1, y1, color='blue', alpha=0.3)
         plt.scatter(x2, y2, color='red', alpha=0.3)
-    plt.scatter(df['/vrpn_client_node/body_0/pose/field.pose.position.x'][0], 
-                df['/vrpn_client_node/body_0/pose/field.pose.position.z'][0], 
+    plt.scatter(df_ori['/vrpn_client_node/body_0/pose/field.pose.position.x'][0], 
+                df_ori['/vrpn_client_node/body_0/pose/field.pose.position.z'][0], 
                 color='blue', s=150, label='ped0')
-    plt.scatter(df['/vrpn_client_node/body_1/pose/field.pose.position.x'][0], 
-                df['/vrpn_client_node/body_1/pose/field.pose.position.z'][0],
+    plt.scatter(df_ori['/vrpn_client_node/body_1/pose/field.pose.position.x'][0], 
+                df_ori['/vrpn_client_node/body_1/pose/field.pose.position.z'][0],
                 color='red', s=150, label='ped1')
     plt.xlim(-5, 5)
     plt.ylim(-5, 5)

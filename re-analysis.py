@@ -30,8 +30,8 @@ df_all = mf.make_dict_of_all_info([1, 2, 3])
 df_ori = mf.make_df_trial(df_all, 3, 'isogi', 20, 1)
 #df = df[20:50]
 #mf.animate_movements(df)
-df = df_ori.iloc[25, :]
-df2 = df_ori.iloc[24, :]
+df = df_ori.iloc[28, :]
+df2 = df_ori.iloc[27, :]
 
 mf.plot_positions(df_ori, 25)
 
@@ -69,7 +69,7 @@ for agent in range(1, 21):
     slope1 = (posy1 - posy_tminus1) / (posx1 - posx_tminus1)
     slope2 = (posy2 - posy1) / (posx2 - posx1)
     theta = np.arctan(np.abs(slope1 - slope2) / (1 + slope1 * slope2))
-    theta = np.rad2deg(theta)
+    #theta = np.rad2deg(theta)
     
     deltaTTCP = mf.deltaTTCP_N(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     awm = mf.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic) 

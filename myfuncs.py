@@ -532,9 +532,24 @@ def plot_result_of_clustering(km_euclidean, time_np, labels_euclidean, n_cluster
         ax.text(0.5, max(clus_arr[1])*0.8, f'Cluster{i} : n = {datanum}')
     plt.suptitle('time series clustering')
     plt.show()
+    
+# %%
+def plot_positions(df, time):
+    plt.figure(figsize=(8, 8))
+    plt.scatter(df.loc[time, 'myNextX'], df.loc[time, 'myNextY'], color='blue')
+    plt.scatter(df.loc[time-1, 'myNextX'], df.loc[time-1, 'myNextY'], 
+                color='blue', alpha=0.3)
+    for i in range(1, 21):
+        plt.scatter(df.loc[time, f'other{i}NextX'], df.loc[time, f'other{i}NextY'], 
+                    color='gray')
+        plt.annotate(i, xy=(df.loc[time, f'other{i}NextX'], 
+                            df.loc[time, f'other{i}NextY']))
+        plt.scatter(df.loc[time-1, f'other{i}NextX'], 
+                    df.loc[time-1, f'other{i}NextY'], 
+                    color='gray', alpha=0.3)
 
 # %%
-def anim_movements(df_tri, save_name='video.mp4'): 
+def animate_movements(df_tri, save_as='video.mp4'): 
     fig, ax = plt.subplots()
     def update(data):
         ax.cla()
@@ -558,7 +573,7 @@ def anim_movements(df_tri, save_name='video.mp4'):
         
     anim = FuncAnimation(fig, update, frames=df_tri.iterrows(), repeat=False, 
                          interval=200, cache_frame_data=False)
-    anim.save(save_name)    
+    anim.save(save_as)    
     
 # %% calculate the judge entropy
 def CPx_J(velx1, vely1, posx1, posy1, 
@@ -669,7 +684,8 @@ def TTCP1_M(velx1, vely1, posx1, posy1,
         return None 
 
 def deltaTTCP_N(velx1, vely1, posx1, posy1, 
-                velx2, vely2, posx2, posy2):
+                velx2, vely2, posx2, posy2,
+                return_when_undefined=None):
     """
     =IFERROR( 
         ABS(L2 - M2)
@@ -682,7 +698,7 @@ def deltaTTCP_N(velx1, vely1, posx1, posy1,
         val = abs(TTCP0 - TTCP1)
         return val
     except:
-        return -1
+        return return_when_undefined
 
 def Judge_O(velx1, vely1, posx1, posy1, 
             velx2, vely2, posx2, posy2, 
@@ -782,8 +798,35 @@ def BrakingRate(velx1, vely1, posx1, posy1,
         val = term1 * term2
         return val
     
-# %%
-def calc_nic(df, agent):
+# %% awareness model
+def calculate_angle(line1, line2):
+    """
+    2直線の角度を求める関数
+    line1, line2: 各直線を表す2点 [(x1, y1), (x2, y2)]
+    """
+    # 傾きを計算
+    def slope(point1, point2):
+        x1, y1 = point1
+        x2, y2 = point2
+        if x2 - x1 == 0:  # 垂直な直線の場合
+            return np.inf  # 無限大を返す
+        return (y2 - y1) / (x2 - x1)
+    
+    m1 = slope(*line1)
+    m2 = slope(*line2)
+    
+    # 垂直チェック
+    if m1 == np.inf and m2 == np.inf:
+        return 0  # 同じ垂直方向
+    elif m1 == np.inf or m2 == np.inf:
+        return 90  # 片方が垂直の場合
+    
+    # 角度を計算
+    angle_rad = np.arctan(np.abs((m2 - m1) / (1 + m1 * m2)))
+    return angle_rad
+
+
+def calc_Nic(df, agent):
     my_pos = (df['B_posx1'], df['C_posy1'])
     other_pos = (df['F_posx2'], df['G_posy2'])
     cp = ( (my_pos[0] + other_pos[0]) / 2, (my_pos[1] + other_pos[1]) / 2 )
@@ -798,19 +841,26 @@ def calc_nic(df, agent):
     
     return Nic_agents
 
+
 def awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic):
     """
-    deltaTTCP: 自分のTTCPから相手のTTCPを引いた値
-    Px: 自分から見た相手の相対位置 (x座標m)
-    Py: 自分から見た相手の相対位置 (y座標m)
-    Vself: 自分の歩行速度 (m/s)
-    Vother: 相手の歩行速度 (m/s)
-    theta: 自分の向いている方向と相手の位置の角度差
-    Nic: 円内他歩行者数
+    Inputs
+        deltaTTCP: 自分のTTCPから相手のTTCPを引いた値 (second)
+        Px: 自分から見た相手の相対位置 (x座標m)
+        Py: 自分から見た相手の相対位置 (y座標m)
+        Vself: 自分の歩行速度 (m/s)
+        Vother: 相手の歩行速度 (m/s)
+        theta: 自分の向いている方向と相手の位置の角度差 (rad)
+        Nic: 円内他歩行者数 (人)
+    Output
+        0(注視しない) - 1 (注視する)
     """
+    if deltaTTCP == None:
+        return 0
+    
     deno = 1 + np.exp(
-        -(-1.2 +0.018*deltaTTCP -0.1*Px -1.1*Py -0.25*Vself \
-          +0.29*Vother -2.5*theta -0.62*Nic)    
+        -(-1.2 +0.018*deltaTTCP -0.1*Px -1.1*Py \
+          -0.25*Vself +0.29*Vother -2.5*theta -0.62*Nic)    
     )
     val = 1 / deno
     return val
