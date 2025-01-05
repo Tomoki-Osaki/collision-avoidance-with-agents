@@ -553,17 +553,16 @@ class simulation():
         return all_Nics
     
     # 7. find the agents to focus on using the awareness model
-    def find_agents_to_focus(self):
-        agents_to_focus = {}
+    def find_agents_to_focus(self) -> np.array:
+        agents_to_focus = []
         for i in range(self.agent):
             for j in range(self.agent):
-                awms = []
                 deltaTTCP=Px=Py=Vself=Vother=theta=Nic=None
+                deltaTTCP=Px=Py=Vself=Vother=theta=Nic=0.05
                 awm = awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
-                if awm == 1:
-                    awms.append(j)
-                agents_to_focus[i] = awms
-                
+                agents_to_focus.append([i, j, awm])
+        agents_to_focus = np.array(agents_to_focus).reshape(25, 25, 3)
+        
         return agents_to_focus
     
     # 8. シミュレーション
