@@ -4,14 +4,14 @@ import pandas as pd
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import tqdm, gc
-import simfuncs
+import awareness_agents as awmsim
 
 # %%
-INTERVAL = simfuncs.INTERVAL # 100
+INTERVAL = awmsim.INTERVAL # 100
 TRIAL = 1 # number of trials
 
 # %%
-fig, ax = simfuncs.define_fig_ax()
+fig, ax = awmsim.define_fig_ax()
 
 # 各シミュレーションの結果を保存する変数
 row_label = []
@@ -23,7 +23,7 @@ ims = []
 # 一度にstep数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
 for num in range(TRIAL):
     np.random.seed(num)
-    O = simfuncs.simulation(agent_size=0.1, agent=25, 
+    O = awmsim.simulation(agent_size=0.1, agent=25, 
                             view=1, viewing_angle=360, 
                             goal_vec=0.06,  
                             avoidance='dynamic',

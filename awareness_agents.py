@@ -91,6 +91,116 @@ def rotate_vec(vec: np.array, # [float, float]
     val = np.dot(rotation, vec.T).T
     return val
 
+def calc_distance(posX1, posY1, posX2, posY2):
+    mypos = np.array([posX1, posY1])
+    anotherpos = np.array([posX2, posY2])
+    distance = np.linalg.norm(mypos - anotherpos)
+    
+    return distance
+
+# %% awareness model
+def calc_cross_point(velx1: float, vely1: float, posx1: float, posy1: float, 
+                     velx2: float, vely2: float, posx2: float, posy2: float
+                     ) -> np.array: # [float(x), float(y)]
+    
+    nume_x = velx2*vely1*posx1 - velx1*vely2*posx2 + velx1*velx2*(posy2 - posy1)
+    deno_x = velx2*vely1 - velx1*vely2
+    try:
+        CPx = nume_x / deno_x    
+    except ZeroDivisionError:
+        return None
+    
+    CPy = (vely1 / velx1) * (CPx - posx1) + posy1
+    CP = np.array([CPx, CPy])
+    
+    return CP
+
+def calc_deltaTTCP(velx1: float, vely1: float, posx1: float, posy1: float, 
+                   velx2: float, vely2: float, posx2: float, posy2: float
+                   ) -> float:
+
+    CP = calc_cross_point(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+    CPx, CPy = CP[0], CP[1]
+    TTCP0 = TTCP1 = None
+    
+    if ( 
+            ( (posx1 < CPx and velx1 > 0) or (posx1 > CPx and velx1 < 0) ) 
+        and
+            ( (posy1 < CPy and vely1 > 0) or (posy1 > CPy and vely1 < 0) )
+        ):
+        
+        nume0 = np.sqrt( (CPx - posx1)**2 + (CPy - posy1)**2 )
+        deno0 = np.sqrt( (velx1**2 + vely1**2) )
+        
+        TTCP0 = nume0 / deno0
+    else:
+        return None
+
+    if ( 
+            ( (posx2 < CPx and velx2 > 0) or (posx2 > CPx and velx2 < 0) ) 
+        and
+            ( (posy2 < CPy and vely2 > 0) or (posy2 > CPy and vely2 < 0) )
+        ):
+        
+        nume1 = np.sqrt( (CPx - posx2)**2 + (CPy - posy2)**2 )
+        deno1 = np.sqrt( (velx2**2 + vely2**2) )
+        
+        TTCP1 = nume1 / deno1
+    else:
+        return None
+    
+    deltaTTCP = abs(TTCP0 - TTCP1)
+    return deltaTTCP    
+    
+def calculate_angle(line1, line2):
+    """
+    2直線の角度を求める関数
+    line1, line2: 各直線を表す2点 [(x1, y1), (x2, y2)]
+    """
+    # 傾きを計算
+    def slope(point1, point2):
+        x1, y1 = point1
+        x2, y2 = point2
+        if x2 - x1 == 0:  # 垂直な直線の場合
+            return np.inf  # 無限大を返す
+        return (y2 - y1) / (x2 - x1)
+    
+    m1 = slope(*line1)
+    m2 = slope(*line2)
+    
+    # 垂直チェック
+    if m1 == np.inf and m2 == np.inf:
+        return 0  # 同じ垂直方向
+    elif m1 == np.inf or m2 == np.inf:
+        return 90  # 片方が垂直の場合
+    
+    # 角度を計算
+    angle_rad = np.arctan(np.abs((m2 - m1) / (1 + m1 * m2)))
+    return angle_rad
+
+def awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic):
+    """
+    Inputs
+        deltaTTCP: 自分のTTCPから相手のTTCPを引いた値 (second)
+        Px: 自分から見た相手の相対位置 (x座標m)
+        Py: 自分から見た相手の相対位置 (y座標m)
+        Vself: 自分の歩行速度 (m/s)
+        Vother: 相手の歩行速度 (m/s)
+        theta: 自分の向いている方向と相手の位置の角度差 (rad)
+        Nic: 円内他歩行者数 (人)
+    Output
+        0(注視しない) - 1 (注視する)
+    """
+    if deltaTTCP == None:
+        return 0
+    
+    deno = 1 + np.exp(
+        -(-1.2 +0.018*deltaTTCP -0.1*Px -1.1*Py \
+          -0.25*Vself +0.29*Vother -2.5*theta -0.62*Nic)    
+    )
+    val = 1 / deno
+    return val
+
 # %% シミュレーションに関わるクラス
 class simulation():
     def __init__(self, 
@@ -99,10 +209,10 @@ class simulation():
                  view: int = 1, 
                  viewing_angle: int = 360, 
                  goal_vec: float = 0.06, 
-                 avoidance: Literal['simple', 'dynamic'] = 'simple',
                  simple_avoid_vec: float = 0.06, 
                  dynamic_avoid_vec: float = 0.06, 
-                 step: int = 500):
+                 step: int = 500, 
+                 avoidance: Literal['simple', 'dynamic'] = 'simple'):
         
         self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
         self.agent = agent # エージェント数
@@ -111,7 +221,7 @@ class simulation():
         self.goal_vec = goal_vec # ゴールベクトルの大きさ(目盛り)
         self.simple_avoid_vec = simple_avoid_vec # 単純回避での回避ベクトルの大きさ(目盛り)
         self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
-        self.step = step # 1回の試行で動かすステップの回数
+        self.step = step # 1回の試行(TRIAL)で動かすステップの回数
         self.avoidance = avoidance # 'simple' or 'dynamic'
 
         self.all_agent = [] # 全エージェントの座標を記録
@@ -243,7 +353,7 @@ class simulation():
 
         
     # 2. 距離の計算
-    def distance(self):
+    def distance_all_agents(self):
         for i in range(self.agent):
             for j in range(self.agent):
                 d = self.all_agent[i]['p'] - self.all_agent[j]['p']
@@ -253,7 +363,7 @@ class simulation():
                 
     # 3. 指定した距離より接近したエージェントの数を返す
     def approach_detect(self, dist: float) -> list[int]: # O.agent数のint
-        self.distance()
+        self.distance_all_agents()
         approach_agent = []
         
         # distより接近したエージェントの数を記録
@@ -268,7 +378,7 @@ class simulation():
     # 4. 単純な回避ベクトルの生成
     def simple_avoidance(self, num: int # エージェントの番号
                          ) -> np.array: # [float, float]
-        self.distance()
+        self.distance_all_agents()
         # near_agentsは360度の視野に入ったエージェント
         # visible_agentsは視野を狭めた場合に視野に入ったエージェント
         near_agents = [i for i, x in enumerate(self.dist[num]) 
@@ -320,7 +430,7 @@ class simulation():
     
     # 5. 動的回避ベクトルの生成
     def dynamic_avoidance(self, num: int, goal: np.array) -> np.array:
-        self.distance()
+        self.distance_all_agents()
         near_agents = [i for i, x in enumerate(self.dist[num]) 
                        if x != -(0.2) and x < self.view]
         visible_agents = []
@@ -417,8 +527,46 @@ class simulation():
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
     
+    # 6. calculate the Nic (Number in the circle)
+    def calc_Nic(self) -> np.array:
+        """ 
+        エージェントAとエージェントBの中点cpを計算し、cpから他の全てのエージェントXとの距離cpxを計算する
+        その中で、cpとエージェントAの距離dist_cp_meより小さいcpxの数を計算する
+        """
+        all_Nics = []
+        for i in range(self.agent):
+            posA = self.all_agent[i]['p']
+            for j in range(self.agent):
+                posB = self.all_agent[j]['p']
+                cp = ( (posA[0]+posB[0])/2, (posA[1]+posB[1])/2 )
+                radius = calc_distance(*cp, *posA)
+                
+                Nic_agents = []
+                for k in range(self.agent):
+                    posX = self.all_agent[k]['p']
+                    dist_cp_posX = calc_distance(*posX, *cp)
+                    if dist_cp_posX <= radius:
+                        Nic_agents.append(j)
+                all_Nics.append([i, j, len(Nic_agents)-2]) # posAとposBの分を引く
+        all_Nics = np.array(all_Nics).reshape(25, 25, 3)
+        
+        return all_Nics
     
-    # 6. シミュレーション
+    # 7. find the agents to focus on using the awareness model
+    def find_agents_to_focus(self):
+        agents_to_focus = {}
+        for i in range(self.agent):
+            for j in range(self.agent):
+                awms = []
+                deltaTTCP=Px=Py=Vself=Vother=theta=Nic=None
+                awm = awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
+                if awm == 1:
+                    awms.append(j)
+                agents_to_focus[i] = awms
+                
+        return agents_to_focus
+    
+    # 8. シミュレーション
     def simulate(self, step: int) -> None:
         
         # 単純回避
@@ -650,7 +798,7 @@ class simulation():
             
         
             
-    # 7. 完了時間を記録
+    # 8. 完了時間を記録
     def calc_completion_time(self, num: int, now_step: int) -> float:
         
         # 一回のゴールにおける初めのステップと終わりのステップを記録
@@ -704,7 +852,7 @@ class simulation():
         
         return completion_time
     
-    # 8. 最後の座標から完了時間を算出(やらなくても良いかもしれない)
+    # 9. 最後の座標から完了時間を算出(やらなくても良いかもしれない)
     def calc_last_completion_time(self, num: int) -> float:
         
         # 初めのステップと終わりのステップを記録
@@ -779,10 +927,21 @@ class simulation():
         
         return completion_time
 
-    # 9. 座標を送る
+    # 10. 座標を送る
     def showImage(self) -> np.array: # shape(2(x,y), エージェントの数)
         pos_array = np.zeros([2, self.agent])
         for i in range(self.agent):
             pos_array[0][i] = self.all_agent[i]['p'][0]
             pos_array[1][i] = self.all_agent[i]['p'][1]
         return pos_array
+
+    # 11. 各エージェントの座標を、エージェントの番号付きでプロットする
+    def plot_positions(self) -> None:
+        pos_array = self.showImage()
+        plt.figure(figsize=(8, 8))
+        for i in range(self.agent):
+            plt.scatter(pos_array[0][i], pos_array[1][i], color='blue')
+            plt.annotate(i, xy=(pos_array[0][i], pos_array[1][i]))
+        plt.show()
+        
+        
