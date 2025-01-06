@@ -420,8 +420,8 @@ class simulation():
     
     
     # 4. 単純な回避ベクトルの生成
-    def simple_avoidance(self, num: int # エージェントの番号
-                         ) -> np.array: # [float, float]
+    def simple_avoidance_with_focus(self, num: int # エージェントの番号
+                                    ) -> np.array: # [float, float]
         """
         ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
         """
@@ -480,7 +480,7 @@ class simulation():
     
     
     # 5. 動的回避ベクトルの生成
-    def dynamic_avoidance(self, num: int, goal: np.array) -> np.array:
+    def dynamic_avoidance_with_focus(self, num: int, goal: np.array) -> np.array:
         """
         ex. self.dynamic_avoidance(num=15, goal=(-5.0, 3.5)) -> array([-0.05, 0.2])
         """
@@ -1040,6 +1040,166 @@ class simulation():
             plt.scatter(*next_pos, color='blue')
             plt.annotate(i, xy=(pos_array[0][i], pos_array[1][i]))
         plt.show()
+        
+        
+    # # 単純な回避ベクトルの生成(オリジナル)
+    # def simple_avoidance(self, num: int # エージェントの番号
+    #                      ) -> np.array: # [float, float]
+    #     """
+    #     ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
+    #     """
+    #     self.distance_all_agents()
+    #     # near_agentsは360度の視野に入ったエージェント
+    #     # visible_agentsは視野を狭めた場合に視野に入ったエージェント
+    #     near_agents = [i for i, x in enumerate(self.dist[num]) 
+    #                    if x != -(0.2) and x < self.view]
+    #     visible_agents = []
+        
+    #     # 回避ベクトル
+    #     avoid_vec = np.zeros(2)
+        
+    #     if not near_agents:
+    #         return avoid_vec
+        
+    #     # ゴールベクトルの角度を算出する
+    #     goal_angle = np.degrees(
+    #         calc_rad(self.agent_goal[num][self.goal_count[num]], 
+    #                  self.all_agent[num]['p'])
+    #     )
+
+    #     for i in near_agents:
+    #         # 近づいたエージェントとの角度を算出
+    #         agent_angle = np.degrees(
+    #             calc_rad(self.all_agent[i]['p'], 
+    #                      self.all_agent[num]['p'])
+    #         )
+            
+    #         # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
+    #         angle_difference = abs(goal_angle - agent_angle)
+            
+    #         if angle_difference > 180:
+    #             angle_difference = 360 - angle_difference
+                
+    #         # 視野に入っているエージェントをvisible_agentsに追加
+    #         if angle_difference <= self.viewing_angle / 2:
+    #             visible_agents.append(i)
+                
+    #     if not visible_agents: 
+    #         return avoid_vec
+            
+    #     for i in visible_agents:
+    #         # dは視界に入ったエージェントに対して反対方向のベクトル
+    #         d = self.all_agent[num]['p'] - self.all_agent[i]['p']
+    #         d = d / (self.dist[num][i] + 2 * self.agent_size) # 大きさ1のベクトルにする
+    #         d = d * self.simple_avoid_vec # 大きさを固定値にする
+            
+    #         avoid_vec += d # 回避ベクトルを合成する
+            
+    #     # ベクトルの平均を出す
+    #     return avoid_vec / len(visible_agents)
+    
+    
+    # # 5. 動的回避ベクトルの生成(オリジナル)
+    # def dynamic_avoidance(self, num: int, goal: np.array) -> np.array:
+    #     """
+    #     ex. self.dynamic_avoidance(num=15, goal=(-5.0, 3.5)) -> array([-0.05, 0.2])
+    #     """
+    #     self.distance_all_agents()
+    #     near_agents = [i for i, x in enumerate(self.dist[num]) 
+    #                    if x != -(0.2) and x < self.view]
+    #     visible_agents = []
+    #     avoid_vec = np.zeros(2)
+        
+    #     if not near_agents:
+    #         return avoid_vec
+        
+    #     # ゴールベクトルの角度を算出する
+    #     goal_angle = np.degrees(
+    #         calc_rad(self.agent_goal[num][self.goal_count[num]], 
+    #                  self.all_agent[num]['p'])
+    #     )
+
+    #     for i in near_agents:
+    #         # 近づいたエージェントとの角度を算出
+    #         agent_angle = np.degrees(
+    #             calc_rad(self.all_agent[i]['p'], 
+    #                      self.all_agent[num]['p'])
+    #         )
+            
+    #         # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
+    #         angle_difference = abs(goal_angle - agent_angle)
+
+    #         if angle_difference > 180:
+    #             angle_difference = 360 - angle_difference
+            
+    #         # 視界に入ったエージェントをvisible_agentsに追加
+    #         if angle_difference <= self.viewing_angle / 2:
+    #             visible_agents.append(i)
+                
+    #     if not visible_agents:
+    #         return avoid_vec
+            
+        
+    #     for i in visible_agents:
+    #         # 視野の中心にいるエージェントの位置と速度
+    #         self.agent_pos = self.all_agent[num]['p']
+    #         self.agent_vel = self.all_agent[num]['v']
+    #         # 視野に入ったエージェントの位置と速度
+    #         self.visible_agent_pos = self.all_agent[i]['p']
+    #         self.visible_agent_vel = self.all_agent[i]['v']
+
+            
+    #         dist_former = self.dist[num][i]
+            
+    #         t = 0
+    #         # 2体のエージェントを1ステップ動かして距離を測定
+    #         self.agent_pos = self.agent_pos + self.agent_vel
+    #         self.visible_agent_pos = self.visible_agent_pos + self.visible_agent_vel
+    #         d = self.agent_pos - self.visible_agent_pos
+    #         dist_latter = np.linalg.norm(d) - 2 * self.agent_size
+            
+            
+    #         # 視界に入った時が最も近い場合
+    #         if dist_former < dist_latter:
+    #             tcpa = 0
+    #             if dist_former < 0:
+    #                 dcpa = 0 # 最も近い距離で接触している場合はdcpaは0とみなす
+    #             else:
+    #                 dcpa = dist_former * 50 # 単位をピクセルに変換
+                    
+                    
+    #         # 2者間距離の最小値が出るまでエージェントを動かす
+    #         else:
+    #             while dist_former > dist_latter:
+    #                 dist_former = dist_latter
+    #                 t += INTERVAL
+    #                 self.agent_pos = self.agent_pos + self.agent_vel
+    #                 self.visible_agent_pos = self.visible_agent_pos + self.visible_agent_vel
+    #                 d = self.agent_pos - self.visible_agent_pos
+    #                 dist_latter = np.linalg.norm(d) - 2 * self.agent_size
+                    
+    #             if dist_former < 0:
+    #                 dcpa = 0 # 最も近い距離で接触している場合はdcpaは0とみなす
+    #             else:
+    #                 dcpa = dist_former * 50 # 単位をピクセルに変換
+                    
+    #             tcpa = t
+
+    #         a1, b1, c1, d1 = abcd['a1'], abcd['b1'], abcd['c1'], abcd['d1']
+    #         # ブレーキ指標の算出
+    #         braking_index = (1 / (1 + np.exp(-c1 - d1 * (tcpa/4000)))) * \
+    #                         (1 / (1 + np.exp(-b1 - a1 * (dcpa/50))))
+            
+    #         # dは視界に入ったエージェントに対して反対方向のベクトル
+    #         d = self.all_agent[num]['p'] - self.all_agent[i]['p']
+    #         d = d / (self.dist[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
+    #         d = d * braking_index # ブレーキ指標の値を反映
+    #         d = d * self.dynamic_avoid_vec # ベクトルの最大値を決定
+            
+    #         avoid_vec += d # ベクトルの合成
+    
+    #     # ベクトルの平均を出す
+    #     return avoid_vec / len(visible_agents)
         
 
 def debug_theta(s, num, other):
