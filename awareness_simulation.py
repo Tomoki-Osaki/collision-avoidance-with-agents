@@ -1,4 +1,4 @@
-"""" 2025/01/06 """
+""" 2025/01/06 """
 # %%
 import numpy as np
 import pandas as pd
@@ -79,7 +79,7 @@ for num in range(TRIAL):
     data.append(row)
 
     # 最初に表示する図の作成
-    plot_data = O.showImage()
+    plot_data = O.show_image()
     im = ax.scatter(*plot_data, s=40, marker="o", c='blue')
     ims.append([im])
 
@@ -114,7 +114,7 @@ for num in range(TRIAL):
         data.append(row)
 
         # 図を作成
-        plot_data = O.showImage()
+        plot_data = O.show_image()
         im = ax.scatter(*plot_data, s=40, marker="o", c='blue')
         ims.append([im])
         
@@ -242,5 +242,5 @@ df = pd.DataFrame(values, columns=column_label, index=row_label)
 df.to_csv(f'{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.csv')
 print(df) # show results
 
-#ani = animation.ArtistAnimation(fig, ims, interval=INTERVAL, repeat=False)
-#ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.mp4')
+# ani = animation.ArtistAnimation(fig, ims, interval=INTERVAL, repeat=False)
+# ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.mp4')
