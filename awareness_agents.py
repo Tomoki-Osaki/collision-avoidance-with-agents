@@ -431,11 +431,15 @@ class simulation():
         near_agents = [i for i, x in enumerate(self.dist[num]) 
                        if x != -(0.2) and x < self.view]
         visible_agents = []
+        
         # 回避ベクトル
         avoid_vec = np.zeros(2)
         
         if not near_agents:
             return avoid_vec
+        
+        # near_agentsについて、awareness modelの値を基にしたエージェントを計算対象にする
+        # focus_agents = self.calc_Nic(num)[near_agents]
         
         # ゴールベクトルの角度を算出する
         goal_angle = np.degrees(
@@ -488,6 +492,9 @@ class simulation():
         
         if not near_agents:
             return avoid_vec
+        
+        # near_agentsについて、awareness modelの値を基にしたエージェントを計算対象にする
+        # focus_agents = self.calc_Nic(num)[near_agents]
         
         # ゴールベクトルの角度を算出する
         goal_angle = np.degrees(
