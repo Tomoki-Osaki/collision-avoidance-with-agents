@@ -1,3 +1,4 @@
+"""" 2025/01/06 """
 # %%
 import numpy as np
 import pandas as pd
@@ -57,22 +58,22 @@ for num in range(TRIAL):
     # 衝突したエージェントの数を記録
     collision_agent = O.approach_detect(0)
     for i in range(O.agent):
-        row = np.append(row, collision_agent[i])
+        row = np.append(row, collision_agent[i][1])
     
     # 視野の半分より接近したエージェントの数を記録
     collision_agent = O.approach_detect(0.5)
     for i in range(O.agent):
-        row = np.append(row, collision_agent[i])
+        row = np.append(row, collision_agent[i][1])
     
     # 視野の四分の一より接近したエージェントの数を記録
     collision_agent = O.approach_detect(0.25)
     for i in range(O.agent):
-        row = np.append(row, collision_agent[i])
+        row = np.append(row, collision_agent[i][1])
         
     # 視野の八分の一より接近したエージェントの数を記録
     collision_agent = O.approach_detect(0.125)
     for i in range(O.agent):
-        row = np.append(row, collision_agent[i])
+        row = np.append(row, collision_agent[i][1])
         
     # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
     data.append(row)
@@ -96,19 +97,19 @@ for num in range(TRIAL):
         # 衝突したエージェントを記録
         collision_agent = O.approach_detect(0)
         for i in range(O.agent):
-            row = np.append(row, collision_agent[i])
+            row = np.append(row, collision_agent[i][1])
 
         collision_agent = O.approach_detect(0.5)
         for i in range(O.agent):
-            row = np.append(row, collision_agent[i])
+            row = np.append(row, collision_agent[i][1])
             
         collision_agent = O.approach_detect(0.25)
         for i in range(O.agent):
-            row = np.append(row, collision_agent[i])
+            row = np.append(row, collision_agent[i][1])
 
         collision_agent = O.approach_detect(0.125)
         for i in range(O.agent):
-            row = np.append(row, collision_agent[i])
+            row = np.append(row, collision_agent[i][1])
 
         data.append(row)
 

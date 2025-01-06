@@ -238,7 +238,7 @@ class simulation():
             # 座標(0, 0)から座標velへのベクトルがエージェントの初期速度になる
             # self.all_agentの1つの要素に1体のエージェントの位置と速度が記録
             self.all_agent.append(
-                {'#': n, # to caclculate the Nic but may not be useful
+                {'#': n, # to caclculate the awareness but may not be useful
                  'p': pos, 
                  'v': rotate_vec(np.array([self.goal_vec, 0]), 
                                  calc_rad(vel, np.array([0, 0])))
@@ -285,9 +285,11 @@ class simulation():
 
     # 1. ゴールの計算
     # エージェントが初期速度のまま進んだ場合に通過する、グラフ領域の境界線の座標
-    def findGoal(self, agent: dict[str, np.array] # O.all_agent2[0]['p'('v')]
+    def findGoal(self, agent: dict[str, np.array] 
                  ) -> np.array: # [float, float]
-        
+        """ 
+        ex. self.findGoal(agent=self.all_agent2[10]) -> array([-3.0, -5.0])
+        """
         while True:
             
             # x座標がグラフ領域を超える
@@ -362,15 +364,19 @@ class simulation():
                 
                 
     # 3. 指定した距離より接近したエージェントの数を返す
-    def approach_detect(self, dist: float) -> list[int]: # O.agent数のint
+    def approach_detect(self, dist: float) -> np.array: 
+        """ 
+        ex. self.approach_detect(dist=0.5) -> array([[0, 3],[1, 2],...[24, 1]])
+        """
         self.distance_all_agents()
         approach_agent = []
         
-        # distより接近したエージェントの数を記録
+        # それぞれのエージェントについて、distより接近したエージェントの数を記録
         for t in range(self.agent):
             visible_agents = [i for i, x in enumerate(self.dist[t]) 
                               if x != -(0.2) and x < dist]
-            approach_agent.append(len(visible_agents))
+            approach_agent.append([t, len(visible_agents)])
+        approach_agent = np.array(approach_agent) 
             
         return approach_agent
     
@@ -378,6 +384,9 @@ class simulation():
     # 4. 単純な回避ベクトルの生成
     def simple_avoidance(self, num: int # エージェントの番号
                          ) -> np.array: # [float, float]
+        """
+        ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
+        """
         self.distance_all_agents()
         # near_agentsは360度の視野に入ったエージェント
         # visible_agentsは視野を狭めた場合に視野に入ったエージェント
@@ -430,6 +439,9 @@ class simulation():
     
     # 5. 動的回避ベクトルの生成
     def dynamic_avoidance(self, num: int, goal: np.array) -> np.array:
+        """
+        ex. self.dynamic_avoidance(num=15, goal=(-5.0, 3.5)) -> array([-0.05, 0.2])
+        """
         self.distance_all_agents()
         near_agents = [i for i, x in enumerate(self.dist[num]) 
                        if x != -(0.2) and x < self.view]
@@ -532,7 +544,10 @@ class simulation():
         """ 
         エージェントAとエージェントBの中点cpを計算し、cpから他の全てのエージェントXとの距離cpxを計算する
         その中で、cpとエージェントAの距離dist_cp_meより小さいcpxの数を計算する
-        """
+        ex. self.calc_Nic() -> array([[[0,0,-1],...,[0,24,4]],
+                                      ...,
+                                      [[24,0,4],..,[24,24,-1]]]) (自分,相手,Nic)
+        """ 
         all_Nics = []
         for i in range(self.agent):
             posA = self.all_agent[i]['p']
@@ -548,12 +563,18 @@ class simulation():
                     if dist_cp_posX <= radius:
                         Nic_agents.append(j)
                 all_Nics.append([i, j, len(Nic_agents)-2]) # posAとposBの分を引く
-        all_Nics = np.array(all_Nics).reshape(25, 25, 3)
+        all_Nics = np.array(all_Nics).reshape(self.agent, self.agent, 3)
         
         return all_Nics
     
     # 7. find the agents to focus on using the awareness model
     def find_agents_to_focus(self) -> np.array:
+        """
+        ex. self.find_agents_to_focus(
+            ) -> array([[[0,0,0],...,[0,24,1]],
+                                      ...,
+                        [[24,0,1],..,[24,24,0]]]) (自分,相手,awareness)
+        """ 
         agents_to_focus = []
         for i in range(self.agent):
             for j in range(self.agent):
@@ -561,7 +582,7 @@ class simulation():
                 deltaTTCP=Px=Py=Vself=Vother=theta=Nic=0.05
                 awm = awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
                 agents_to_focus.append([i, j, awm])
-        agents_to_focus = np.array(agents_to_focus).reshape(25, 25, 3)
+        agents_to_focus = np.array(agents_to_focus).reshape(self.agent, self.agent, 3)
         
         return agents_to_focus
     
@@ -799,7 +820,9 @@ class simulation():
             
     # 8. 完了時間を記録
     def calc_completion_time(self, num: int, now_step: int) -> float:
-        
+        """ 
+        ex. self.calc_completion_time(num=10, now_step=10) -> 35.6
+        """
         # 一回のゴールにおける初めのステップと終わりのステップを記録
         self.start_step[num] = self.goal_step[num] + 1
         self.goal_step[num] = now_step
@@ -928,6 +951,10 @@ class simulation():
 
     # 10. 座標を送る
     def showImage(self) -> np.array: # shape(2(x,y), エージェントの数)
+        """
+        ex. self.showImage() -> array([[2.0, 1.2,...,3.5],
+                                       [2.5, 1.5,...,1.5]]) (2, 25)
+        """
         pos_array = np.zeros([2, self.agent])
         for i in range(self.agent):
             pos_array[0][i] = self.all_agent[i]['p'][0]
