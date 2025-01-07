@@ -1,17 +1,18 @@
 """ 
-シミュレーションのための関数 
 2025/01/07
+シミュレーションのための関数 
 
-1. define_fig_ax
-2. calc_rad
-3. rotate_vec
-4. calc_distance
-5. calc_cross_point
-6. calc_deltaTTCP
-7. calc_angle_two_lines
-8. awarenes_model
-9. debug_theta
+1. define_fig_ax(width, height, FIELD_SIZE)
+2. calc_rad(pos2, pos1)
+3. rotate_vec(vec, rad)
+4. calc_distance(posX1, posY1, posX2, posY2)
+5. calc_cross_point(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+6. calc_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+7. calc_angle_two_lines(line1, line2)
+8. awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
+9. debug_theta(s, num, other)
 """
+
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,7 +22,7 @@ from mpl_toolkits.axes_grid1.mpl_axes import Axes
 # %% define figure parameters
 def define_fig_ax(width: int = 500, 
                   height: int = 500,
-                  FIELD_SIZE: int = 5) -> plt.subplots:
+                  field_size: int = 5) -> plt.subplots:
     ax_w_px = width  # プロット領域の幅をピクセル単位で指定
     ax_h_px = height  # プロット領域の高さをピクセル単位で指定
     
@@ -42,8 +43,8 @@ def define_fig_ax(width: int = 500,
     ax.set_axes_locator(divider.new_locator(nx=1, ny=1))
     fig.add_axes(ax)
     
-    ax.set_xlim(-FIELD_SIZE, FIELD_SIZE)
-    ax.set_ylim(-FIELD_SIZE, FIELD_SIZE)
+    ax.set_xlim(-field_size, field_size)
+    ax.set_ylim(-field_size, field_size)
     ax.grid(True)
     
     return fig, ax

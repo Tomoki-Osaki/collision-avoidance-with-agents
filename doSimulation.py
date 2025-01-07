@@ -1,6 +1,6 @@
 """ 
-シミュレーションを実際に実行する
 2025/01/07 
+シミュレーションを実際に実行する
 """
 # %%
 import numpy as np
@@ -11,34 +11,39 @@ import tqdm, gc
 import classSimulation as cs
 import funcSimulation as fs
 
-FIELD_SIZE = 5
-TRIAL = 1 # number of trials
+# %% global variables
 
-# %%
-fig, ax = fs.define_fig_ax(width=500, height=500, FIELD_SIZE=FIELD_SIZE)
+# グラフの目盛りの最大値・最小値
+FIELD_SIZE = 5 
+# 目盛りは最大値5、最小値-5で10目盛り
+# グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
+
+TRIAL = 1 # 試行回数
+STEP = 50 # 1回の試行(TRIAL)で動かすステップの回数
+
+# %% シミュレーションの前準備
+fig, ax = fs.define_fig_ax(width=500, height=500, field_size=FIELD_SIZE)
 
 # 各シミュレーションの結果を保存する変数
 row_label = []
 values = []
+ims = [] # 図のデータをまとめるもの、これを流すことでアニメーションになる
 
-# 図のデータをまとめるもの、これを流すことでアニメーションになる
-ims = []
-
-# 一度にstep数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
+# %% シミュレーション
+# 一度にSTEP数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
 for num in range(TRIAL):
     np.random.seed(num)
-    O = cs.Simulation(interval=100, step=10,
+    O = cs.Simulation(interval=100, 
                       agent_size=0.1, agent=25, 
                       view=1, viewing_angle=360, 
                       goal_vec=0.06,  
-                      avoidance='dynamic',
+                      avoidance='simple',
                       simple_avoid_vec=0.06, 
                       dynamic_avoid_vec=0.06)
 
     data = []
     column_label = []
-    index_label = []
-    index_label.append('initial_value')
+    index_label = ['initial_value']
 
     # 出力データの列のラベルを作成
     for i in range(O.agent):
@@ -51,33 +56,8 @@ for num in range(TRIAL):
         column_label.append('agent ' + str(i) + ' quarter') # 視野の四分の一の距離まで接近
         column_label.append('agent ' + str(i) + ' one_eighth') # 視野の八分の一の距離まで接近
 
-    # 初期の位置と速度を記録
-    row = []
-    row = np.concatenate([O.all_agent[0]['p'], O.all_agent[0]['v']])
-    # rowにはある時刻の全エージェントの位置と速度が入る
-    for i in range(1, O.agent):
-        row = np.concatenate([row, O.all_agent[i]['p'], O.all_agent[i]['v']])
 
-    # 衝突したエージェントの数を記録
-    collision_agent = O.approach_detect(0)
-    for i in range(O.agent):
-        row = np.append(row, collision_agent[i][1])
-    
-    # 視野の半分より接近したエージェントの数を記録
-    collision_agent = O.approach_detect(0.5)
-    for i in range(O.agent):
-        row = np.append(row, collision_agent[i][1])
-    
-    # 視野の四分の一より接近したエージェントの数を記録
-    collision_agent = O.approach_detect(0.25)
-    for i in range(O.agent):
-        row = np.append(row, collision_agent[i][1])
-        
-    # 視野の八分の一より接近したエージェントの数を記録
-    collision_agent = O.approach_detect(0.125)
-    for i in range(O.agent):
-        row = np.append(row, collision_agent[i][1])
-        
+    row = O.record_agent_information() # 全エージェントの位置と速度、接近を記録
     # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
     data.append(row)
 
@@ -86,34 +66,13 @@ for num in range(TRIAL):
     im = ax.scatter(*plot_data, s=40, marker="o", c='blue')
     ims.append([im])
 
-    ##### シミュレーション (step数だけ繰り返す) #####
-    for t in tqdm.tqdm(range(O.step)):
-        O.simulate(t + 1)
+    ##### シミュレーション (STEP数だけ繰り返す) #####
+    for t in tqdm.tqdm(range(STEP)):
+        O.simulate(now_step=t+1)
         index_label.append(t + 1)
 
         # シミュレーションごとに値を記録
-        row = []
-        row = np.concatenate([O.all_agent[0]['p'], O.all_agent[0]['v']])
-        for i in range(1, O.agent):
-            row = np.concatenate([row, O.all_agent[i]['p'], O.all_agent[i]['v']])
-
-        # 衝突したエージェントを記録
-        collision_agent = O.approach_detect(0)
-        for i in range(O.agent):
-            row = np.append(row, collision_agent[i][1])
-
-        collision_agent = O.approach_detect(0.5)
-        for i in range(O.agent):
-            row = np.append(row, collision_agent[i][1])
-            
-        collision_agent = O.approach_detect(0.25)
-        for i in range(O.agent):
-            row = np.append(row, collision_agent[i][1])
-
-        collision_agent = O.approach_detect(0.125)
-        for i in range(O.agent):
-            row = np.append(row, collision_agent[i][1])
-
+        row = O.record_agent_information()
         data.append(row)
 
         # 図を作成
@@ -121,9 +80,10 @@ for num in range(TRIAL):
         im = ax.scatter(*plot_data, s=40, marker="o", c='blue')
         ims.append([im])
         
-        goal_step = O.step
     ##### シミュレーション終了 ######    
         
+    
+    ##### シミュレーションで得たデータを記録 #####
     # csvとしてステップごとに位置、速度、接近した回数を記録
     """
     df = pd.DataFrame(data, columns=column_label, index=index_label)
@@ -132,7 +92,7 @@ for num in range(TRIAL):
     
     # 最後の座標から完了時間を算出
     for i in range(O.agent):
-        last_completion_time = O.calc_last_completion_time(i)
+        last_completion_time = O.calc_last_completion_time(i, STEP)
         if not last_completion_time == None:
             O.completion_time.append(last_completion_time)
 
@@ -153,13 +113,13 @@ for num in range(TRIAL):
     agents_accels = []
     for i in range(2, 4*O.agent+2, 4):
         agent_accels = []
-        for j in range(goal_step - 1):
+        for j in range(STEP - 1):
             # x軸方向の速度の差分
             x_accel = abs((data[j+1][i] - data[j+2][i]) * 50)
             # y軸方向の速度の差分
             y_accel = abs((data[j+1][i+1] - data[j+2][i+1]) * 50)
             # x, y速度の差からなるベクトルの大きさ
-            temp = np.sqrt(x_accel ** 2 + y_accel ** 2)
+            temp = np.sqrt(x_accel**2 + y_accel**2)
             agent_accels.append(temp)
             
         # 全エージェントの加速度を記録
@@ -181,45 +141,12 @@ for num in range(TRIAL):
     df = pd.DataFrame(agents_accels, columns=index_label, index=column_label)
     df = df.T
     # df.to_csv('to_csv_out_accel_' + str(num) + '.csv')
-
    
-    # 衝突した数
-    collision = []
-    for i in range(4*O.agent, 5*O.agent, 1):
-        sum = 0
-        for j in range(goal_step):
-            # 一試行で何回エージェントに衝突したか
-            sum += data[j+1][i]
-        
-        # 全エージェントの衝突した回数を記録
-        collision.append(sum)
-        
-    # 視野の半分に接近したエージェントの数
-    half = []
-    for i in range(5*O.agent, 6*O.agent, 1):
-        sum = 0
-        for j in range(goal_step):
-            sum += data[j+1][i]
-        
-        half.append(sum)
-        
-    # 視野の四分の一に接近した回数
-    quarter = []
-    for i in range(6*O.agent, 7*O.agent, 1):
-        sum = 0
-        for j in range(goal_step):
-            sum += data[j+1][i]
-        
-        quarter.append(sum)
-
-    # 視界の八分の一に接近した回数
-    one_eighth = []
-    for i in range(7*O.agent, 8*O.agent, 1):
-        sum = 0
-        for j in range(goal_step):
-            sum += data[j+1][i]
-        
-        one_eighth.append(sum)
+    # 衝突した数、視野の半分、視野の四分の一、視野の八分の一に接近した回数
+    collision = O.record_approaches('collision', STEP, data)
+    half =  O.record_approaches('half', STEP, data)
+    quarter =  O.record_approaches('quarter', STEP, data)
+    one_eighth =  O.record_approaches('one_eigth', STEP, data)
     
     # 各指標の平均を計算
     accel_mean = np.mean(accel)
@@ -234,7 +161,7 @@ for num in range(TRIAL):
     row_label.append('seed_' + str(num))
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
-                   O.step, O.avoidance])
+                   STEP, O.avoidance])
 
 # 値をまとめたcsvファイルの作成
 column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision', 
@@ -242,8 +169,8 @@ column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision',
                       
 df = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-df.to_csv(f'{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.csv')
+df.to_csv(f'{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
 print(df) # show results
 
 # ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
-# ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.mp4')
+# ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
