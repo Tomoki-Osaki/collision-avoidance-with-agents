@@ -52,7 +52,7 @@ class Simulation():
                  view: int = 1, 
                  viewing_angle: int = 360, 
                  goal_vec: float = 0.06, 
-                 avoidance: Literal['simple','dynamic'] = 'simple',
+                 dynamic_percent: float = 1.0,
                  simple_avoid_vec: float = 0.06, 
                  dynamic_avoid_vec: float = 0.06):
         
@@ -62,9 +62,9 @@ class Simulation():
         self.view = view # 視野の半径(目盛り) = 50px:エージェント5体分
         self.viewing_angle = viewing_angle # 視野の角度
         self.goal_vec = goal_vec # ゴールベクトルの大きさ(目盛り)
+        self.dynamic_percent = dynamic_percent # 動的回避を基に回避するエージェントの割合
         self.simple_avoid_vec = simple_avoid_vec # 単純回避での回避ベクトルの大きさ(目盛り)
         self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
-        self.avoidance = avoidance # 'simple' or 'dynamic'
 
         self.all_agent = [] # 全エージェントの座標を記録
         self.all_agent2 = [] # ゴールの計算用
@@ -78,10 +78,16 @@ class Simulation():
             pos = np.random.uniform(-FIELD_SIZE, FIELD_SIZE, 2)
             vel = np.random.uniform(-FIELD_SIZE, FIELD_SIZE, 2)
             
+            num_agent_omoiyari = int(np.round(self.agent*self.dynamic_percent))
+            if n < num_agent_omoiyari:
+                avoidance = 'dynamic'
+            else:
+                avoidance = 'simple'
+            
             # 座標(0, 0)から座標velへのベクトルがエージェントの初期速度になる
             # self.all_agentの1つの要素に1体のエージェントの位置と速度が記録
             self.all_agent.append(
-                {'avoidance': ..., # to caclculate the awareness but may not be useful
+                {'avoidance': avoidance, 
                  'p': pos, 
                  'v': rotate_vec(np.array([self.goal_vec, 0]), 
                                  calc_rad(vel, np.array([0, 0])))
@@ -250,15 +256,14 @@ class Simulation():
         if not near_agents:
             return avoid_vec
         
-        # near_agentsについて、awareness modelの値を基にしたエージェントを計算対象にする
-        # focus_agents = self.calc_Nic(num)[near_agents]
-        
         # ゴールベクトルの角度を算出する
         goal_angle = np.degrees(
             calc_rad(self.agent_goal[num][self.goal_count[num]], 
                      self.all_agent[num]['p'])
         )
 
+        # near_agentsについて、awareness modelの値を基にしたエージェントを計算対象にする
+        # focus_agents = self.calc_Nic(num)[near_agents]
         for i in near_agents:
             # 近づいたエージェントとの角度を算出
             agent_angle = np.degrees(
@@ -306,15 +311,14 @@ class Simulation():
         if not near_agents:
             return avoid_vec
         
-        # near_agentsについて、awareness modelの値を基にしたエージェントを計算対象にする
-        # focus_agents = self.calc_Nic(num)[near_agents]
-        
         # ゴールベクトルの角度を算出する
         goal_angle = np.degrees(
             calc_rad(self.agent_goal[num][self.goal_count[num]], 
                      self.all_agent[num]['p'])
         )
 
+        # near_agentsについて、awareness modelの値を基にしたエージェントを計算対象にする
+        # focus_agents = self.calc_Nic(num)[near_agents]
         for i in near_agents:
             # 近づいたエージェントとの角度を算出
             agent_angle = np.degrees(
@@ -489,10 +493,10 @@ class Simulation():
                     calc_rad(self.goal_temp[i], self.all_agent[i]['p'])
                 ) 
                 
-            if self.avoidance == 'simple': # 単純回避ベクトルを足す
+            if self.all_agent[i]['avoidance'] == 'simple': # 単純回避ベクトルを足す
                 self.all_agent[i]['v'] += self.simple_avoidance(i)
                 
-            elif self.avoidance == 'dynamic': # 動的回避ベクトルを足す
+            elif self.all_agent[i]['avoidance'] == 'dynamic': # 動的回避ベクトルを足す
                 self.all_agent[i]['v'] += self.dynamic_avoidance(i)
         
         
@@ -579,7 +583,7 @@ class Simulation():
                     # ゴールが調整されているか確認
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 境界をこえた用のゴールを設定
-                        self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0] + (-2 * FIELD_SIZE)
+                        self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0] + (-2*FIELD_SIZE)
                         self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1]
                     else:
                         # はみ出た時用のゴールを初期化

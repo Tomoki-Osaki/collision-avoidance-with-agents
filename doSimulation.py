@@ -19,7 +19,7 @@ FIELD_SIZE = 5
 # グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
 
 TRIAL = 1 # 試行回数
-STEP = 50 # 1回の試行(TRIAL)で動かすステップの回数
+STEP = 500 # 1回の試行(TRIAL)で動かすステップの回数
 
 # %% シミュレーションの前準備
 fig, ax = fs.define_fig_ax(width=500, height=500, field_size=FIELD_SIZE)
@@ -37,7 +37,7 @@ for num in range(TRIAL):
                       agent_size=0.1, agent=25, 
                       view=1, viewing_angle=360, 
                       goal_vec=0.06,  
-                      avoidance='simple',
+                      dynamic_percent=0.5,
                       simple_avoid_vec=0.06, 
                       dynamic_avoid_vec=0.06)
 
@@ -156,12 +156,11 @@ for num in range(TRIAL):
     one_eighth_mean = np.mean(one_eighth)
     completion_time_mean = np.mean(O.completion_time)
 
-    
     # 各試行の結果のデータを保存
     row_label.append('seed_' + str(num))
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
-                   STEP, O.avoidance])
+                   STEP, O.dynamic_percent])
 
 # 値をまとめたcsvファイルの作成
 column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision', 
@@ -169,8 +168,8 @@ column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision',
                       
 df = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-df.to_csv(f'{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
+df.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
 print(df) # show results
 
-# ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
-# ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
+ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
+ani.save(f'ani_dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
