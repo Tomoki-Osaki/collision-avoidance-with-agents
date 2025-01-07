@@ -8,15 +8,14 @@ import pandas as pd
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import tqdm, gc
-import classSimulation
-import funcSimulation
+import classSimulation as cs
+import funcSimulation as fs
 
-# %%
-INTERVAL = funcSimulation.INTERVAL # 100
+FIELD_SIZE = 5
 TRIAL = 1 # number of trials
 
 # %%
-fig, ax = funcSimulation.define_fig_ax()
+fig, ax = fs.define_fig_ax(width=500, height=500, FIELD_SIZE=FIELD_SIZE)
 
 # 各シミュレーションの結果を保存する変数
 row_label = []
@@ -28,13 +27,13 @@ ims = []
 # 一度にstep数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
 for num in range(TRIAL):
     np.random.seed(num)
-    O = classSimulation.Simulation(agent_size=0.1, agent=25, 
-                                   view=1, viewing_angle=360, 
-                                   goal_vec=0.06,  
-                                   avoidance='dynamic',
-                                   simple_avoid_vec=0.06, 
-                                   dynamic_avoid_vec=0.06, 
-                                   step=10)
+    O = cs.Simulation(interval=100, step=10,
+                      agent_size=0.1, agent=25, 
+                      view=1, viewing_angle=360, 
+                      goal_vec=0.06,  
+                      avoidance='dynamic',
+                      simple_avoid_vec=0.06, 
+                      dynamic_avoid_vec=0.06)
 
     data = []
     column_label = []
@@ -246,5 +245,5 @@ df = pd.DataFrame(values, columns=column_label, index=row_label)
 df.to_csv(f'{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.csv')
 print(df) # show results
 
-# ani = animation.ArtistAnimation(fig, ims, interval=INTERVAL, repeat=False)
+# ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
 # ani.save(f'ani_{O.avoidance}_ang{O.viewing_angle}_agt{O.agent}_stp{O.step}.mp4')

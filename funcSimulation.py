@@ -1,6 +1,16 @@
 """ 
 シミュレーションのための関数 
 2025/01/07
+
+1. define_fig_ax
+2. calc_rad
+3. rotate_vec
+4. calc_distance
+5. calc_cross_point
+6. calc_deltaTTCP
+7. calc_angle_two_lines
+8. awarenes_model
+9. debug_theta
 """
 # %%
 import numpy as np
@@ -11,7 +21,7 @@ from mpl_toolkits.axes_grid1.mpl_axes import Axes
 # %% define figure parameters
 def define_fig_ax(width: int = 500, 
                   height: int = 500,
-                  SIZE: int = 5) -> plt.subplots:
+                  FIELD_SIZE: int = 5) -> plt.subplots:
     ax_w_px = width  # プロット領域の幅をピクセル単位で指定
     ax_h_px = height  # プロット領域の高さをピクセル単位で指定
     
@@ -32,8 +42,8 @@ def define_fig_ax(width: int = 500,
     ax.set_axes_locator(divider.new_locator(nx=1, ny=1))
     fig.add_axes(ax)
     
-    ax.set_xlim(-SIZE, SIZE)
-    ax.set_ylim(-SIZE, SIZE)
+    ax.set_xlim(-FIELD_SIZE, FIELD_SIZE)
+    ax.set_ylim(-FIELD_SIZE, FIELD_SIZE)
     ax.grid(True)
     
     return fig, ax
