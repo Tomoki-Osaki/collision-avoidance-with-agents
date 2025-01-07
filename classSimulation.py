@@ -29,11 +29,6 @@ import funcSimulation as fs
 from funcSimulation import calc_rad, rotate_vec, calc_distance
 
 # %% global variables
-SIZE = 5 # グラフの目盛りの最大値・最小値
-
-# 目盛りは最大値5、最小値-5で10目盛り
-# グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
-
 INTERVAL = 100 # 100msごとにグラフを更新してアニメーションを作成
 
 # 妨害指標の4係数は標準化したやつを使う
@@ -51,6 +46,7 @@ abcd = {'a1': -5.145, # -0.034298
 # %% シミュレーションに関わるクラス
 class Simulation():
     def __init__(self, 
+                 size: int = 5,
                  agent_size: float = 0.1, 
                  agent: int = 25, 
                  view: int = 1, 
@@ -60,6 +56,11 @@ class Simulation():
                  dynamic_avoid_vec: float = 0.06, 
                  step: int = 500, 
                  avoidance: Literal['simple', 'dynamic'] = 'simple'):
+        
+        # グラフの目盛りの最大値・最小値
+        # 目盛りは最大値5、最小値-5で10目盛り
+        # グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
+        self.size = size 
         
         self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
         self.agent = agent # エージェント数
@@ -79,8 +80,8 @@ class Simulation():
         
         for n in range(self.agent):
             # グラフ領域の中からランダムに座標を決定
-            pos = np.random.uniform(-SIZE, SIZE, 2)
-            vel = np.random.uniform(-SIZE, SIZE, 2)
+            pos = np.random.uniform(-self.size, self.size, 2)
+            vel = np.random.uniform(-self.size, self.size, 2)
             
             # 座標(0, 0)から座標velへのベクトルがエージェントの初期速度になる
             # self.all_agentの1つの要素に1体のエージェントの位置と速度が記録
@@ -142,59 +143,59 @@ class Simulation():
         while True:
             
             # x座標がグラフ領域を超える
-            if ((agent['p'] + agent['v'])[0] < -SIZE):
+            if ((agent['p'] + agent['v'])[0] < -self.size):
                 # 超えた時の座標をゴールとする
                 goal = agent['p'] + agent['v']
                 
                 # y座標も同時にサイズを超えるかつyが正
-                if (goal[1] > SIZE - 0.1):
+                if (goal[1] > self.size - 0.1):
                     # ゴールの座標がグラフ領域の角にならないように調整
                     goal[1] =  goal[1] - 0.1
                     print("調整入りました")
                     
                 # y座標も同時にサイズを超えるかつyが負
-                elif (goal[1] < -SIZE + 0.1):
+                elif (goal[1] < -self.size + 0.1):
                     # ゴールの座標がグラフ領域の角にならないように調整
                     goal[1] = goal[1] + 0.1
                     print("調整入りました")
                     
-                goal[0] = -SIZE
+                goal[0] = -self.size
                 # 端に到達したエージェントを、反対側の端に移動させる
-                agent['p'][0] = SIZE + ((agent['p'] + agent['v'])[0] + SIZE)
+                agent['p'][0] = self.size + ((agent['p'] + agent['v'])[0] + self.size)
                 break
                         
-            elif ((agent['p'] + agent['v'])[0] > SIZE):
+            elif ((agent['p'] + agent['v'])[0] > self.size):
                 goal = agent['p'] + agent['v']
                 
                 # y座標も同時にサイズを超えるかつyが正
-                if (goal[1] > SIZE - 0.1):
+                if (goal[1] > self.size - 0.1):
                     goal[1] = goal[1] - 0.1
                     print("調整入りました")
 
                # y座標も同時にサイズを超えるかつyが負
-                elif (goal[1] < -SIZE + 0.1):
+                elif (goal[1] < -self.size + 0.1):
                     goal[1] = goal[1] + 0.1
                     print("調整入りました")
                     
-                goal[0] = SIZE
-                agent['p'][0] = -SIZE + ((agent['p'] + agent['v'])[0] - SIZE)
+                goal[0] = self.size
+                agent['p'][0] = -self.size + ((agent['p'] + agent['v'])[0] - self.size)
                 break
                 
                 
             # y座標がグラフ領域を超える
-            elif ((agent['p'] + agent['v'])[1] < -SIZE):
+            elif ((agent['p'] + agent['v'])[1] < -self.size):
                 # 超えた時の座標をゴールとする
                 goal = agent['p'] + agent['v']
-                goal[1] = -SIZE
+                goal[1] = -self.size
                 
-                agent['p'][1] = SIZE + ((agent['p'] + agent['v'])[1] + SIZE)
+                agent['p'][1] = self.size + ((agent['p'] + agent['v'])[1] + self.size)
                 break
                                         
-            elif ((agent['p'] + agent['v'])[1] > SIZE):
+            elif ((agent['p'] + agent['v'])[1] > self.size):
                 goal = agent['p'] + agent['v']
-                goal[1] = SIZE
+                goal[1] = self.size
                 
-                agent['p'][1] = -SIZE + ((agent['p'] + agent['v'])[1] - SIZE)
+                agent['p'][1] = -self.size + ((agent['p'] + agent['v'])[1] - self.size)
                 break
                 
             # エージェントを初期速度のまま動かす
@@ -514,7 +515,7 @@ class Simulation():
         
         for i in range(self.agent):
             # x座標が左端をこえる
-            if ((self.all_agent[i]['p'] + self.all_agent[i]['v'])[0] < -SIZE):
+            if ((self.all_agent[i]['p'] + self.all_agent[i]['v'])[0] < -self.size):
                 # ゴールに到着
                 if (self.all_agent[i]['p'][0] > 
                    self.agent_goal[i][self.goal_count[i]][0] - 0.1 
@@ -548,7 +549,7 @@ class Simulation():
                     # はみ出た時用のゴールが設定されていない
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # はみ出た時用のゴールを設定
-                        self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0] + 2*SIZE
+                        self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0] + 2*self.size
                         self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1]
                         
                     # はみ出た時用のゴールが設定されている
@@ -558,13 +559,13 @@ class Simulation():
                         self.goal_temp[i][1] = 0
                 
                 # エージェントを反対の端へ移動
-                self.all_agent[i]['p'][0] = SIZE + (
-                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[0] + SIZE
+                self.all_agent[i]['p'][0] = self.size + (
+                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[0] + self.size
                 )
         
             
             # x座標が右端をこえる
-            elif ((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] > SIZE):
+            elif ((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] > self.size):
                 
                 # ゴール判定
                 if (self.all_agent[i]['p'][0] > 
@@ -595,19 +596,19 @@ class Simulation():
                     # ゴールが調整されているか確認
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 境界をこえた用のゴールを設定
-                        self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0] + (-2 * SIZE)
+                        self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0] + (-2 * self.size)
                         self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1]
                     else:
                         # はみ出た時用のゴールを初期化
                         self.goal_temp[i][0] = 0
                         self.goal_temp[i][1] = 0
                         
-                self.all_agent[i]['p'][0] = -SIZE + \
-                    ((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] - SIZE)
+                self.all_agent[i]['p'][0] = -self.size + \
+                    ((self.all_agent[i]['p']+self.all_agent[i]['v'])[0] - self.size)
 
                 
             # y座標が下をこえる
-            elif ((self.all_agent[i]['p']+self.all_agent[i]['v'])[1] < -SIZE):
+            elif ((self.all_agent[i]['p']+self.all_agent[i]['v'])[1] < -self.size):
                 
                 # ゴール判定
                 if (self.all_agent[i]['p'][0] > 
@@ -639,18 +640,18 @@ class Simulation():
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 境界をこえた用のゴールを設定
                         self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0]
-                        self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1] + 2*SIZE
+                        self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1] + 2*self.size
                     else:        
                         # はみ出た時用のゴールを初期化
                         self.goal_temp[i][0] = 0
                         self.goal_temp[i][1] = 0
                         
-                self.all_agent[i]['p'][1] = SIZE + (
-                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[1] + SIZE
+                self.all_agent[i]['p'][1] = self.size + (
+                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[1] + self.size
                 )
                 
             # y座標が上をこえる     
-            elif ((self.all_agent[i]['p']+self.all_agent[i]['v'])[1] > SIZE):
+            elif ((self.all_agent[i]['p']+self.all_agent[i]['v'])[1] > self.size):
                 
                 # ゴール判定
                 if (self.all_agent[i]['p'][0] > 
@@ -682,15 +683,15 @@ class Simulation():
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 境界をこえた用のゴールを設定
                         self.goal_temp[i][0] = self.agent_goal[i][self.goal_count[i]][0]
-                        self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1] + (-2*SIZE)
+                        self.goal_temp[i][1] = self.agent_goal[i][self.goal_count[i]][1] + (-2*self.size)
                     else:
                         # はみ出た時用のゴールを初期化
                         self.goal_temp[i][0] = 0
                         self.goal_temp[i][1] = 0
                         
 
-                self.all_agent[i]['p'][1] = -SIZE + (
-                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[1] - SIZE
+                self.all_agent[i]['p'][1] = -self.size + (
+                    (self.all_agent[i]['p']+self.all_agent[i]['v'])[1] - self.size
                 )
 
                 
@@ -717,31 +718,31 @@ class Simulation():
         # 一回目以降のゴール
         else:
             # 前回のゴールが左端にあるとき
-            if (self.goal_pos[num][0] == -SIZE):
+            if (self.goal_pos[num][0] == -self.size):
                 # スタート位置、ゴール位置を記録
-                self.start_pos[num][0] = self.goal_pos[num][0] + 2*SIZE
+                self.start_pos[num][0] = self.goal_pos[num][0] + 2*self.size
                 self.start_pos[num][1] = self.goal_pos[num][1]
                 self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
                 
             # 前回のゴールが右端にあるとき
-            elif (self.goal_pos[num][0] == SIZE):
+            elif (self.goal_pos[num][0] == self.size):
                 # スタート位置、ゴール位置を記録
-                self.start_pos[num][0] = self.goal_pos[num][0] + (-2*SIZE)
+                self.start_pos[num][0] = self.goal_pos[num][0] + (-2*self.size)
                 self.start_pos[num][1] = self.goal_pos[num][1]
                 self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
             
             # 前回のゴールが下端にあるとき
-            elif (self.goal_pos[num][1] == -SIZE):
+            elif (self.goal_pos[num][1] == -self.size):
                 # スタート位置、ゴール位置を記録
                 self.start_pos[num][0] = self.goal_pos[num][0]
-                self.start_pos[num][1] = self.goal_pos[num][1] + 2*SIZE
+                self.start_pos[num][1] = self.goal_pos[num][1] + 2*self.size
                 self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
                 
             # 前回のゴールが上端にあるとき
-            elif (self.goal_pos[num][1] == SIZE):
+            elif (self.goal_pos[num][1] == self.size):
                 # スタート位置、ゴール位置を記録
                 self.start_pos[num][0] = self.goal_pos[num][0]
-                self.start_pos[num][1] = self.goal_pos[num][1] + (-2*SIZE)
+                self.start_pos[num][1] = self.goal_pos[num][1] + (-2*self.size)
                 self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
                 
         # 完了時間を計算(ゴールまでのステップ/ゴールまでの距離)
@@ -779,27 +780,27 @@ class Simulation():
             
         # スタート位置、ゴール位置を算出
         # 前回のゴールが左端にあるとき
-        if (self.goal_pos[num][0] == -SIZE):
-            self.start_pos[num][0] = self.goal_pos[num][0] + 2 * SIZE
+        if (self.goal_pos[num][0] == -self.size):
+            self.start_pos[num][0] = self.goal_pos[num][0] + 2 * self.size
             self.start_pos[num][1] = self.goal_pos[num][1]
             self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
 
         # 前回のゴールが右端にあるとき
-        elif (self.goal_pos[num][0] == SIZE):
-            self.start_pos[num][0] = self.goal_pos[num][0] + (-2 * SIZE)
+        elif (self.goal_pos[num][0] == self.size):
+            self.start_pos[num][0] = self.goal_pos[num][0] + (-2 * self.size)
             self.start_pos[num][1] = self.goal_pos[num][1]
             self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
 
         # 前回のゴールが下端にあるとき
-        elif (self.goal_pos[num][1] == -SIZE):
+        elif (self.goal_pos[num][1] == -self.size):
             self.start_pos[num][0] = self.goal_pos[num][0]
-            self.start_pos[num][1] = self.goal_pos[num][1] + 2 * SIZE
+            self.start_pos[num][1] = self.goal_pos[num][1] + 2 * self.size
             self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
 
         # 前回のゴールが上端にあるとき
-        elif (self.goal_pos[num][1] == SIZE):
+        elif (self.goal_pos[num][1] == self.size):
             self.start_pos[num][0] = self.goal_pos[num][0]
-            self.start_pos[num][1] = self.goal_pos[num][1] + (-2 * SIZE)
+            self.start_pos[num][1] = self.goal_pos[num][1] + (-2 * self.size)
             self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
             
         
