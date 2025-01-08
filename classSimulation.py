@@ -71,6 +71,8 @@ class Simulation():
         self.first_agent = [] # 初期位置記録用
         self.agent_goal = []
         self.first_pos =[]
+        # 動的回避を行うエージェントの数
+        self.num_dynamic_agent = int(np.round(self.agent*self.dynamic_percent))
         
         # エージェントの生成
         for n in range(self.agent):
@@ -78,8 +80,7 @@ class Simulation():
             pos = np.random.uniform(-FIELD_SIZE, FIELD_SIZE, 2)
             vel = np.random.uniform(-FIELD_SIZE, FIELD_SIZE, 2)
             
-            num_agent_omoiyari = int(np.round(self.agent*self.dynamic_percent))
-            if n < num_agent_omoiyari:
+            if n < self.num_dynamic_agent:
                 avoidance = 'dynamic'
             else:
                 avoidance = 'simple'

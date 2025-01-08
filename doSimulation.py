@@ -6,6 +6,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.animation as animation
+from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 import tqdm, gc, time
 from datetime import datetime, timedelta
@@ -19,11 +20,11 @@ FIELD_SIZE = 5
 # 目盛りは最大値5、最小値-5で10目盛り
 # グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
 
-NUM_OF_TRIAL = 5 # 試行回数
+NUM_OF_TRIAL = 20 # 試行回数
 STEP = 500 # 1回の試行(TRIAL)で動かすステップの回数
 
 # %% シミュレーションの前準備
-fig, ax = fs.define_fig_ax(width=500, height=500, field_size=FIELD_SIZE)
+#fig, ax = fs.define_fig_ax(width=500, height=500, field_size=FIELD_SIZE)
 
 # 各シミュレーションの結果を保存する変数
 row_label = []
@@ -41,7 +42,7 @@ for num in range(NUM_OF_TRIAL):
                       agent_size=0.1, agent=25, 
                       view=1, viewing_angle=360, 
                       goal_vec=0.06,  
-                      dynamic_percent=0.2,
+                      dynamic_percent=1.0,
                       simple_avoid_vec=0.06, 
                       dynamic_avoid_vec=0.06)
 
@@ -65,10 +66,9 @@ for num in range(NUM_OF_TRIAL):
     # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
     data.append(row)
 
-    # 最初に表示する図の作成
-    plot_data = O.show_image()
-    im = ax.scatter(*plot_data, s=40, marker="o", c='blue')
-    ims.append([im])
+    # # 最初に表示する図の作成
+    # plot_data = O.show_image()
+    # ims.append(plot_data)
 
     ##### シミュレーション (STEP数だけ繰り返す) #####
     start_time = time.time()
@@ -80,10 +80,9 @@ for num in range(NUM_OF_TRIAL):
         row = O.record_agent_information()
         data.append(row)
 
-        # 図を作成
-        plot_data = O.show_image()
-        im = ax.scatter(*plot_data, s=40, marker="o", c='blue')
-        ims.append([im])
+        # # 図を作成
+        # plot_data = O.show_image()
+        # ims.append(plot_data)
         
     end_time = time.time()
     passed_time = end_time - start_time
@@ -185,7 +184,25 @@ column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision',
 df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
 df_result.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
-print(df) # show results
+
+# result = pd.read_csv('agt25_avoidVec3px.csv').reset_index(drop=True)
+# result = result.iloc[:,2:].groupby('dynamic_percent').mean()
 
 # ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
 # ani.save(f'ani_dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
+
+fig, ax = plt.subplots(figsize=(8,8))
+def update(frame):
+    ax.cla()
+    for i in range(O.agent):
+        if i < O.num_dynamic_agent: 
+            color = 'blue'
+        else:
+            color = 'red'
+        ax.scatter(x=frame[0][i], y=frame[1][i], s=40, marker="o", c=color)
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-5, 5)
+
+anim = FuncAnimation(fig, update, frames=ims, interval=100)
+anim.save('simualtion.mp4')
+
