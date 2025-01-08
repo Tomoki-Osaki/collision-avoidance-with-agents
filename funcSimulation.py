@@ -117,7 +117,8 @@ def calc_deltaTTCP(velx1: float, vely1: float, posx1: float, posy1: float,
     """
     CP = calc_cross_point(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
     CPx, CPy = CP[0], CP[1]
-    TTCP0 = TTCP1 = None
+    TTCP0 = None
+    TTCP1 = None
     
     if (
             ( (posx1 < CPx and velx1 > 0) or (posx1 > CPx and velx1 < 0) ) 
@@ -145,6 +146,7 @@ def calc_deltaTTCP(velx1: float, vely1: float, posx1: float, posy1: float,
     else:
         return None
     
+    # TTCP0とTTCP1がどちらもNoneでない場合のみdeltaTTCPを返す
     deltaTTCP = TTCP0 - TTCP1 #　正は道を譲り、負は自分が先に行く
     
     return deltaTTCP    
@@ -216,3 +218,9 @@ def debug_theta(s, num, other):
     
     print('rad:', theta, 'deg:', np.rad2deg(theta))
     
+"""
+% トレーニングデータの平均と標準偏差で標準化
+        mu = mean(X_train);
+        sigma = std(X_train);
+        X_train = (X_train - mu) ./ sigma;
+"""

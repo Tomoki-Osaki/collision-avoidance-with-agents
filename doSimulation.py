@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
-import tqdm, gc
+import tqdm, gc, time
+from datetime import datetime, timedelta
 import classSimulation as cs
 import funcSimulation as fs
 
@@ -18,7 +19,7 @@ FIELD_SIZE = 5
 # 目盛りは最大値5、最小値-5で10目盛り
 # グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
 
-TRIAL = 1 # 試行回数
+NUM_OF_TRIAL = 5 # 試行回数
 STEP = 500 # 1回の試行(TRIAL)で動かすステップの回数
 
 # %% シミュレーションの前準備
@@ -31,13 +32,16 @@ ims = [] # 図のデータをまとめるもの、これを流すことでアニ
 
 # %% シミュレーション
 # 一度にSTEP数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
-for num in range(TRIAL):
+t_now = datetime.now()
+print(f'シミュレーション開始時刻は {t_now.strftime("%H:%M")} です。\n')
+
+for num in range(NUM_OF_TRIAL):
     np.random.seed(num)
     O = cs.Simulation(interval=100, 
                       agent_size=0.1, agent=25, 
                       view=1, viewing_angle=360, 
                       goal_vec=0.06,  
-                      dynamic_percent=0.5,
+                      dynamic_percent=0.2,
                       simple_avoid_vec=0.06, 
                       dynamic_avoid_vec=0.06)
 
@@ -67,6 +71,7 @@ for num in range(TRIAL):
     ims.append([im])
 
     ##### シミュレーション (STEP数だけ繰り返す) #####
+    start_time = time.time()
     for t in tqdm.tqdm(range(STEP)):
         O.simulate(now_step=t+1)
         index_label.append(t + 1)
@@ -80,6 +85,16 @@ for num in range(TRIAL):
         im = ax.scatter(*plot_data, s=40, marker="o", c='blue')
         ims.append([im])
         
+    end_time = time.time()
+    passed_time = end_time - start_time
+    
+    print(f'{NUM_OF_TRIAL}回中{num+1}回目の試行が終了しました。')
+    print(f'経過時間は{passed_time:.0f}秒です。\n')
+    if num == 0:
+        expected_passsing_time = passed_time*NUM_OF_TRIAL
+        expected_end_time = t_now + timedelta(seconds=expected_passsing_time)
+        print(f'シミュレーションの実行時間は 約{expected_passsing_time/60:.0f}分 です。')
+        print(f'終了時刻の目安は {expected_end_time.strftime("%H:%M")} です。\n')
     ##### シミュレーション終了 ######    
         
     
@@ -161,15 +176,16 @@ for num in range(TRIAL):
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
                    STEP, O.dynamic_percent])
-
+    ##### １試行分のデータの記録終了 #####
+    
 # 値をまとめたcsvファイルの作成
 column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision', 
-                'agent', 'viewing_angle', 'step', 'method']
+                'agent', 'viewing_angle', 'step', 'dynamic_percent']
                       
-df = pd.DataFrame(values, columns=column_label, index=row_label)
+df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-df.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
+df_result.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
 print(df) # show results
 
-ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
-ani.save(f'ani_dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
+# ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
+# ani.save(f'ani_dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
