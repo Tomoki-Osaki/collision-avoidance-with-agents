@@ -42,7 +42,7 @@ for num in range(NUM_OF_TRIAL):
                       agent_size=0.1, agent=25, 
                       view=1, viewing_angle=360, 
                       goal_vec=0.06,  
-                      dynamic_percent=1.0,
+                      dynamic_percent=0.7,
                       simple_avoid_vec=0.06, 
                       dynamic_avoid_vec=0.06)
 
@@ -80,9 +80,9 @@ for num in range(NUM_OF_TRIAL):
         row = O.record_agent_information()
         data.append(row)
 
-        # # 図を作成
-        # plot_data = O.show_image()
-        # ims.append(plot_data)
+        # 図を作成
+        plot_data = O.show_image()
+        ims.append(plot_data)
         
     end_time = time.time()
     passed_time = end_time - start_time
@@ -176,18 +176,22 @@ for num in range(NUM_OF_TRIAL):
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
                    STEP, O.dynamic_percent])
     ##### １試行分のデータの記録終了 #####
+print(f'シミュレーション終了時刻は {datetime.now().strftime("%H:%M")} です。\n')
     
+##### 全TRIALの結果の記録 #####
 # 値をまとめたcsvファイルの作成
 column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision', 
                 'agent', 'viewing_angle', 'step', 'dynamic_percent']
                       
 df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-df_result.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
+# df_result.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
+backup_result = df_result.copy()
 
 # result = pd.read_csv('agt25_avoidVec3px.csv').reset_index(drop=True)
 # result = result.iloc[:,2:].groupby('dynamic_percent').mean()
 
+# %% make animations 
 # ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
 # ani.save(f'ani_dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
 
@@ -202,6 +206,7 @@ def update(frame):
         ax.scatter(x=frame[0][i], y=frame[1][i], s=40, marker="o", c=color)
     ax.set_xlim(-5, 5)
     ax.set_ylim(-5, 5)
+    ax.grid()
 
 anim = FuncAnimation(fig, update, frames=ims, interval=100)
 anim.save('simualtion.mp4')
