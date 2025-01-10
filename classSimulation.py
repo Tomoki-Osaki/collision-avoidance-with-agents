@@ -153,13 +153,13 @@ class Simulation():
                 if (goal[1] > FIELD_SIZE - 0.1):
                     # ゴールの座標がグラフ領域の角にならないように調整
                     goal[1] =  goal[1] - 0.1
-                    print("調整入りました")
+                    #print("調整入りました")
                     
                 # y座標も同時にサイズを超えるかつyが負
                 elif (goal[1] < -FIELD_SIZE + 0.1):
                     # ゴールの座標がグラフ領域の角にならないように調整
                     goal[1] = goal[1] + 0.1
-                    print("調整入りました")
+                    #print("調整入りました")
                     
                 goal[0] = -FIELD_SIZE
                 # 端に到達したエージェントを、反対側の端に移動させる
@@ -172,12 +172,12 @@ class Simulation():
                 # y座標も同時にサイズを超えるかつyが正
                 if (goal[1] > FIELD_SIZE - 0.1):
                     goal[1] = goal[1] - 0.1
-                    print("調整入りました")
+                    #print("調整入りました")
 
                # y座標も同時にサイズを超えるかつyが負
                 elif (goal[1] < -FIELD_SIZE + 0.1):
                     goal[1] = goal[1] + 0.1
-                    print("調整入りました")
+                    #print("調整入りました")
                     
                 goal[0] = FIELD_SIZE
                 agent['p'][0] = -FIELD_SIZE + ((agent['p'] + agent['v'])[0] - FIELD_SIZE)
@@ -739,7 +739,7 @@ class Simulation():
         
         # 外れ値を除外
         if (completion_time > 200):
-            print("消します")
+            #print("消します")
             print(completion_time)
             return None
         
@@ -817,7 +817,7 @@ class Simulation():
         completion_time = (self.goal_step[num] - self.start_step[num] + 1) / distance
 
         if (completion_time > 200 or completion_time < 10):
-            print("消しました")
+            #print("消しました")
             print(completion_time)
             return None
         

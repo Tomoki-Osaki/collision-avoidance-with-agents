@@ -2,18 +2,22 @@
 2025/01/07
 シミュレーションのための関数 
 
-1. calc_rad(pos2, pos1)
-2. rotate_vec(vec, rad)
-3. calc_distance(posX1, posY1, posX2, posY2)
-4. calc_cross_point(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-5. calc_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-6. calc_angle_two_lines(line1, line2)
+1. define_fig_ax(width, height, FIELD_SIZE)
+2. calc_rad(pos2, pos1)
+3. rotate_vec(vec, rad)
+4. calc_distance(posX1, posY1, posX2, posY2)
+5. calc_cross_point(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+6. calc_deltaTTCP(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+7. calc_angle_two_lines(line1, line2)
 8. awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
 9. debug_theta(s, num, other)
 """
 
 # %%
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import Divider, Size 
+from mpl_toolkits.axes_grid1.mpl_axes import Axes
 
 # %% functions to calculate the vectors
 def calc_rad(pos2: np.array, # [float, float]
@@ -190,3 +194,33 @@ def debug_theta(s, num, other):
         sigma = std(X_train);
         X_train = (X_train - mu) ./ sigma;
 """
+
+# %% define figure parameters
+def define_fig_ax(width: int = 500, 
+                  height: int = 500,
+                  field_size: int = 5) -> plt.subplots:
+    ax_w_px = width  # プロット領域の幅をピクセル単位で指定
+    ax_h_px = height  # プロット領域の高さをピクセル単位で指定
+    
+    #  サイズ指定のための処理、20行目までhttps://qiita.com/code0327/items/43118813b6085dc7e3d1　を参照
+    fig_dpi = 100
+    ax_w_inch = ax_w_px / fig_dpi
+    ax_h_inch = ax_h_px / fig_dpi
+    ax_margin_inch = (0.5, 0.5, 0.5, 0.5)  #  Left, Top, Right, Bottom [inch]
+    
+    fig_w_inch = ax_w_inch + ax_margin_inch[0] + ax_margin_inch[2] 
+    fig_h_inch = ax_h_inch + ax_margin_inch[1] + ax_margin_inch[3]
+    
+    fig = plt.figure(dpi=fig_dpi, figsize=(fig_w_inch, fig_h_inch))
+    ax_p_w = [Size.Fixed(ax_margin_inch[0]), Size.Fixed(ax_w_inch)]
+    ax_p_h = [Size.Fixed(ax_margin_inch[1]), Size.Fixed(ax_h_inch)]
+    divider = Divider(fig, (0.0, 0.0, 1.0, 1.0), ax_p_w, ax_p_h, aspect=False)
+    ax = Axes(fig, divider.get_position())
+    ax.set_axes_locator(divider.new_locator(nx=1, ny=1))
+    fig.add_axes(ax)
+    
+    ax.set_xlim(-field_size, field_size)
+    ax.set_ylim(-field_size, field_size)
+    ax.grid(True)
+    
+    return fig, ax

@@ -20,18 +20,29 @@ ims = [] # 図のデータをまとめるもの、これを流すことでアニ
 # 一度にSTEP数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
 NUM_OF_TRIAL = 20 # 試行回数
 STEP = 500 # 1回の試行(TRIAL)で動かすステップの回数
-dynper = 0.9
+
+agent = 50
+simple_avoid_vec_px = 1.5 # px
+simple_avoid_vec = float(simple_avoid_vec_px) / 50
+print('simple_avoid_vec:', simple_avoid_vec)
+
+dyn_prop = input('動的回避を行うエージェントの割合(0-1): ') # 動的回避を行うエージェントの割合
+dyn_prop = float(dyn_prop)
+print('dyn_prop:', dyn_prop)
+
+print('num of agents:', agent)
 t_now = datetime.now()
-print(f'シミュレーション開始時刻は {t_now.strftime("%H:%M")} です。\n')
+print(f'\nシミュレーション開始時刻は {t_now.strftime("%H:%M")} です。\n')
 
 for num in range(NUM_OF_TRIAL):
+    print(f'Start ({num+1}/{NUM_OF_TRIAL})')
     np.random.seed(num)
     O = cs.Simulation(interval=100, 
-                      agent_size=0.1, agent=50, 
+                      agent_size=0.1, agent=agent, 
                       view=1, viewing_angle=360, 
                       goal_vec=0.06,  
-                      dynamic_percent=dynper,
-                      simple_avoid_vec=0.06, 
+                      dynamic_percent=dyn_prop,
+                      simple_avoid_vec=simple_avoid_vec, 
                       dynamic_avoid_vec=0.06)
 
     data = []
@@ -73,13 +84,16 @@ for num in range(NUM_OF_TRIAL):
     end_time = time.time()
     passed_time = end_time - start_time
     
-    print(f'{NUM_OF_TRIAL}回中{num+1}回目の試行が終了しました。')
-    print(f'経過時間は{passed_time:.0f}秒です。\n')
-    if num == 0:
-        expected_passsing_time = passed_time*NUM_OF_TRIAL
-        expected_end_time = t_now + timedelta(seconds=expected_passsing_time)
-        print(f'シミュレーションの実行時間は 約{expected_passsing_time/60:.0f}分 です。')
-        print(f'終了時刻の目安は {expected_end_time.strftime("%H:%M")} です。\n')
+    print(f'Finish ({num+1}/{NUM_OF_TRIAL})')
+    print(f'経過時間は {passed_time:.0f}秒({passed_time/60:.0f}分) です。\n')
+    expected_passsing_time_sec = passed_time*NUM_OF_TRIAL
+    expected_passsing_time_min = expected_passsing_time_sec / 60
+    expected_passsing_time_hr = expected_passsing_time_min / 60
+    expected_end_time = t_now + timedelta(seconds=expected_passsing_time_sec)
+    print(f'シミュレーション開始時刻は {t_now.strftime("%H:%M")} です。')
+    print(f'予測されるシミュレーションの実行時間は 約{expected_passsing_time_min:.0f}分 ({expected_passsing_time_hr:.1f}時間) です。')
+    print(f'現在時刻は {datetime.now().strftime("%H:%M")} です。')
+    print(f'終了時刻の目安は {expected_end_time.strftime("%H:%M")} です。\n')
     ##### シミュレーション終了 ######    
         
     
@@ -157,44 +171,43 @@ for num in range(NUM_OF_TRIAL):
     row_label.append('seed_' + str(num))
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
-                   STEP, O.dynamic_percent])
+                   STEP, O.dynamic_percent, O.simple_avoid_vec])
     ##### データの記録終了 #####
 print(f'シミュレーション終了時刻は {datetime.now().strftime("%H:%M")} です。\n')
-print(f'{dynper}終了')    
+print(f'dyn_prop {dyn_prop}終了')
+    
     
 ##### 全TRIALの結果の記録 #####
 # 値をまとめたcsvファイルの作成
 column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision', 
-                'agent', 'viewing_angle', 'step', 'dynamic_percent']
+                'agent', 'viewing_angle', 'step', 'dynamic_percent', 'simple_avoid_vec']
                       
 df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
 # df_result.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
 backup_result = df_result.copy()
-df_result.to_csv(f'{dynper}_agt50.csv')
+df_result.to_csv(f'agt{O.agent}_avoidvec{O.simple_avoid_vec*50}px_dynper0{int(O.dynamic_percent*10)}.csv')
 
 # result = pd.read_csv('agt25_avoidVec3px.csv').reset_index(drop=True)\
 # result = df_result.iloc[:,2:].groupby('dynamic_percent').mean()
-
-# dynamic_percent0-0.2, agent50のシミュレーション結果は、20250109_agt50_dynper00-02.csv
 
 # %% make animations 
 # ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
 # ani.save(f'ani_dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
 
-fig, ax = plt.subplots(figsize=(8,8))
-def update(frame):
-    ax.cla()
-    for i in range(O.agent):
-        if i < O.num_dynamic_agent: 
-            color = 'blue'
-        else:
-            color = 'red'
-        ax.scatter(x=frame[0][i], y=frame[1][i], s=40, marker="o", c=color)
-    ax.set_xlim(-5, 5)
-    ax.set_ylim(-5, 5)
-    ax.grid()
+# fig, ax = plt.subplots(figsize=(8,8))
+# def update(frame):
+#     ax.cla()
+#     for i in range(O.agent):
+#         if i < O.num_dynamic_agent: 
+#             color = 'blue'
+#         else:
+#             color = 'red'
+#         ax.scatter(x=frame[0][i], y=frame[1][i], s=40, marker="o", c=color)
+#     ax.set_xlim(-5, 5)
+#     ax.set_ylim(-5, 5)
+#     ax.grid()
 
-anim = FuncAnimation(fig, update, frames=ims, interval=100)
-anim.save('simualtion.mp4')
+# anim = FuncAnimation(fig, update, frames=ims, interval=100)
+# anim.save('simualtion.mp4')
 
