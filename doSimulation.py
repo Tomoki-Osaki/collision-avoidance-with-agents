@@ -1,5 +1,5 @@
 """ 
-2025/01/07 
+2025/01/10
 シミュレーションを実際に実行する
 """
 # %%
@@ -21,17 +21,21 @@ ims = [] # 図のデータをまとめるもの、これを流すことでアニ
 NUM_OF_TRIAL = 20 # 試行回数
 STEP = 500 # 1回の試行(TRIAL)で動かすステップの回数
 
-dyn_prop = 1 # 動的回避を行うエージェントの割合
-
 agent = 50
-simple_avoid_vec = 0.04 # 1px
+simple_avoid_vec_px = 1.5 # px
+simple_avoid_vec = float(simple_avoid_vec_px) / 50
+print('simple_avoid_vec:', simple_avoid_vec)
 
-print('simple_avoid_vec:', int(simple_avoid_vec*50))
+dyn_prop = input('動的回避を行うエージェントの割合(0-1): ') # 動的回避を行うエージェントの割合
+dyn_prop = float(dyn_prop)
 print('dyn_prop:', dyn_prop)
+
+print('num of agents:', agent)
 t_now = datetime.now()
-print(f'シミュレーション開始時刻は {t_now.strftime("%H:%M")} です。\n')
+print(f'\nシミュレーション開始時刻は {t_now.strftime("%H:%M")} です。\n')
 
 for num in range(NUM_OF_TRIAL):
+    print(f'Start ({num+1}/{NUM_OF_TRIAL})')
     np.random.seed(num)
     O = cs.Simulation(interval=100, 
                       agent_size=0.1, agent=agent, 
@@ -80,12 +84,15 @@ for num in range(NUM_OF_TRIAL):
     end_time = time.time()
     passed_time = end_time - start_time
     
-    print(f'{NUM_OF_TRIAL}回中{num+1}回目の試行が終了しました。')
-    print(f'経過時間は{passed_time:.0f}秒です。\n')
-    expected_passsing_time = passed_time*NUM_OF_TRIAL
-    expected_end_time = t_now + timedelta(seconds=expected_passsing_time)
+    print(f'Finish ({num+1}/{NUM_OF_TRIAL})')
+    print(f'経過時間は {passed_time:.0f}秒({passed_time/60:.0f}分) です。\n')
+    expected_passsing_time_sec = passed_time*NUM_OF_TRIAL
+    expected_passsing_time_min = expected_passsing_time_sec / 60
+    expected_passsing_time_hr = expected_passsing_time_min / 60
+    expected_end_time = t_now + timedelta(seconds=expected_passsing_time_sec)
     print(f'シミュレーション開始時刻は {t_now.strftime("%H:%M")} です。')
-    print(f'予測されるシミュレーションの実行時間は 約{expected_passsing_time/60:.0f}分 です。')
+    print(f'予測されるシミュレーションの実行時間は 約{expected_passsing_time_min:.0f}分 ({expected_passsing_time_hr:.1f}時間) です。')
+    print(f'現在時刻は {datetime.now().strftime("%H:%M")} です。')
     print(f'終了時刻の目安は {expected_end_time.strftime("%H:%M")} です。\n')
     ##### シミュレーション終了 ######    
         
@@ -179,12 +186,10 @@ df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
 # df_result.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
 backup_result = df_result.copy()
-df_result.to_csv(f'agt{O.agent}_dynper0{int(O.dynamic_percent*10)}_avoidvec{int(O.simple_avoid_vec*50)}px.csv')
+df_result.to_csv(f'agt{O.agent}_avoidvec{O.simple_avoid_vec*50}px_dynper0{int(O.dynamic_percent*10)}.csv')
 
 # result = pd.read_csv('agt25_avoidVec3px.csv').reset_index(drop=True)\
 # result = df_result.iloc[:,2:].groupby('dynamic_percent').mean()
-
-# dynamic_percent0-0.2, agent50のシミュレーション結果は、20250109_agt50_dynper00-02.csv
 
 # %% make animations 
 # ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
