@@ -1,5 +1,4 @@
 """ 
-2025/01/10
 シミュレーションのためのクラスSimulation
 
 class Simulation
