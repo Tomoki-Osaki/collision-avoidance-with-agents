@@ -95,6 +95,10 @@ for num in range(NUM_OF_TRIAL):
     print(f'({finish_hr}時間{finish_min}分) です。')
     print(f'現在時刻は {datetime.now().strftime("%H:%M")} です。')
     print(f'終了時刻の目安は {expected_end_time.strftime("%H:%M")} です。\n')
+    print('Settings of simulation')
+    print('simple_avoid_vec:', simple_avoid_vec_px, 'px')
+    print('dyn_prop:', dyn_prop)
+    print('num of agents:', agent, '\n')
     ##### シミュレーション終了 ######    
         
     
