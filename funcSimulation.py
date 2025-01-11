@@ -1,5 +1,4 @@
 """ 
-2025/01/10
 シミュレーションのための関数 
 
 1. define_fig_ax(width, height, FIELD_SIZE)
