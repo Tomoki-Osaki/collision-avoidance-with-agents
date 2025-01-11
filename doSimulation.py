@@ -191,7 +191,7 @@ df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
 # df_result.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
 backup_result = df_result.copy()
-df_result.to_csv(f'agt{O.agent}_avoidvec{O.simple_avoid_vec*500}px_dynper0{int(O.dynamic_percent*10)}.csv')
+df_result.to_csv(f'agt{O.agent}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv')
 
 # result = pd.read_csv('agt25_avoidVec3px.csv').reset_index(drop=True)\
 # result = df_result.iloc[:,2:].groupby('dynamic_percent').mean()
