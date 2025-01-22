@@ -17,27 +17,32 @@ values = []
 ims = [] # 図のデータをまとめるもの、これを流すことでアニメーションになる
 
 # 一度にSTEP数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
-NUM_OF_TRIAL = 20 # 試行回数
-STEP = 100 # 1回の試行(TRIAL)で動かすステップの回数
+NUM_OF_TRIAL = 10 # 試行回数
+STEP = 500 # 1回の試行(TRIAL)で動かすステップの回数
 
 agent = 50
-simple_avoid_vec_px = 1.9 # px
+simple_avoid_vec_px = 5 # px
 simple_avoid_vec = simple_avoid_vec_px / 50
-print('simple_avoid_vec:', simple_avoid_vec_px, 'px')
 
-dyn_prop = float(input('動的回避を行うエージェントの割合(0-1): '))
+print('\nsimple_avoid_vec:', simple_avoid_vec_px, 'px')
+print('num of agents:', agent)
+dyn_prop = float(input('\nProportions of dynamic agents(0-1): '))
 print('dyn_prop:', dyn_prop)
 
-print('num of agents:', agent)
 t_now = datetime.now()
 print(f'\nシミュレーション開始時刻は {t_now.strftime("%H:%M")} です。\n')
 
 for num in range(NUM_OF_TRIAL):
     print(f'Start ({num+1}/{NUM_OF_TRIAL})')
-    np.random.seed(num)
+    seed = num
+    np.random.seed(seed)
+    print('random seed:', seed)
     O = cs.Simulation(interval=100, 
-                      agent_size=0.1, agent=agent, 
-                      view=1, viewing_angle=360, 
+                      agent_size=0.1, 
+                      agent=agent, 
+                      view=1, 
+                      #viewing_angle=360, 
+                      viewing_angle=180, 
                       goal_vec=0.06,  
                       dynamic_percent=dyn_prop,
                       simple_avoid_vec=simple_avoid_vec, 
@@ -98,7 +103,8 @@ for num in range(NUM_OF_TRIAL):
     print('Settings of simulation')
     print('simple_avoid_vec:', simple_avoid_vec_px, 'px')
     print('dyn_prop:', dyn_prop)
-    print('num of agents:', agent, '\n')
+    print('num of agents:', agent)
+    print('--------------------------------------------------------------------\n')
     ##### シミュレーション終了 ######    
         
     
@@ -173,7 +179,7 @@ for num in range(NUM_OF_TRIAL):
     completion_time_mean = np.mean(O.completion_time)
 
     # 各試行の結果のデータを保存
-    row_label.append('seed_' + str(num))
+    row_label.append('seed_' + str(seed))
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
                    STEP, O.dynamic_percent, O.simple_avoid_vec])
@@ -189,12 +195,8 @@ column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision',
                       
 df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
-# df_result.to_csv(f'dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.csv')
 backup_result = df_result.copy()
-df_result.to_csv(f'agt{O.agent}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv')
-
-# result = pd.read_csv('agt25_avoidVec3px.csv').reset_index(drop=True)\
-# result = df_result.iloc[:,2:].groupby('dynamic_percent').mean()
+#df_result.to_csv(f'simulation_results/agt{O.agent}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv')
 
 # %% make animations 
 # ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
