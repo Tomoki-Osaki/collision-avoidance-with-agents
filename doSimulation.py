@@ -17,11 +17,11 @@ values = []
 ims = [] # 図のデータをまとめるもの、これを流すことでアニメーションになる
 
 # 一度にSTEP数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
-NUM_OF_TRIAL = 10 # 試行回数
-STEP = 500 # 1回の試行(TRIAL)で動かすステップの回数
+NUM_OF_TRIAL = 1 # 試行回数
+STEP = 250 # 1回の試行(TRIAL)で動かすステップの回数
 
 agent = 50
-simple_avoid_vec_px = 5 # px
+simple_avoid_vec_px = 3 # px
 simple_avoid_vec = simple_avoid_vec_px / 50
 
 print('\nsimple_avoid_vec:', simple_avoid_vec_px, 'px')
@@ -66,9 +66,9 @@ for num in range(NUM_OF_TRIAL):
     row = O.record_agent_information() # 全エージェントの位置と速度、接近を記録
     data.append(row) # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
 
-    # # 最初に表示する図の作成
-    # plot_data = O.show_image()
-    # ims.append(plot_data)
+    # 最初に表示する図の作成
+    plot_data = O.show_image()
+    ims.append(plot_data)
 
     ##### シミュレーション (STEP数だけ繰り返す) #####
     start_time = time.time()
@@ -80,9 +80,9 @@ for num in range(NUM_OF_TRIAL):
         row = O.record_agent_information()
         data.append(row)
 
-        ## 図を作成
-        #plot_data = O.show_image()
-        #ims.append(plot_data)
+        # 図を作成
+        plot_data = O.show_image()
+        ims.append(plot_data)
         
     end_time = time.time()
     passed_time = end_time - start_time
@@ -112,7 +112,7 @@ for num in range(NUM_OF_TRIAL):
     # csvとしてステップごとに位置、速度、接近した回数を記録
     """
     df = pd.DataFrame(data, columns=column_label, index=index_label)
-    df.to_csv('to_csv_out_' + str(num) + '.csv')
+    df.to_csv('to_csv_out_' + str(num) + '.csv', mode='x')
     """
     
     # 最後の座標から完了時間を算出
@@ -130,7 +130,7 @@ for num in range(NUM_OF_TRIAL):
     
     """
     df = pd.DataFrame(O.completion_time, columns=column_label, index=index_label)
-    df.to_csv('to_csv_out_completion_time_' + str(num) + '.csv')
+    df.to_csv('to_csv_out_completion_time_' + str(num) + '.csv', mode='x')
     """
     
     # 加速度はx, y速度の差からなるベクトルの大きさ
@@ -196,25 +196,42 @@ column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision',
 df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
 backup_result = df_result.copy()
-#df_result.to_csv(f'simulation_results/agt{O.agent}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv')
+df_result.to_csv(
+    f'simulation_results/agt{O.agent}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv',
+    mode='x'
+)
 
-# %% make animations 
+# %% make animations
 # ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)
 # ani.save(f'ani_dynper{int(100*O.dynamic_percent)}_ang{O.viewing_angle}_agt{O.agent}_stp{STEP}.mp4')
+
+# plt.rcParams['font.family'] = "MS Gothic"
+# plt.rcParams['font.size'] = 14
 
 # fig, ax = plt.subplots(figsize=(8,8))
 # def update(frame):
 #     ax.cla()
 #     for i in range(O.agent):
-#         if i < O.num_dynamic_agent: 
-#             color = 'blue'
+#         if i < O.num_dynamic_agent:
+#             if i == 0:
+#                 color = 'red'
+#                 ax.scatter(x=frame[0][i], y=frame[1][i], s=40,
+#                             marker="o", c=color, label='動的回避')
+#             else:
+#                 ax.scatter(x=frame[0][i], y=frame[1][i], s=40,
+#                             marker="o", c=color)
 #         else:
-#             color = 'red'
-#         ax.scatter(x=frame[0][i], y=frame[1][i], s=40, marker="o", c=color)
+#             color = 'blue'
+#             if i == O.num_dynamic_agent:
+#                 ax.scatter(x=frame[0][i], y=frame[1][i], s=40,
+#                             marker="o", c=color, label='単純回避')
+#             else:
+#                 ax.scatter(x=frame[0][i], y=frame[1][i], s=40,
+#                             marker="o", c=color)
 #     ax.set_xlim(-5, 5)
 #     ax.set_ylim(-5, 5)
 #     ax.grid()
+#     ax.legend(loc='upper left', framealpha=1)
 
 # anim = FuncAnimation(fig, update, frames=ims, interval=100)
-# anim.save('simualtion.mp4')
-
+# anim.save('simulation100dynamic.mp4')
