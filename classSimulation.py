@@ -28,7 +28,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 from typing import Literal
 import funcSimulation as fs
-from funcSimulation import calc_rad, rotate_vec, calc_distance
+from funcSimulation import calc_rad, rotate_vec
 
 # %% 
 # グラフの目盛りの最大値・最小値
@@ -70,6 +70,7 @@ class Simulation():
         self.dynamic_percent = dynamic_percent # 動的回避を基に回避するエージェントの割合
         self.simple_avoid_vec = simple_avoid_vec # 単純回避での回避ベクトルの大きさ(目盛り)
         self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
+        self.random_seed = random_seed
 
         self.all_agent = [] # 全エージェントの座標を記録
         self.all_agent2 = [] # ゴールの計算用
@@ -80,7 +81,7 @@ class Simulation():
         self.num_dynamic_agent = int(np.round(self.agent*self.dynamic_percent))
         
         # エージェントの生成
-        np.random.seed(random_seed)
+        np.random.seed(self.random_seed)
         for n in range(self.agent):
             # グラフ領域の中からランダムに座標を決定
             pos = np.random.uniform(-FIELD_SIZE, FIELD_SIZE, 2)
@@ -368,18 +369,19 @@ class Simulation():
         """ 
         all_Nics = []
         posA = self.all_agent[num]['p']
+        # iは半径を計算するエージェントで、jはその他のエージェント
         for i in range(self.agent):
             posB = self.all_agent[i]['p']
-            cp = ( (posA[0]+posB[0])/2, (posA[1]+posB[1])/2 )
-            radius = calc_distance(*cp, *posA)
+            cp = (posA + posB) / 2
+            radius = np.linalg.norm(cp - posA)
             
             Nic_agents = []
             for j in range(self.agent):
                 posX = self.all_agent[j]['p']
-                dist_cp_posX = calc_distance(*posX, *cp)
-                if dist_cp_posX <= radius:
+                dist_cp_posX = np.linalg.norm(posX - cp)
+                if (dist_cp_posX <= radius) and (j != num) and (j != i):
                     Nic_agents.append(i)
-            all_Nics.append([i, len(Nic_agents)-2]) # posAとposBの分を引く
+            all_Nics.append([i, len(Nic_agents)]) 
         all_Nics = np.array(all_Nics)
         
         return all_Nics
@@ -397,6 +399,7 @@ class Simulation():
         vselfxy = self.all_agent[num]['v']
         Vself = np.linalg.norm(vselfxy)
         
+        # 時点t-1から時点tのxy座標への直線line1
         a = self.all_agent[num]['p'] + self.all_agent[num]['v']
         b = self.all_agent[num]['p']
         line1 = np.array([b, a])
@@ -466,7 +469,7 @@ class Simulation():
     # 9. 
     def calc_completion_time(self, num: int, current_step: int) -> float:
         """ 
-        完了時間を記録
+        ゴールまで到達した際の完了時間を記録
         ex. self.calc_completion_time(num=10, current_step=10) -> 35.6
         """
         # 一回のゴールにおける初めのステップと終わりのステップを記録
@@ -496,9 +499,9 @@ class Simulation():
     
     
     # 10. 
-    def calc_last_completion_time(self, num: int, step: int) -> float:
+    def calc_remained_completion_time(self, num: int, step: int) -> float:
         """
-        最後の座標から完了時間を算出(やらなくても良いかもしれない)
+        1試行が終わり、ゴールに向かう途中の最後の座標から完了時間を算出(やらなくても良いかもしれない)
         """
         # 初めのステップと終わりのステップを記録
         self.start_step[num] = self.goal_step[num] + 1
@@ -799,7 +802,8 @@ class Simulation():
     def plot_positions(self) -> None:
         """
         各エージェントの座標を、エージェントの番号付きでプロットする
-        薄い青色がそのstepでの位置で、濃い青色は次のstepでの位置
+        デバッグや新しいメソッドの追加用のメソッド
+        プロット中の薄い青色がそのstepでの位置で、濃い青色は次のstepでの位置
         """
         pos_array = self.show_image()
         plt.figure(figsize=(8, 8))
@@ -998,4 +1002,3 @@ class Simulation():
     
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
-        

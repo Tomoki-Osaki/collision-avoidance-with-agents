@@ -34,19 +34,17 @@ print(f'\nシミュレーション開始時刻は {t_now.strftime("%H:%M")} で�
 
 for num in range(NUM_OF_TRIAL):
     print(f'Start ({num+1}/{NUM_OF_TRIAL})')
-    print('random seed:', num)
     O = cs.Simulation(interval=100, 
                       agent_size=0.1, 
                       agent=agent, 
                       view=1, 
-                      #viewing_angle=360, 
-                      viewing_angle=180, 
+                      viewing_angle=360, 
                       goal_vec=0.06,  
                       dynamic_percent=dyn_prop,
                       simple_avoid_vec=simple_avoid_vec, 
                       dynamic_avoid_vec=0.06,
                       random_seed=num)
-
+    print('random seed:', O.random_seed)
     data = []
     column_label = []
     index_label = ['initial_value']
@@ -116,7 +114,7 @@ for num in range(NUM_OF_TRIAL):
     
     # 最後の座標から完了時間を算出
     for i in range(O.agent):
-        last_completion_time = O.calc_last_completion_time(i, STEP)
+        last_completion_time = O.calc_remained_completion_time(i, STEP)
         if not last_completion_time == None:
             O.completion_time.append(last_completion_time)
 
@@ -178,7 +176,7 @@ for num in range(NUM_OF_TRIAL):
     completion_time_mean = np.mean(O.completion_time)
 
     # 各試行の結果のデータを保存
-    row_label.append('seed_' + str(num))
+    row_label.append('seed_' + str(O.random_seed))
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
                    STEP, O.dynamic_percent, O.simple_avoid_vec])
