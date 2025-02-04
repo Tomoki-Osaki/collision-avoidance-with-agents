@@ -17,8 +17,8 @@ values = []
 ims = [] # 図のデータをまとめるもの、これを流すことでアニメーションになる
 
 # 一度にSTEP数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
-NUM_OF_TRIAL = 1 # 試行回数
-STEP = 250 # 1回の試行(TRIAL)で動かすステップの回数
+NUM_OF_TRIAL = 4 # 試行回数
+STEP = 200 # 1回の試行(TRIAL)で動かすステップの回数
 
 agent = 50
 simple_avoid_vec_px = 3 # px
@@ -34,9 +34,7 @@ print(f'\nシミュレーション開始時刻は {t_now.strftime("%H:%M")} で�
 
 for num in range(NUM_OF_TRIAL):
     print(f'Start ({num+1}/{NUM_OF_TRIAL})')
-    seed = num
-    np.random.seed(seed)
-    print('random seed:', seed)
+    print('random seed:', num)
     O = cs.Simulation(interval=100, 
                       agent_size=0.1, 
                       agent=agent, 
@@ -46,7 +44,8 @@ for num in range(NUM_OF_TRIAL):
                       goal_vec=0.06,  
                       dynamic_percent=dyn_prop,
                       simple_avoid_vec=simple_avoid_vec, 
-                      dynamic_avoid_vec=0.06)
+                      dynamic_avoid_vec=0.06,
+                      random_seed=num)
 
     data = []
     column_label = []
@@ -73,7 +72,7 @@ for num in range(NUM_OF_TRIAL):
     ##### シミュレーション (STEP数だけ繰り返す) #####
     start_time = time.time()
     for t in tqdm.tqdm(range(STEP)):
-        O.simulate(now_step=t+1)
+        O.simulate(current_step=t+1)
         index_label.append(t + 1)
 
         # シミュレーションごとに値を記録
@@ -179,7 +178,7 @@ for num in range(NUM_OF_TRIAL):
     completion_time_mean = np.mean(O.completion_time)
 
     # 各試行の結果のデータを保存
-    row_label.append('seed_' + str(seed))
+    row_label.append('seed_' + str(num))
     values.append([accel_mean, completion_time_mean, half_mean, quarter_mean, 
                    one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
                    STEP, O.dynamic_percent, O.simple_avoid_vec])
@@ -196,10 +195,10 @@ column_label = ['accel', 'time', 'half', 'quarter', 'one_eighth', 'collision',
 df_result = pd.DataFrame(values, columns=column_label, index=row_label)
 # 保存する場所は自由に決めてください
 backup_result = df_result.copy()
-df_result.to_csv(
-    f'simulation_results/agt{O.agent}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv',
-    mode='x'
-)
+# df_result.to_csv(
+#     f'simulation_results/agt{O.agent}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv',
+#     mode='x'
+# )
 
 # %% make animations
 # ani = animation.ArtistAnimation(fig, ims, interval=O.interval, repeat=False)

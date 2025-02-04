@@ -3,18 +3,23 @@
 
 class Simulation
 __init__(self)
-1. find_goal(self, agent)
-2. distance_all_agents(self)
-3. approach_detect(self, dist)
-4. simple_avoidance(self, num)
-5. dynamic_avoidance(self, num)
-6. calc_Nic(self, num)
-7. find_agents_to_focus(self, num)
-8. simulate(self, step)
-9. calc_completion_time(self, num, now_step)
-10. calc_last_completion_time(self, num)
-11. show_image(self)
-12. plot_positions(self)
+1. set_goals(agent)
+2. calc_distance_all_agents()
+3. find_visible_agents(num)
+4. simple_avoidance(num)
+5. dynamic_avoidance(num)
+6. calc_Nic(num)
+7. find_agents_to_focus(num)
+8. record_start_and_goal(num)
+9. calc_completion_time(num, current_step)
+10. calc_last_completion_time(num)
+11. check_if_goaled(current_step)
+12. simulate(current_step)
+13. show_image()
+14. plot_positions()
+15. approach_detect(dist)
+16. record_agent_information()
+17. record_approaches(approach_dist, step, sim_data)
 """
 
 # %% import libraries
@@ -53,7 +58,8 @@ class Simulation():
                  goal_vec: float = 0.06, 
                  dynamic_percent: float = 1.0,
                  simple_avoid_vec: float = 0.06, 
-                 dynamic_avoid_vec: float = 0.06):
+                 dynamic_avoid_vec: float = 0.06,
+                 random_seed: int = 0):
         
         self.interval = interval # 100msごとにグラフを更新してアニメーションを作成
         self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
@@ -74,6 +80,7 @@ class Simulation():
         self.num_dynamic_agent = int(np.round(self.agent*self.dynamic_percent))
         
         # エージェントの生成
+        np.random.seed(random_seed)
         for n in range(self.agent):
             # グラフ領域の中からランダムに座標を決定
             pos = np.random.uniform(-FIELD_SIZE, FIELD_SIZE, 2)
@@ -104,21 +111,12 @@ class Simulation():
         
         # エージェントにゴールを8ずつ設定
         for i in range(self.agent):
-            goals = []
-            for j in range(8):
-                goals.append(self.find_goal(self.all_agent2[i]))
-                
+            goals = [self.set_goals(self.all_agent2[i]) for _ in range(8)]
             self.agent_goal.append(goals)
-             
             
-        # エージェント間の距離を記録するリスト
-        self.dist = np.zeros([self.agent, self.agent])
-        
         # ゴールした回数を記録するリスト
-        self.goal_count = []
-        for i in range(self.agent):
-            self.goal_count.append(0)
-
+        self.goal_count = [0] * self.agent
+        
         # はみ出た時用のゴール
         self.goal_temp = np.zeros([self.agent, 2])
         
@@ -133,13 +131,12 @@ class Simulation():
 
 
     # 1. 
-    def find_goal(self, agent: dict[str, np.array] 
-                  ) -> np.array: # [float, float]
+    def set_goals(self, agent: dict[str, np.array]) -> np.array: # [float, float]
         """ 
-        ゴールの計算
+        ゴールのxy座標の計算
         エージェントが初期速度のまま進んだ場合に通過する、グラフ領域の境界線の座標
         初期位置の値を使うためself.all_agentではなくself.all_agent2を使う
-        ex. self.find_goal(agent=self.all_agent2[10]) -> array([-3.0, -5.0])
+        ex. self.set_goals(agent=self.all_agent2[10]) -> array([-3.0, -5.0])
         """
         while True:
             
@@ -206,55 +203,31 @@ class Simulation():
 
         
     # 2. 
-    def distance_all_agents(self):
+    def calc_distance_all_agents(self) -> np.array:
         """ 
-        全エージェントについて、その他のエージェントとの距離を計算し、self.distに格納
+        全エージェントについて、その他のエージェントとの距離を計算
         """
+        dist_all = np.zeros([self.agent, self.agent])
         for i in range(self.agent):
             for j in range(self.agent):
                 d = self.all_agent[i]['p'] - self.all_agent[j]['p']
                 # エージェント間の距離を算出、エージェントのサイズも考慮
-                self.dist[i][j] = np.linalg.norm(d) - 2 * self.agent_size
-                
-                
-    # 3. 
-    def approach_detect(self, dist: float) -> np.array: 
-        """ 
-        指定した距離より接近したエージェントの数を返す
-        ex. self.approach_detect(dist=0.5) -> array([[0, 3],[1, 2],...[24, 1]])
-        """
-        self.distance_all_agents()
-        approach_agent = []
+                dist_all[i][j] = np.linalg.norm(d) - 2 * self.agent_size
         
-        # それぞれのエージェントについて、distより接近したエージェントの数を記録
-        for t in range(self.agent):
-            visible_agents = [i for i, x in enumerate(self.dist[t]) 
-                              if x != -(0.2) and x < dist]
-            approach_agent.append([t, len(visible_agents)])
-        approach_agent = np.array(approach_agent) 
-            
-        return approach_agent
+        return dist_all
     
     
-    # 4. 
-    def simple_avoidance_with_focus(self, num: int # エージェントの番号
-                                    ) -> np.array: # [float, float]
+    # 3.
+    def find_visible_agents(self, dist_all: np.array, num: int) -> list[int]:
         """
-        単純な回避ベクトルの生成(awareness modelで計算相手を選定)
-        ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
+        エージェント番号numの視野に入った他のエージェントの番号をリストにして返す
+        ex. self.find_visible_agents(dist_all, 5) -> [14, 20, 30]
         """
-        self.distance_all_agents()
         # near_agentsは360度の視野に入ったエージェント
         # visible_agentsは視野を狭めた場合に視野に入ったエージェント
-        near_agents = [i for i, x in enumerate(self.dist[num]) 
-                       if x != -(0.2) and x < self.view]
+        near_agents = [i for i, x in enumerate(dist_all[num]) 
+                        if x != -(0.2) and x < self.view]
         visible_agents = []
-        
-        # 回避ベクトル
-        avoid_vec = np.zeros(2)
-        
-        if not near_agents:
-            return avoid_vec
         
         # ゴールベクトルの角度を算出する
         goal_angle = np.degrees(
@@ -262,8 +235,6 @@ class Simulation():
                      self.all_agent[num]['p'])
         )
 
-        # near_agentsについて、awareness modelの値を基にしたエージェントを計算対象にする
-        # focus_agents = self.calc_Nic(num)[near_agents]
         for i in near_agents:
             # 近づいたエージェントとの角度を算出
             agent_angle = np.degrees(
@@ -280,14 +251,29 @@ class Simulation():
             # 視野に入っているエージェントをvisible_agentsに追加
             if angle_difference <= self.viewing_angle / 2:
                 visible_agents.append(i)
-                
-        if not visible_agents: 
-            return avoid_vec
+        
+        return visible_agents
+    
+    
+    # 4. 
+    def simple_avoidance_with_focus(self, num: int # エージェントの番号
+                                    ) -> np.array: # [float, float]
+        """
+        単純な回避ベクトルの生成(awareness modelで計算相手を選定)
+        ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
+        """
+        dist_all = self.calc_distance_all_agents()
+        visible_agents = self.find_visible_agents(dist_all, num)
+        avoid_vec = np.zeros(2)   # 回避ベクトル
+        
+        if not visible_agents:
+            return avoid_vec  
             
+        ### the followings are simple vectors ###
         for i in visible_agents:
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agent[num]['p'] - self.all_agent[i]['p']
-            d = d / (self.dist[num][i] + 2 * self.agent_size) # 大きさ1のベクトルにする
+            d = d / (dist_all[num][i] + 2 * self.agent_size) # 大きさ1のベクトルにする
             d = d * self.simple_avoid_vec # 大きさを固定値にする
             
             avoid_vec += d # 回避ベクトルを合成する
@@ -302,44 +288,14 @@ class Simulation():
         動的回避ベクトルの生成(awareness modelで計算相手を選定)
         ex. self.dynamic_avoidance(num=15) -> array([-0.05, 0.2])
         """
-        self.distance_all_agents()
-        near_agents = [i for i, x in enumerate(self.dist[num]) 
-                       if x != -(0.2) and x < self.view]
-        visible_agents = []
-        avoid_vec = np.zeros(2)
+        dist_all = self.calc_distance_all_agents()
+        visible_agents = self.find_visible_agents(dist_all, num)
+        avoid_vec = np.zeros(2)   # 回避ベクトル
         
-        if not near_agents:
-            return avoid_vec
-        
-        # ゴールベクトルの角度を算出する
-        goal_angle = np.degrees(
-            calc_rad(self.agent_goal[num][self.goal_count[num]], 
-                     self.all_agent[num]['p'])
-        )
-
-        # near_agentsについて、awareness modelの値を基にしたエージェントを計算対象にする
-        # focus_agents = self.calc_Nic(num)[near_agents]
-        for i in near_agents:
-            # 近づいたエージェントとの角度を算出
-            agent_angle = np.degrees(
-                calc_rad(self.all_agent[i]['p'], 
-                         self.all_agent[num]['p'])
-            )
-            
-            # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
-            angle_difference = abs(goal_angle - agent_angle)
-
-            if angle_difference > 180:
-                angle_difference = 360 - angle_difference
-            
-            # 視界に入ったエージェントをvisible_agentsに追加
-            if angle_difference <= self.viewing_angle / 2:
-                visible_agents.append(i)
-                
         if not visible_agents:
-            return avoid_vec
+            return avoid_vec  
             
-        
+        ### the followings are dynamic vectors ###
         for i in visible_agents:
             # 視野の中心にいるエージェントの位置と速度
             self.agent_pos = self.all_agent[num]['p']
@@ -349,7 +305,7 @@ class Simulation():
             self.visible_agent_vel = self.all_agent[i]['v']
 
             
-            dist_former = self.dist[num][i]
+            dist_former = dist_all[num][i]
             
             t = 0
             # 2体のエージェントを1ステップ動かして距離を測定
@@ -392,7 +348,7 @@ class Simulation():
             
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agent[num]['p'] - self.all_agent[i]['p']
-            d = d / (self.dist[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
+            d = d / (dist_all[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
             d = d * braking_index # ブレーキ指標の値を反映
             d = d * self.dynamic_avoid_vec # ベクトルの最大値を決定
             
@@ -405,8 +361,8 @@ class Simulation():
     # 6. 
     def calc_Nic(self, num: int) -> np.array:
         """ 
-        numで指定したエージェントについて、Nic(Number in the circle)を計算する
-        1. エージェントAとエージェントBの中点cpを計算し、cpから他の全てのエージェントXとの距離cpxを計算
+        エージェント番号numについて、Nic(Number in the circle)を計算する
+        1. エージェントA(num)とエージェントBの中点cpを計算し、cpから他の全てのエージェントXとの距離cpxを計算
         2. 1の中で、cpとエージェントAの距離dist_cp_meより小さいcpxの数を計算
         ex. self.calc_Nic(num=10) -> array([[0,1], [1,2],...,[24,12]]) (相手,Nic)
         """ 
@@ -432,7 +388,7 @@ class Simulation():
     # 7. 
     def find_agents_to_focus(self, num: int) -> np.array:
         """
-        awareness modelを用いて、交流相手を選定する
+        awareness modelを用いて、注視相手を選定する
         ex. self.find_agents_to_focus(
             num=10) -> array([[0, 0.2], [1, 0.3],...,[24, 0.8]]) (相手,awareness)
         """ 
@@ -470,36 +426,140 @@ class Simulation():
         return agents_to_focus
     
     
-    # 8. 
-    def simulate(self, now_step: int) -> None:
+    # 8.
+    def record_start_and_goal(self, num: int) -> None:
         """
-        エージェントを動かす
+        完了時間を記録するためのスタート位置とゴール位置を記録
+        更新されるパラメータ：
+        self.start_pos
+        self.goal_pos
         """
-        for i in range(self.agent):
-            # はみ出た時用のゴールが設定されていない
-            # 通常のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
-            if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
-                self.all_agent[i]['v'] = rotate_vec(
-                    np.array([self.goal_vec, 0]), 
-                    calc_rad(self.agent_goal[i][self.goal_count[i]],
-                             self.all_agent[i]['p'])
-                )     
+        # 前回のゴールが左端にあるとき
+        if (self.goal_pos[num][0] == -FIELD_SIZE):
+            # スタート位置、ゴール位置を記録
+            self.start_pos[num][0] = self.goal_pos[num][0] + 2*FIELD_SIZE
+            self.start_pos[num][1] = self.goal_pos[num][1]
+            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
+            
+        # 前回のゴールが右端にあるとき
+        elif (self.goal_pos[num][0] == FIELD_SIZE):
+            # スタート位置、ゴール位置を記録
+            self.start_pos[num][0] = self.goal_pos[num][0] + (-2*FIELD_SIZE)
+            self.start_pos[num][1] = self.goal_pos[num][1]
+            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
+        
+        # 前回のゴールが下端にあるとき
+        elif (self.goal_pos[num][1] == -FIELD_SIZE):
+            # スタート位置、ゴール位置を記録
+            self.start_pos[num][0] = self.goal_pos[num][0]
+            self.start_pos[num][1] = self.goal_pos[num][1] + 2*FIELD_SIZE
+            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
+            
+        # 前回のゴールが上端にあるとき
+        elif (self.goal_pos[num][1] == FIELD_SIZE):
+            # スタート位置、ゴール位置を記録
+            self.start_pos[num][0] = self.goal_pos[num][0]
+            self.start_pos[num][1] = self.goal_pos[num][1] + (-2*FIELD_SIZE)
+            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
+            
+         
+    # 9. 
+    def calc_completion_time(self, num: int, current_step: int) -> float:
+        """ 
+        完了時間を記録
+        ex. self.calc_completion_time(num=10, current_step=10) -> 35.6
+        """
+        # 一回のゴールにおける初めのステップと終わりのステップを記録
+        self.start_step[num] = self.goal_step[num] + 1
+        self.goal_step[num] = current_step
+        
+        # 一回目のゴール
+        if (self.start_step[num] == 1):
+            # 一回目のゴールにおける、ゴール位置を記録
+            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
+            
+        # 一回目以降のゴール
+        else:
+            self.record_start_and_goal(num)
+            
+        # 完了時間を計算(ゴールまでのステップ/ゴールまでの距離)
+        completion_time = (self.goal_step[num] - self.start_step[num] + 1) / \
+                          (np.linalg.norm(self.start_pos[num] - self.goal_pos[num]))
+        
+        # 外れ値を除外
+        if (completion_time > 200):
+            #print("消します")
+            print(completion_time)
+            return None
+        
+        return completion_time
+    
+    
+    # 10. 
+    def calc_last_completion_time(self, num: int, step: int) -> float:
+        """
+        最後の座標から完了時間を算出(やらなくても良いかもしれない)
+        """
+        # 初めのステップと終わりのステップを記録
+        self.start_step[num] = self.goal_step[num] + 1
+        self.goal_step[num] = step
+        
+        # ゴールする前に境界をはみ出ている場合
+        if not (self.goal_temp[num][0] == 0 and self.goal_temp[num][1] == 0):
+            # 左右の境界をはみ出た
+            if (abs(self.all_agent[num]['p'][0]) > abs(self.all_agent[num]['p'][1])):
+                # はみ出る前に戻してあげる
+                self.all_agent[num]['p'][0] = -self.all_agent[num]['p'][0]
+            # 上下の境界をはみ出た
+            elif (abs(self.all_agent[num]['p'][0]) < abs(self.all_agent[num]['p'][1])):
+                # はみ出る前に戻してあげる
+                self.all_agent[num]['p'][1] = -self.all_agent[num]['p'][1]
+            
+        self.record_start_and_goal(num)
+        
+        # スタートからゴールまでの直線の式を計算
+        # 傾き
+        a = (self.start_pos[num][1] - self.goal_pos[num][1]) / \
+            (self.start_pos[num][0] - self.goal_pos[num][0])
+        # 切片
+        b = -(a * self.start_pos[num][0]) + self.start_pos[num][1]
+        
+        # エージェントの位置を通り、スタートからゴールまでの直線に垂直な直線の式を計算
+        # 傾き
+        c = (-1) / a
+        # 切片
+        d = -(c * self.all_agent[num]['p'][0]) + self.all_agent[num]['p'][1]
 
-            # はみ出た時用のゴールが設定されている
-            # はみ出た時用のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
-            else:
-                self.all_agent[i]['v'] = rotate_vec(
-                    np.array([self.goal_vec, 0]), 
-                    calc_rad(self.goal_temp[i], self.all_agent[i]['p'])
-                ) 
-                
-            if self.all_agent[i]['avoidance'] == 'simple': # 単純回避ベクトルを足す
-                self.all_agent[i]['v'] += self.simple_avoidance(i)
-                
-            elif self.all_agent[i]['avoidance'] == 'dynamic': # 動的回避ベクトルを足す
-                self.all_agent[i]['v'] += self.dynamic_avoidance(i)
+        # 2つの直線の交点を算出
+        cross_x = (b - d) / (-(a - c))
+        cross_y = a * cross_x + b
+        cross = np.array([cross_x, cross_y])
         
+        # スタートから交点までの距離を計算
+        distance = np.linalg.norm(self.start_pos[num] - cross)
         
+        # 完了時間を計算(ゴールまでのステップ/ゴールまでの距離)
+        completion_time = (self.goal_step[num] - self.start_step[num] + 1) / distance
+
+        if (completion_time > 200 or completion_time < 10):
+            #print("消しました")
+            print(completion_time)
+            return None
+        
+        return completion_time
+
+
+    # 11.
+    def check_if_goaled(self, current_step: int) -> None:
+        """
+        各エージェントがゴールに到達したかどうかをチェックする
+        ゴールしていた場合、完了時間の算出、ゴールカウントの更新、はみ出た時用のゴールの初期化を行う
+        更新されるパラメータ：
+        self.completion_time
+        self.goal_count
+        self.goal_tmp
+        self.all_agent
+        """
         for i in range(self.agent):
             # x座標が左端をこえる
             if ((self.all_agent[i]['p'] + self.all_agent[i]['v'])[0] < -FIELD_SIZE):
@@ -519,7 +579,7 @@ class Simulation():
                     # 通常のゴールに到着
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 完了時間を算出
-                        completion_time = self.calc_completion_time(i, now_step)
+                        completion_time = self.calc_completion_time(i, current_step)
                         if not completion_time == None:
                             self.completion_time.append(completion_time)
                         # ゴールした回数を更新
@@ -570,7 +630,7 @@ class Simulation():
                     # ゴールが調整されているか確認
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 完了時間を算出
-                        completion_time = self.calc_completion_time(i, now_step)
+                        completion_time = self.calc_completion_time(i, current_step)
                         if not completion_time == None:
                             self.completion_time.append(completion_time)
                         self.goal_count[i] = self.goal_count[i] + 1
@@ -613,7 +673,7 @@ class Simulation():
                     # ゴールが調整されているか確認
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 完了時間を算出
-                        completion_time = self.calc_completion_time(i, now_step)
+                        completion_time = self.calc_completion_time(i, current_step)
                         if not completion_time == None:
                             self.completion_time.append(completion_time)
                         self.goal_count[i] = self.goal_count[i] + 1
@@ -656,7 +716,7 @@ class Simulation():
                     # ゴールが調整されているか確認
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 完了時間を算出
-                        completion_time = self.calc_completion_time(i, now_step)
+                        completion_time = self.calc_completion_time(i, current_step)
                         if not completion_time == None:
                             self.completion_time.append(completion_time)
                         self.goal_count[i] = self.goal_count[i] + 1
@@ -681,152 +741,49 @@ class Simulation():
                     (self.all_agent[i]['p']+self.all_agent[i]['v'])[1] - FIELD_SIZE
                 )
 
+    
+    # 12. 
+    def simulate(self, current_step: int) -> None:
+        """
+        エージェントを動かす
+        更新されるパラメータ：
+        self.all_agent
+        """
+        for i in range(self.agent):
+            # はみ出た時用のゴールが設定されていない
+            # 通常のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
+            if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
+                self.all_agent[i]['v'] = rotate_vec(
+                    np.array([self.goal_vec, 0]), 
+                    calc_rad(self.agent_goal[i][self.goal_count[i]],
+                             self.all_agent[i]['p'])
+                )     
+
+            # はみ出た時用のゴールが設定されている
+            # はみ出た時用のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
+            else:
+                self.all_agent[i]['v'] = rotate_vec(
+                    np.array([self.goal_vec, 0]), 
+                    calc_rad(self.goal_temp[i], self.all_agent[i]['p'])
+                ) 
                 
+            if self.all_agent[i]['avoidance'] == 'simple': # 単純回避ベクトルを足す
+                self.all_agent[i]['v'] += self.simple_avoidance(i)
+                
+            elif self.all_agent[i]['avoidance'] == 'dynamic': # 動的回避ベクトルを足す
+                self.all_agent[i]['v'] += self.dynamic_avoidance(i)
+        
+        self.check_if_goaled(current_step)
+        
         for i in range(self.agent):
             # 移動後の座標を確定      
             self.all_agent[i]['p'] = self.all_agent[i]['p'] + self.all_agent[i]['v']
-            
-         
-    # 9. 
-    def calc_completion_time(self, num: int, now_step: int) -> float:
-        """ 
-        完了時間を記録
-        ex. self.calc_completion_time(num=10, now_step=10) -> 35.6
-        """
-        # 一回のゴールにおける初めのステップと終わりのステップを記録
-        self.start_step[num] = self.goal_step[num] + 1
-        self.goal_step[num] = now_step
-        
-        # 一回目のゴール
-        if (self.start_step[num] == 1):
-            # 一回目のゴールにおける、ゴール位置を記録
-            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
-            
-        # 一回目以降のゴール
-        else:
-            # 前回のゴールが左端にあるとき
-            if (self.goal_pos[num][0] == -FIELD_SIZE):
-                # スタート位置、ゴール位置を記録
-                self.start_pos[num][0] = self.goal_pos[num][0] + 2*FIELD_SIZE
-                self.start_pos[num][1] = self.goal_pos[num][1]
-                self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
-                
-            # 前回のゴールが右端にあるとき
-            elif (self.goal_pos[num][0] == FIELD_SIZE):
-                # スタート位置、ゴール位置を記録
-                self.start_pos[num][0] = self.goal_pos[num][0] + (-2*FIELD_SIZE)
-                self.start_pos[num][1] = self.goal_pos[num][1]
-                self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
-            
-            # 前回のゴールが下端にあるとき
-            elif (self.goal_pos[num][1] == -FIELD_SIZE):
-                # スタート位置、ゴール位置を記録
-                self.start_pos[num][0] = self.goal_pos[num][0]
-                self.start_pos[num][1] = self.goal_pos[num][1] + 2*FIELD_SIZE
-                self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
-                
-            # 前回のゴールが上端にあるとき
-            elif (self.goal_pos[num][1] == FIELD_SIZE):
-                # スタート位置、ゴール位置を記録
-                self.start_pos[num][0] = self.goal_pos[num][0]
-                self.start_pos[num][1] = self.goal_pos[num][1] + (-2*FIELD_SIZE)
-                self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
-                
-        # 完了時間を計算(ゴールまでのステップ/ゴールまでの距離)
-        completion_time = (self.goal_step[num] - self.start_step[num] + 1) / \
-                          (np.linalg.norm(self.start_pos[num] - self.goal_pos[num]))
-        
-        # 外れ値を除外
-        if (completion_time > 200):
-            #print("消します")
-            print(completion_time)
-            return None
-        
-        return completion_time
     
-    
-    # 10. 
-    def calc_last_completion_time(self, num: int, step: int) -> float:
-        """
-        最後の座標から完了時間を算出(やらなくても良いかもしれない)
-        """
-        # 初めのステップと終わりのステップを記録
-        self.start_step[num] = self.goal_step[num] + 1
-        self.goal_step[num] = step
-        
-        # ゴールする前に境界をはみ出ている場合
-        if not (self.goal_temp[num][0] == 0 and self.goal_temp[num][1] == 0):
-            # 左右の境界をはみ出た
-            if (abs(self.all_agent[num]['p'][0]) > abs(self.all_agent[num]['p'][1])):
-                # はみ出る前に戻してあげる
-                self.all_agent[num]['p'][0] = -self.all_agent[num]['p'][0]
-            # 上下の境界をはみ出た
-            elif (abs(self.all_agent[num]['p'][0]) < abs(self.all_agent[num]['p'][1])):
-                # はみ出る前に戻してあげる
-                self.all_agent[num]['p'][1] = -self.all_agent[num]['p'][1]
-            
-        # スタート位置、ゴール位置を算出
-        # 前回のゴールが左端にあるとき
-        if (self.goal_pos[num][0] == -FIELD_SIZE):
-            self.start_pos[num][0] = self.goal_pos[num][0] + 2 * FIELD_SIZE
-            self.start_pos[num][1] = self.goal_pos[num][1]
-            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
 
-        # 前回のゴールが右端にあるとき
-        elif (self.goal_pos[num][0] == FIELD_SIZE):
-            self.start_pos[num][0] = self.goal_pos[num][0] + (-2 * FIELD_SIZE)
-            self.start_pos[num][1] = self.goal_pos[num][1]
-            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
-
-        # 前回のゴールが下端にあるとき
-        elif (self.goal_pos[num][1] == -FIELD_SIZE):
-            self.start_pos[num][0] = self.goal_pos[num][0]
-            self.start_pos[num][1] = self.goal_pos[num][1] + 2 * FIELD_SIZE
-            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
-
-        # 前回のゴールが上端にあるとき
-        elif (self.goal_pos[num][1] == FIELD_SIZE):
-            self.start_pos[num][0] = self.goal_pos[num][0]
-            self.start_pos[num][1] = self.goal_pos[num][1] + (-2 * FIELD_SIZE)
-            self.goal_pos[num] = self.agent_goal[num][self.goal_count[num]]
-            
-        
-        # スタートからゴールまでの直線の式を計算
-        # 傾き
-        a = (self.start_pos[num][1] - self.goal_pos[num][1]) / \
-            (self.start_pos[num][0] - self.goal_pos[num][0])
-        # 切片
-        b = -(a * self.start_pos[num][0]) + self.start_pos[num][1]
-        
-        # エージェントの位置を通り、スタートからゴールまでの直線に垂直な直線の式を計算
-        # 傾き
-        c = (-1) / a
-        # 切片
-        d = -(c * self.all_agent[num]['p'][0]) + self.all_agent[num]['p'][1]
-
-        # 2つの直線の交点を算出
-        cross_x = (b - d) / (-(a - c))
-        cross_y = a * cross_x + b
-        cross = np.array([cross_x, cross_y])
-        
-        # スタートから交点までの距離を計算
-        distance = np.linalg.norm(self.start_pos[num] - cross)
-        
-        # 完了時間を計算(ゴールまでのステップ/ゴールまでの距離)
-        completion_time = (self.goal_step[num] - self.start_step[num] + 1) / distance
-
-        if (completion_time > 200 or completion_time < 10):
-            #print("消しました")
-            print(completion_time)
-            return None
-        
-        return completion_time
-
-
-    # 11. 
+    # 13. 
     def show_image(self) -> np.array: # shape(2(x,y), エージェントの数)
         """
-        プロットのための座標を送る
+        プロットのためのxy座標を返す
         ex. self.show_image() -> array([[2.0, 1.2,...,3.5],
                                        [2.5, 1.5,...,1.5]]) (2, エージェントの数)
         """
@@ -838,7 +795,7 @@ class Simulation():
         return pos_array
 
 
-    # 12. 
+    # 14. 
     def plot_positions(self) -> None:
         """
         各エージェントの座標を、エージェントの番号付きでプロットする
@@ -853,7 +810,27 @@ class Simulation():
             plt.annotate(i, xy=(pos_array[0][i], pos_array[1][i]))
         plt.show()
         
-    # 13
+        
+    # 15. 
+    def approach_detect(self, dist: float) -> np.array: 
+        """ 
+        指定した距離より接近したエージェントの数を返す
+        ex. self.approach_detect(dist=0.5) -> array([[0, 3],[1, 2],...[24, 1]])
+        """
+        dist_all = self.calc_distance_all_agents()
+        approach_agent = []
+        
+        # それぞれのエージェントについて、distより接近したエージェントの数を記録
+        for t in range(self.agent):
+            visible_agents = [i for i, x in enumerate(dist_all[t]) 
+                              if x != -(0.2) and x < dist]
+            approach_agent.append([t, len(visible_agents)])
+        approach_agent = np.array(approach_agent) 
+            
+        return approach_agent
+    
+        
+    # 16
     def record_agent_information(self) -> np.array:
         """
         全エージェントの位置と速度、接近を記録
@@ -886,8 +863,9 @@ class Simulation():
             row = np.append(row, collision_agent[i][1])
             
         return row
+    
         
-    # 14
+    # 17
     def record_approaches(self, 
                           approach_dist: Literal['collision','half','quarter','one_eigth'], 
                           step: int, 
@@ -927,49 +905,18 @@ class Simulation():
         単純な回避ベクトルの生成(オリジナル)
         ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
         """
-        self.distance_all_agents()
-        # near_agentsは360度の視野に入ったエージェント
-        # visible_agentsは視野を狭めた場合に視野に入ったエージェント
-        near_agents = [i for i, x in enumerate(self.dist[num]) 
-                        if x != -(0.2) and x < self.view]
-        visible_agents = []
+        dist_all = self.calc_distance_all_agents()
+        visible_agents = self.find_visible_agents(dist_all, num)
+        avoid_vec = np.zeros(2)   # 回避ベクトル
         
-        # 回避ベクトル
-        avoid_vec = np.zeros(2)
+        if not visible_agents:
+            return avoid_vec    
         
-        if not near_agents:
-            return avoid_vec
-        
-        # ゴールベクトルの角度を算出する
-        goal_angle = np.degrees(
-            calc_rad(self.agent_goal[num][self.goal_count[num]], 
-                      self.all_agent[num]['p'])
-        )
-
-        for i in near_agents:
-            # 近づいたエージェントとの角度を算出
-            agent_angle = np.degrees(
-                calc_rad(self.all_agent[i]['p'], 
-                          self.all_agent[num]['p'])
-            )
-            
-            # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
-            angle_difference = abs(goal_angle - agent_angle)
-            
-            if angle_difference > 180:
-                angle_difference = 360 - angle_difference
-                
-            # 視野に入っているエージェントをvisible_agentsに追加
-            if angle_difference <= self.viewing_angle / 2:
-                visible_agents.append(i)
-                
-        if not visible_agents: 
-            return avoid_vec
-            
+        ### the followings are simple vectors ###
         for i in visible_agents:
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agent[num]['p'] - self.all_agent[i]['p']
-            d = d / (self.dist[num][i] + 2 * self.agent_size) # 大きさ1のベクトルにする
+            d = d / (dist_all[num][i] + 2 * self.agent_size) # 大きさ1のベクトルにする
             d = d * self.simple_avoid_vec # 大きさを固定値にする
             
             avoid_vec += d # 回避ベクトルを合成する
@@ -983,42 +930,14 @@ class Simulation():
         動的回避ベクトルの生成(オリジナル)
         ex. self.dynamic_avoidance(num=15) -> array([-0.05, 0.2])
         """
-        self.distance_all_agents()
-        near_agents = [i for i, x in enumerate(self.dist[num]) 
-                        if x != -(0.2) and x < self.view]
-        visible_agents = []
-        avoid_vec = np.zeros(2)
+        dist_all = self.calc_distance_all_agents()
+        visible_agents = self.find_visible_agents(dist_all, num)
+        avoid_vec = np.zeros(2)   # 回避ベクトル
         
-        if not near_agents:
-            return avoid_vec
-        
-        # ゴールベクトルの角度を算出する
-        goal_angle = np.degrees(
-            calc_rad(self.agent_goal[num][self.goal_count[num]], 
-                     self.all_agent[num]['p'])
-        )
-
-        for i in near_agents:
-            # 近づいたエージェントとの角度を算出
-            agent_angle = np.degrees(
-                calc_rad(self.all_agent[i]['p'], 
-                         self.all_agent[num]['p'])
-            )
-            
-            # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
-            angle_difference = abs(goal_angle - agent_angle)
-
-            if angle_difference > 180:
-                angle_difference = 360 - angle_difference
-            
-            # 視界に入ったエージェントをvisible_agentsに追加
-            if angle_difference <= self.viewing_angle / 2:
-                visible_agents.append(i)
-                
         if not visible_agents:
-            return avoid_vec
+            return avoid_vec    
             
-        
+        ### the followings are dynamic vectors ###
         for i in visible_agents:
             # 視野の中心にいるエージェントの位置と速度
             self.agent_pos = self.all_agent[num]['p']
@@ -1028,7 +947,7 @@ class Simulation():
             self.visible_agent_vel = self.all_agent[i]['v']
 
             
-            dist_former = self.dist[num][i]
+            dist_former = dist_all[num][i]
             
             t = 0
             # 2体のエージェントを1ステップ動かして距離を測定
@@ -1071,7 +990,7 @@ class Simulation():
             
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agent[num]['p'] - self.all_agent[i]['p']
-            d = d / (self.dist[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
+            d = d / (dist_all[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
             d = d * braking_index # ブレーキ指標の値を反映
             d = d * self.dynamic_avoid_vec # ベクトルの最大値を決定
             
