@@ -50,6 +50,7 @@ abcd = {'a1': -5.145, # -0.034298
 # %% シミュレーションに関わるクラス
 class Simulation():
     def __init__(self, 
+                 warmup: int = 50,
                  interval: int = 100,
                  agent_size: float = 0.1, 
                  agent: int = 25, 
@@ -61,6 +62,7 @@ class Simulation():
                  dynamic_avoid_vec: float = 0.06,
                  random_seed: int = 0):
         
+        self.warmup = warmup # 値の標準化のために値を保存するwarmupのステップ数
         self.interval = interval # 100msごとにグラフを更新してアニメーションを作成
         self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
         self.agent = agent # エージェント数
@@ -79,6 +81,15 @@ class Simulation():
         self.first_pos =[]
         # 動的回避を行うエージェントの数
         self.num_dynamic_agent = int(np.round(self.agent*self.dynamic_percent))
+        
+        # 標準化のためにwarmup期間の値を保存
+        # warmup終了後はウィンドウを1ステップずつずらしながら値を更新する
+        self.all_velocity = []
+        self.all_theta = []
+        self.all_px = []
+        self.all_py = []
+        self.all_Nic = []
+        self.all_deltaTTCP = []
         
         # エージェントの生成
         np.random.seed(self.random_seed)
