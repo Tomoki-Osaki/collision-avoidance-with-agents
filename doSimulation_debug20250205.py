@@ -13,13 +13,9 @@ import classSimulation_debug20250205 as cs
 # 一度にO.num_steps数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
 NUM_OF_TRIAL = 4 # 試行回数
 
-row_label = [f'seed_{i}' for i in range(NUM_OF_TRIAL)]
-column_label = ['time', 'half', 'quarter', 'one_eighth', 
-                'collision', 'agent', 'viewing_angle', 
-                'O.num_steps', 'dynamic_percent', 'simple_avoid_vec']
-df_result = pd.DataFrame(0, index=row_label, columns=column_label)
+df_result = pd.DataFrame()
 
-agent = 25
+agent = 50
 simple_avoid_vec_px = 3 # px
 simple_avoid_vec = simple_avoid_vec_px / 50
 
@@ -34,11 +30,11 @@ print(f'\nシミュレーション開始時刻は {t_now.strftime("%H:%M")} で�
 for num in range(NUM_OF_TRIAL):
     print(f'Start ({num+1}/{NUM_OF_TRIAL})')
     O = cs.Simulation(interval=100,
-                      num_steps=50,
+                      num_steps=200,
                       agent_size=0.1, 
                       agent=agent, 
                       view=1, 
-                      viewing_angle=360, 
+                      viewing_angle=180, 
                       goal_vec=0.06,  
                       dynamic_percent=dyn_prop,
                       simple_avoid_vec=simple_avoid_vec, 
@@ -48,8 +44,7 @@ for num in range(NUM_OF_TRIAL):
 
     ##### シミュレーション (O.num_steps数だけ繰り返す) #####
     start_time = time.time()
-    O.simulate()
-    
+    O.SIMULATE()
     end_time = time.time()
     passed_time = end_time - start_time
     
@@ -70,37 +65,13 @@ for num in range(NUM_OF_TRIAL):
     print('simple_avoid_vec:', simple_avoid_vec_px, 'px')
     print('dyn_prop:', dyn_prop)
     print('num of agents:', agent)
-    print('--------------------------------------------------------------------\n')
+    print('----------------------------\n')
     ##### シミュレーション終了 ######    
         
     
     ##### シミュレーションで得たデータを記録 #####
-    
-    # 最後の座標から完了時間を算出
-    for i in range(O.agent):
-        last_completion_time = O.calc_remained_completion_time(i, O.num_steps)
-        if not last_completion_time == None:
-            O.completion_time.append(last_completion_time)
-   
-    # 衝突した数、視野の半分、視野の四分の一、視野の八分の一に接近した回数
-    # must fix the shape of data array
-    collision = O.record_approaches('collision', O.num_steps, O.data)
-    half =  O.record_approaches('half', O.num_steps, O.data)
-    quarter =  O.record_approaches('quarter', O.num_steps, O.data)
-    one_eighth =  O.record_approaches('one_eigth', O.num_steps, O.data)
-    
-    # 各指標の平均を計算
-    collision_mean = np.mean(collision)
-    half_mean = np.mean(half)
-    quarter_mean = np.mean(quarter)
-    one_eighth_mean = np.mean(one_eighth)
-    completion_time_mean = np.mean(O.completion_time)
-
-    # 各試行の結果のデータを保存
-    values = [completion_time_mean, half_mean, quarter_mean, 
-              one_eighth_mean, collision_mean, O.agent, O.viewing_angle, 
-              O.num_steps, O.dynamic_percent, O.simple_avoid_vec]
-    df_result.loc[f'seed_{num}'] = values
+    df_tmp = O.return_results_as_df()
+    df_result = pd.concat([df_result, df_tmp])
     
     ##### データの記録終了 #####
 print(f'シミュレーション終了時刻は {datetime.now().strftime("%H:%M")} です。\n')

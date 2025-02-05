@@ -27,6 +27,7 @@ from copy import deepcopy
 from typing import Literal
 import tqdm
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import funcSimulation as fs
 
@@ -48,9 +49,21 @@ abcd = {'a1': -5.145, # -0.034298
 # d1: -13.689 (-0.003423)
 
 class Agent:
-    def __init__(self, avoidance, viewing_angle):
-        self.avoidance = avoidance
-        self.viewing_angle = viewing_angle
+    def __init__(self, 
+                 agent_size: float = 0.1, 
+                 view: int = 1, 
+                 viewing_angle: int = 360, 
+                 goal_vec: float = 0.06, 
+                 avoidance: Literal['simple', 'dynamic'] = 'simple',
+                 simple_avoid_vec: float = 0.06, 
+                 dynamic_avoid_vec: float = 0.06):
+        
+        self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
+        self.view = view # 視野の半径(目盛り) = 50px:エージェント5体分
+        self.viewing_angle = viewing_angle # 視野の角度
+        self.goal_vec = goal_vec # ゴールベクトルの大きさ(目盛り)
+        self.simple_avoid_vec = simple_avoid_vec # 単純回避での回避ベクトルの大きさ(目盛り)
+        self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
 
 # %% シミュレーションに関わるクラス
 class Simulation:
@@ -87,10 +100,6 @@ class Simulation:
         self.agent_goal = []
         self.first_pos =[]
         
-        self.data = []
-        row = self.record_agent_information() # 全エージェントの位置と速度、接近を記録
-        self.data.append(row) # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
-        
         # 動的回避を行うエージェントの数
         self.num_dynamic_agent = int(np.round(self.agent*self.dynamic_percent))
         
@@ -121,7 +130,11 @@ class Simulation:
         # 例えば5ステップ目の記録はself.all_pos[5]
         self.all_pos = np.zeros([num_steps+1, 2, self.agent])
         self.record_positions(0)                                             
-            
+          
+        self.data = []
+        row = self.record_agent_information() # 全エージェントの位置と速度、接近を記録
+        self.data.append(row) # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
+        
         # 初期位置と初期速度をコピー
         self.all_agent2 = deepcopy(self.all_agent)
         self.first_agent = deepcopy(self.all_agent)
@@ -839,7 +852,7 @@ class Simulation:
         #self.update_vals_for_standardize()
     
     
-    def simulate(self) -> None:
+    def SIMULATE(self) -> None:
         """
         self.num_stepsの回数だけエージェントを動かす
         シミュレーションを行うときに最終的に呼び出すメソッド
@@ -955,6 +968,46 @@ class Simulation:
             approach.append(total)
         
         return approach
+    
+    
+    def return_results_as_df(self) -> pd.DataFrame:
+        """
+        1試行の記録をデータフレームにして返す
+        """
+        # 最後の座標から完了時間を算出
+        for i in range(self.agent):
+            last_completion_time = self.calc_remained_completion_time(i, self.num_steps)
+            if not last_completion_time == None:
+                self.completion_time.append(last_completion_time)
+       
+        # 衝突した数、視野の半分、視野の四分の一、視野の八分の一に接近した回数
+        collision = self.record_approaches('collision', self.num_steps, self.data)
+        half =  self.record_approaches('half', self.num_steps, self.data)
+        quarter =  self.record_approaches('quarter', self.num_steps, self.data)
+        one_eighth =  self.record_approaches('one_eigth', self.num_steps, self.data)
+        
+        # 各指標の平均を計算
+        collision_mean = np.mean(collision)
+        half_mean = np.mean(half)
+        quarter_mean = np.mean(quarter)
+        one_eighth_mean = np.mean(one_eighth)
+        completion_time_mean = np.mean(self.completion_time)
+
+        # 結果のデータを保存
+        dict_result = {'time': completion_time_mean,
+                       'half': half_mean,
+                       'quarter': quarter_mean,
+                       'one_eigth': one_eighth_mean,
+                       'collision': collision_mean,
+                       'agent': self.agent,
+                       'viewing_angle': self.viewing_angle,
+                       'num_steps': self.num_steps,
+                       'dynamic_percent': self.dynamic_percent,
+                       'simple_avoid_vec': self.simple_avoid_vec}
+        
+        df_result = pd.DataFrame(dict_result, index=[f'seed_{self.random_seed}'])
+        
+        return df_result
         
 ################################################################################        
     def simple_avoidance(self, num: int # エージェントの番号
