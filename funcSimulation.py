@@ -44,18 +44,6 @@ def rotate_vec(vec: np.array, # [float, float]
     
     return val
 
-
-def calc_distance(posX1, posY1, posX2, posY2):
-    """
-    2点間の距離を計算する
-    ex. calc_distance(3.0, 2.5, 4.5, 5.0) -> 2.9
-    """
-    mypos = np.array([posX1, posY1])
-    anotherpos = np.array([posX2, posY2])
-    distance = np.linalg.norm(mypos - anotherpos)
-    
-    return distance
-
 # %% awareness model
 def calc_cross_point(velx1: float, vely1: float, posx1: float, posy1: float, 
                      velx2: float, vely2: float, posx2: float, posy2: float
@@ -154,14 +142,16 @@ def calc_angle_two_lines(line1, line2):
 
 def awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic):
     """
+    Inputsの値は標準化されている必要あり
+    
     Inputs
-        deltaTTCP: 自分のTTCPから相手のTTCPを引いた値 (second)
-        Px: 自分から見た相手の相対位置 (x座標m)
-        Py: 自分から見た相手の相対位置 (y座標m)
-        Vself: 自分の歩行速度 (m/s)
-        Vother: 相手の歩行速度 (m/s)
-        theta: 自分の向いている方向と相手の位置の角度差 (rad)
-        Nic: 円内他歩行者数 (人)
+        deltaTTCP: 自分のTTCPから相手のTTCPを引いた値
+        Px: 自分から見た相手の相対位置
+        Py: 自分から見た相手の相対位置
+        Vself: 自分の歩行速度
+        Vother: 相手の歩行速度 
+        theta: 自分の向いている方向と相手の位置の角度差 
+        Nic: 円内他歩行者数 
     Output
         0(注視しない) - 1 (注視する)
     """
@@ -187,12 +177,18 @@ def debug_theta(s, num, other):
     
     print('rad:', theta, 'deg:', np.rad2deg(theta))
     
-"""
-% トレーニングデータの平均と標準偏差で標準化
-        mu = mean(X_train);
-        sigma = std(X_train);
-        X_train = (X_train - mu) ./ sigma;
-"""
+def standardize(array):
+    """
+    % トレーニングデータの平均と標準偏差で標準化
+    mu = mean(X_train);
+    sigma = std(X_train);
+    X_train = (X_train - mu) ./ sigma;
+    """
+    mu = np.mean(array)
+    sigma = np.std(array)
+    standardized = (array - mu) / sigma
+    
+    return standardized
 
 # %% define figure parameters
 def define_fig_ax(width: int = 500, 
