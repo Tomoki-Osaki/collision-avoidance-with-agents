@@ -48,11 +48,6 @@ abcd = {'a1': -5.145, # -0.034298
 # c1: 4.286 (4.252840)
 # d1: -13.689 (-0.003423)
 
-class Agent:
-    def __init__(self, avoidance, viewing_angle):
-        self.avoidance = avoidance
-        self.viewing_angle = viewing_angle
-
 # %% シミュレーションに関わるクラス
 class Simulation:
     def __init__(self, 
@@ -111,12 +106,12 @@ class Simulation:
                  'v': fs.rotate_vec(np.array([self.goal_vec, 0]), 
                                     fs.calc_rad(vel, np.array([0, 0]))),
                  'all_pos': pos,
-                 'all_vel': np.array([np.linalg.norm(vel)]),
-                 'relativePx': None,
-                 'relativePy': None,
-                 'theta': None,
-                 'deltaTTCP': None,
-                 'Nic': None}
+                 'all_vel': np.zeros(self.num_steps+1),
+                 'relPx': np.zeros([self.num_steps+1, self.num_agents]),
+                 'relPy': np.zeros([self.num_steps+1, self.num_agents]),
+                 'theta': np.zeros([self.num_steps+1, self.num_agents]),
+                 'deltaTTCP': np.zeros([self.num_steps+1, self.num_agents]),
+                 'Nic': np.zeros([self.num_steps+1, self.num_agents])}
             )
             
         # 毎時点での位置xyを全て記録する
@@ -124,7 +119,6 @@ class Simulation:
         # 例えば5ステップ目の記録はself.all_pos[5]
         self.all_pos = np.zeros([num_steps+1, 2, self.num_agents])
         self.all_vel = np.zeros([num_steps+1, self.num_agents])
-        self.record_parameters(0)                                             
             
         # 初期位置と初期速度をコピー
         self.all_agents2 = deepcopy(self.all_agents)
@@ -158,22 +152,36 @@ class Simulation:
         row = self.record_agent_information() # 全エージェントの位置と速度、接近を記録
         self.data.append(row) # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
         
-        # relative 
+        self.update_parameters(current_step=0)
+    
+    
+    def update_parameters(self, current_step: int) -> None:
+        """
+        all_agentsのパラメータを更新する
+        """
+        # all_vel, all_pos
+        for i in range(self.num_agents):
+            vel = np.linalg.norm(self.all_agents[i]['v'])
+            self.all_agents[i]['all_vel'][current_step] = vel
+            if current_step != 0:
+                self.all_agents[i]['all_pos'] = np.vstack([
+                    self.all_agents[i]['all_pos'], self.all_agents[i]['p']
+                ])
+            
+        # relative positions
         for i in range(self.num_agents):
             for j in range(self.num_agents):
                 px = self.all_agents[j]['p'][0] - self.all_agents[i]['p'][0]
-                self.all_agents[i]['relativePx'] = np.array([j, px])
                 py = self.all_agents[j]['p'][1] - self.all_agents[i]['p'][1]
-                self.all_agents[i]['relativePy'] = np.array([j, py])
-    
-    def record_parameters(self, current_step: int) -> None:
-        for i in range(self.num_agents):
-            self.all_pos[current_step][0][i] = self.all_agents[i]['p'][0] # x
-            self.all_pos[current_step][1][i] = self.all_agents[i]['p'][1] # y
-            
-            vel = np.linalg.norm(self.all_agents[i]['v'])
-            self.all_vel[current_step][i] = vel
-    
+                
+                theta = self.calc_theta(i, j, as_degree=True)
+                deltaTTCP = ...
+                Nic = ...
+                
+                self.all_agents[i]['relPx'][current_step][j] = px
+                self.all_agents[i]['relPy'][current_step][j] = py     
+                self.all_agents[i]['theta'][current_step][j] = theta
+                
     # 1. 
     def set_goals(self, agent: dict[str, np.array]) -> np.array: # [float, float]
         """ 
@@ -429,6 +437,25 @@ class Simulation:
         
         return all_Nics
     
+    # エージェントの向いている方向と反対の相手エージェントとの角度の計算を考える必要あり
+    def calc_theta(self, num: int, other_num: int, as_degree: bool = False) -> float:
+        """
+        エージェントnumとエージェントother_numのなす角度(radian)を求める
+        """
+        coord_a = self.all_agents[num]['p'] + self.all_agents[num]['v'] # mypos at t + 1
+        coord_b = self.all_agents[num]['p'] # mypos at t
+        coord_c = self.all_agents[other_num]['p'] # other pos at t
+        
+        line1 = np.array([coord_b, coord_a]) # t時点の自分の位置から、t+1時点の自分の位置への直線
+        line2 = np.array([coord_b, coord_c]) # t時点の自分の位置から、t時点の相手の位置への直線
+        
+        theta = fs.calc_angle_two_lines(line1, line2)
+        
+        if as_degree:
+            return np.rad2deg(theta)
+        else:
+            return theta
+        
     
     # 7. 
     def find_agents_to_focus(self, num: int) -> np.array:
@@ -442,11 +469,6 @@ class Simulation:
         vselfxy = self.all_agents[num]['v']
         Vself = np.linalg.norm(vselfxy)
         
-        # 時点t-1から時点tのxy座標への直線line1
-        a = self.all_agents[num]['p'] + self.all_agents[num]['v']
-        b = self.all_agents[num]['p']
-        line1 = np.array([b, a])
-        
         for i in range(self.num_agents):
             other_posx, other_posy = self.all_agents[i]['p']
             Px = other_posx - my_posx
@@ -454,9 +476,7 @@ class Simulation:
             votherxy = self.all_agents[i]['v']
             Vother = np.linalg.norm(votherxy)
             
-            c = self.all_agents[i]['p']
-            line2 = np.array([b, c])
-            theta = fs.calc_angle_two_lines(line1, line2)
+            theta = self.calc_theta(num, i)
             
             # deltaTTCPが計算できるときはawmを返し、そうでなければ0を返す
             try:
@@ -824,29 +844,9 @@ class Simulation:
         for i in range(self.num_agents):
             # 移動後の座標を確定      
             self.all_agents[i]['p'] += self.all_agents[i]['v']
-            
-        self.record_parameters(current_step)
+                    
+        self.update_parameters(current_step)     
         
-        # all_agentsのパラメータを更新する
-        for i in range(self.num_agents):
-            self.all_agents[i]['all_pos'] = np.vstack([
-                self.all_agents[i]['all_pos'], self.all_agents[i]['p']
-            ])
-            self.all_agents[i]['all_vel'] = np.append(
-                self.all_agents[i]['all_vel'], np.linalg.norm(self.all_agents[i]['v'])
-            )
-            
-        # relative 
-        for i in range(self.num_agents):
-            for j in range(self.num_agents):
-                px = self.all_agents[j]['p'][0] - self.all_agents[i]['p'][0]
-                self.all_agents[i]['relativePx'] = np.vstack([
-                    self.all_agents[i]['relativePx'], np.array([j, px])
-                ])
-                py = self.all_agents[j]['p'][1] - self.all_agents[i]['p'][1]
-                self.all_agents[i]['relativePy'] = np.vstack([
-                    self.all_agents[i]['relativePy'], np.array([j, py])
-                ])
         
     def simulate(self) -> None:
         """
@@ -868,13 +868,15 @@ class Simulation:
         デバッグや新しいメソッドの追加用のメソッド
         プロット中の薄い青色がそのstepでの位置で、濃い青色は次のstepでの位置
         """
-        pos_array = self.show_image()
         plt.figure(figsize=(8, 8))
         for i in range(self.num_agents):
             next_pos = self.all_agents[i]['p'] + self.all_agents[i]['v']
-            plt.scatter(pos_array[0][i], pos_array[1][i], color='blue', alpha=0.3)
-            plt.scatter(*next_pos, color='blue')
-            plt.annotate(i, xy=(pos_array[0][i], pos_array[1][i]))
+            plt.scatter(self.all_agents[i]['p'][0], 
+                        self.all_agents[i]['p'][1], 
+                        color='blue', alpha=0.2)
+            plt.scatter(*next_pos, color='blue', alpha=0.6)
+            plt.annotate(i, xy=(self.all_agents[i]['p'][0], 
+                                self.all_agents[i]['p'][1]))
         plt.show()
         
         

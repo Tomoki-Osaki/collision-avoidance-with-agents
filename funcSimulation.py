@@ -110,10 +110,12 @@ def calc_deltaTTCP(velx1: float, vely1: float, posx1: float, posy1: float,
     return deltaTTCP    
     
 
-def calc_angle_two_lines(line1, line2):
+def calc_angle_two_lines(line1: np.array, # shape[2, 2]
+                         line2: np.array, # shape[2, 2]
+                         ) -> float:
     """
     2直線がなす角度(radian)を求める関数
-    line1, line2: 各直線を表す2点 [(x1,y1), (x2,y2)] or np.array([[x1,y1], [x2,y2]])
+    line1, line2: 各直線を表す2点 np.array([[x1,y1], [x2,y2]])
     
     ex. calc_angle_two_lines(line1=np.array([[3,　4], [5,　6]]), 
                              line2=np.array([[-4,　-5], [2, 3]]) -> 0.14
@@ -137,11 +139,12 @@ def calc_angle_two_lines(line1, line2):
     
     # 角度を計算
     angle_rad = np.arctan(np.abs((m2 - m1) / (1 + m1 * m2)))
-    
+
     return angle_rad
 
 
-def awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic):
+def awareness_model(deltaTTCP: float, Px: float, Py: float, 
+                    Vself: float, Vother: float, theta: float, Nic: int) -> float:
     """
     Inputsの値は標準化されている必要あり
     
