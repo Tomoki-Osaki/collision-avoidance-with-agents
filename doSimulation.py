@@ -13,15 +13,15 @@ import classSimulation as cs
 # 一度にO.num_steps数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
 NUM_OF_TRIAL = 4 # 試行回数
 NUM_STEPS = 200
+NUM_AGENTS = 50
 
 df_result = pd.DataFrame()
 
-agent = 50
 simple_avoid_vec_px = 3 # px
 simple_avoid_vec = simple_avoid_vec_px / 50
 
 print('\nsimple_avoid_vec:', simple_avoid_vec_px, 'px')
-print('num of agents:', agent)
+print('num of agents:', NUM_AGENTS)
 dyn_prop = float(input('\nProportions of dynamic agents(0-1): '))
 print('dyn_prop:', dyn_prop)
 
@@ -33,7 +33,7 @@ for num in range(NUM_OF_TRIAL):
     O = cs.Simulation(interval=100,
                       num_steps=NUM_STEPS,
                       agent_size=0.1, 
-                      agent=agent, 
+                      num_agents=NUM_AGENTS, 
                       view=1, 
                       viewing_angle=180, 
                       goal_vec=0.06,  
@@ -66,7 +66,7 @@ for num in range(NUM_OF_TRIAL):
     print('Settings of simulation')
     print('simple_avoid_vec:', simple_avoid_vec_px, 'px')
     print('dyn_prop:', dyn_prop)
-    print('num of agents:', agent)
+    print('num of agents:', NUM_AGENTS)
     print('--------------------------------------------------------------------\n')
     ##### シミュレーション終了 ######    
         
@@ -81,7 +81,7 @@ print(f'dyn_prop {dyn_prop}終了')
 ##### 全TRIALの結果の記録 #####
 # 値をまとめたcsvファイルの作成
 backup_result = df_result.copy()
-file = f'simulation_results/agt{O.agent}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv'
+file = f'simulation_results/agt{O.num_agents}_avoidvec{int(O.simple_avoid_vec*500)}px_dynper0{int(O.dynamic_percent*10)}.csv'
 #df_result.to_csv(file, mode='x')
 
 # %% make animations
