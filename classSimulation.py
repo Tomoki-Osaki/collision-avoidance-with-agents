@@ -109,8 +109,14 @@ class Simulation:
                 {'avoidance': avoidance, 
                  'p': pos, 
                  'v': fs.rotate_vec(np.array([self.goal_vec, 0]), 
-                                    fs.calc_rad(vel, np.array([0, 0])))
-                 }
+                                    fs.calc_rad(vel, np.array([0, 0]))),
+                 'all_pos': pos,
+                 'all_vel': np.array([np.linalg.norm(vel)]),
+                 'relativePx': None,
+                 'relativePy': None,
+                 'theta': None,
+                 'deltaTTCP': None,
+                 'Nic': None}
             )
             
         # 毎時点での位置xyを全て記録する
@@ -152,32 +158,13 @@ class Simulation:
         row = self.record_agent_information() # 全エージェントの位置と速度、接近を記録
         self.data.append(row) # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
         
-        # 標準化のためにwarmup期間の値を保存
-        # warmup終了後はウィンドウを1ステップずつずらしながら値を更新する
-        self.remain_warmup = warmup
-        self.all_theta = []
-        self.all_px = []
-        self.all_py = []
-        self.all_Nic = [] # とりあえずNicは無視する
-        self.all_deltaTTCP = []
-        
-        
-    # def update_vals_for_standardize(self):
-    #     for i, _ in enumerate(self.all_agents):
-    #         vels = np.linalg.norm(self.all_agents[i]['v'])
-    #         self.all_velocity.append(vels)
-    #         px = self.all_agents[i]['p'][0]
-    #         self.all_px.append(px)
-    #         py = self.all_agents[i]['p'][1]
-    #         self.all_py.append(py)
-    #         # calculate theta
-    #         for j, _ in enumerate(self.all_agents):
-    #             other_pos = self.all_agents[j]['p']
-            
-    #     if self.remain_warmup > 0:
-    #         self.remain_warmup -= 1
-    #     else:
-    #         self.all_velocity = self.all_velocity[len(self.all_agents):]
+        # relative 
+        for i in range(self.num_agents):
+            for j in range(self.num_agents):
+                px = self.all_agents[j]['p'][0] - self.all_agents[i]['p'][0]
+                self.all_agents[i]['relativePx'] = np.array([j, px])
+                py = self.all_agents[j]['p'][1] - self.all_agents[i]['p'][1]
+                self.all_agents[i]['relativePy'] = np.array([j, py])
     
     def record_parameters(self, current_step: int) -> None:
         for i in range(self.num_agents):
@@ -839,8 +826,28 @@ class Simulation:
             self.all_agents[i]['p'] += self.all_agents[i]['v']
             
         self.record_parameters(current_step)
-    
-    
+        
+        # all_agentsのパラメータを更新する
+        for i in range(self.num_agents):
+            self.all_agents[i]['all_pos'] = np.vstack([
+                self.all_agents[i]['all_pos'], self.all_agents[i]['p']
+            ])
+            self.all_agents[i]['all_vel'] = np.append(
+                self.all_agents[i]['all_vel'], np.linalg.norm(self.all_agents[i]['v'])
+            )
+            
+        # relative 
+        for i in range(self.num_agents):
+            for j in range(self.num_agents):
+                px = self.all_agents[j]['p'][0] - self.all_agents[i]['p'][0]
+                self.all_agents[i]['relativePx'] = np.vstack([
+                    self.all_agents[i]['relativePx'], np.array([j, px])
+                ])
+                py = self.all_agents[j]['p'][1] - self.all_agents[i]['p'][1]
+                self.all_agents[i]['relativePy'] = np.vstack([
+                    self.all_agents[i]['relativePy'], np.array([j, py])
+                ])
+        
     def simulate(self) -> None:
         """
         self.num_stepsの回数だけエージェントを動かす
