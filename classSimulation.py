@@ -23,12 +23,13 @@ __init__(self)
 """
 
 # %% import libraries
-import numpy as np
 from copy import deepcopy
-import matplotlib.pyplot as plt
 from typing import Literal
+import tqdm
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import funcSimulation as fs
-from funcSimulation import calc_rad, rotate_vec
 
 # %% 
 # グラフの目盛りの最大値・最小値
@@ -47,10 +48,16 @@ abcd = {'a1': -5.145, # -0.034298
 # c1: 4.286 (4.252840)
 # d1: -13.689 (-0.003423)
 
+class Agent:
+    def __init__(self, avoidance, viewing_angle):
+        self.avoidance = avoidance
+        self.viewing_angle = viewing_angle
+
 # %% シミュレーションに関わるクラス
-class Simulation():
+class Simulation:
     def __init__(self, 
                  warmup: int = 50,
+                 num_steps: int = 500,
                  interval: int = 100,
                  agent_size: float = 0.1, 
                  agent: int = 25, 
@@ -63,6 +70,7 @@ class Simulation():
                  random_seed: int = 0):
         
         self.warmup = warmup # 値の標準化のために値を保存するwarmupのステップ数
+        self.num_steps = num_steps
         self.interval = interval # 100msごとにグラフを更新してアニメーションを作成
         self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
         self.agent = agent # エージェント数
@@ -79,17 +87,9 @@ class Simulation():
         self.first_agent = [] # 初期位置記録用
         self.agent_goal = []
         self.first_pos =[]
+        
         # 動的回避を行うエージェントの数
         self.num_dynamic_agent = int(np.round(self.agent*self.dynamic_percent))
-        
-        # 標準化のためにwarmup期間の値を保存
-        # warmup終了後はウィンドウを1ステップずつずらしながら値を更新する
-        self.all_velocity = []
-        self.all_theta = []
-        self.all_px = []
-        self.all_py = []
-        self.all_Nic = []
-        self.all_deltaTTCP = []
         
         # エージェントの生成
         np.random.seed(self.random_seed)
@@ -108,10 +108,16 @@ class Simulation():
             self.all_agent.append(
                 {'avoidance': avoidance, 
                  'p': pos, 
-                 'v': rotate_vec(np.array([self.goal_vec, 0]), 
-                                 calc_rad(vel, np.array([0, 0])))
+                 'v': fs.rotate_vec(np.array([self.goal_vec, 0]), 
+                                 fs.calc_rad(vel, np.array([0, 0])))
                  }
             )
+            
+        # 毎時点での位置xyを全て記録する
+        # self.all_pos[0]の0は初期位置を表す
+        # 例えば5ステップ目の記録はself.all_pos[5]
+        self.all_pos = np.zeros([num_steps+1, 2, self.agent])
+        self.record_positions(0)                                             
             
         # 初期位置と初期速度をコピー
         self.all_agent2 = deepcopy(self.all_agent)
@@ -140,8 +146,45 @@ class Simulation():
          
         # 完了時間を記録するリスト
         self.completion_time = []
-
-
+        
+        self.data = []
+        row = self.record_agent_information() # 全エージェントの位置と速度、接近を記録
+        self.data.append(row) # ある時刻でのエージェントの情報が記録されたrowが集まってdataとなる
+        
+        # 標準化のためにwarmup期間の値を保存
+        # warmup終了後はウィンドウを1ステップずつずらしながら値を更新する
+        self.remain_warmup = warmup
+        self.all_velocity = []
+        self.all_theta = []
+        self.all_px = []
+        self.all_py = []
+        self.all_Nic = [] # とりあえずNicは無視する
+        self.all_deltaTTCP = []
+        
+        
+    # def update_vals_for_standardize(self):
+    #     for i, _ in enumerate(self.all_agent):
+    #         vels = np.linalg.norm(self.all_agent[i]['v'])
+    #         self.all_velocity.append(vels)
+    #         px = self.all_agent[i]['p'][0]
+    #         self.all_px.append(px)
+    #         py = self.all_agent[i]['p'][1]
+    #         self.all_py.append(py)
+    #         # calculate theta
+    #         for j, _ in enumerate(self.all_agent):
+    #             other_pos = self.all_agent[j]['p']
+            
+    #     if self.remain_warmup > 0:
+    #         self.remain_warmup -= 1
+    #     else:
+    #         self.all_velocity = self.all_velocity[len(self.all_agent):]
+    
+    def record_positions(self, current_step: int) -> None:
+        for i in range(self.agent):
+            self.all_pos[current_step][0][i] = self.all_agent[i]['p'][0] # x
+            self.all_pos[current_step][1][i] = self.all_agent[i]['p'][1] # y
+    
+    
     # 1. 
     def set_goals(self, agent: dict[str, np.array]) -> np.array: # [float, float]
         """ 
@@ -243,14 +286,14 @@ class Simulation():
         
         # ゴールベクトルの角度を算出する
         goal_angle = np.degrees(
-            calc_rad(self.agent_goal[num][self.goal_count[num]], 
+            fs.calc_rad(self.agent_goal[num][self.goal_count[num]], 
                      self.all_agent[num]['p'])
         )
 
         for i in near_agents:
             # 近づいたエージェントとの角度を算出
             agent_angle = np.degrees(
-                calc_rad(self.all_agent[i]['p'], 
+                fs.calc_rad(self.all_agent[i]['p'], 
                          self.all_agent[num]['p'])
             )
             
@@ -757,7 +800,7 @@ class Simulation():
 
     
     # 12. 
-    def simulate(self, current_step: int) -> None:
+    def move_agents(self, current_step: int) -> None:
         """
         エージェントを動かす
         更新されるパラメータ：
@@ -767,18 +810,18 @@ class Simulation():
             # はみ出た時用のゴールが設定されていない
             # 通常のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
             if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
-                self.all_agent[i]['v'] = rotate_vec(
+                self.all_agent[i]['v'] = fs.rotate_vec(
                     np.array([self.goal_vec, 0]), 
-                    calc_rad(self.agent_goal[i][self.goal_count[i]],
+                    fs.calc_rad(self.agent_goal[i][self.goal_count[i]],
                              self.all_agent[i]['p'])
                 )     
 
             # はみ出た時用のゴールが設定されている
             # はみ出た時用のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
             else:
-                self.all_agent[i]['v'] = rotate_vec(
+                self.all_agent[i]['v'] = fs.rotate_vec(
                     np.array([self.goal_vec, 0]), 
-                    calc_rad(self.goal_temp[i], self.all_agent[i]['p'])
+                    fs.calc_rad(self.goal_temp[i], self.all_agent[i]['p'])
                 ) 
                 
             if self.all_agent[i]['avoidance'] == 'simple': # 単純回避ベクトルを足す
@@ -792,21 +835,22 @@ class Simulation():
         for i in range(self.agent):
             # 移動後の座標を確定      
             self.all_agent[i]['p'] = self.all_agent[i]['p'] + self.all_agent[i]['v']
-    
-
-    # 13. 
-    def show_image(self) -> np.array: # shape(2(x,y), エージェントの数)
-        """
-        プロットのためのxy座標を返す
-        ex. self.show_image() -> array([[2.0, 1.2,...,3.5],
-                                       [2.5, 1.5,...,1.5]]) (2, エージェントの数)
-        """
-        pos_array = np.zeros([2, self.agent])
-        for i in range(self.agent):
-            pos_array[0][i] = self.all_agent[i]['p'][0]
-            pos_array[1][i] = self.all_agent[i]['p'][1]
             
-        return pos_array
+        
+        #self.update_vals_for_standardize()
+    
+    
+    def simulate(self) -> None:
+        """
+        self.num_stepsの回数だけエージェントを動かす
+        シミュレーションを行うときに最終的に呼び出すメソッド
+        """
+        for t in tqdm.tqdm(range(self.num_steps)):
+            current_step = t + 1
+            self.move_agents(current_step)
+            row = self.record_agent_information()
+            self.data.append(row)
+            self.record_positions(current_step)
 
 
     # 14. 
@@ -913,6 +957,45 @@ class Simulation():
         
         return approach
         
+    def return_results_as_df(self) -> pd.DataFrame:
+        """
+        1試行の記録をデータフレームにして返す
+        """
+        # 最後の座標から完了時間を算出
+        for i in range(self.agent):
+            last_completion_time = self.calc_remained_completion_time(i, self.num_steps)
+            if not last_completion_time == None:
+                self.completion_time.append(last_completion_time)
+       
+        # 衝突した数、視野の半分、視野の四分の一、視野の八分の一に接近した回数
+        collision = self.record_approaches('collision', self.num_steps, self.data)
+        half =  self.record_approaches('half', self.num_steps, self.data)
+        quarter =  self.record_approaches('quarter', self.num_steps, self.data)
+        one_eighth =  self.record_approaches('one_eigth', self.num_steps, self.data)
+        
+        # 各指標の平均を計算
+        collision_mean = np.mean(collision)
+        half_mean = np.mean(half)
+        quarter_mean = np.mean(quarter)
+        one_eighth_mean = np.mean(one_eighth)
+        completion_time_mean = np.mean(self.completion_time)
+
+        # 結果のデータを保存
+        dict_result = {'time': completion_time_mean,
+                       'half': half_mean,
+                       'quarter': quarter_mean,
+                       'one_eigth': one_eighth_mean,
+                       'collision': collision_mean,
+                       'agent': self.agent,
+                       'viewing_angle': self.viewing_angle,
+                       'num_steps': self.num_steps,
+                       'dynamic_percent': self.dynamic_percent,
+                       'simple_avoid_vec': self.simple_avoid_vec}
+        
+        df_result = pd.DataFrame(dict_result, index=[f'seed_{self.random_seed}'])
+        
+        return df_result
+    
 ################################################################################        
     def simple_avoidance(self, num: int # エージェントの番号
                           ) -> np.array: # [float, float]
