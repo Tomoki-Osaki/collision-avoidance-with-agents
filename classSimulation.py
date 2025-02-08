@@ -168,19 +168,21 @@ class Simulation:
                     self.all_agents[i]['all_pos'], self.all_agents[i]['p']
                 ])
             
-        # relative positions
+        # 自分と相手の情報を基に計算するパラメータ
         for i in range(self.num_agents):
             for j in range(self.num_agents):
                 px = self.all_agents[j]['p'][0] - self.all_agents[i]['p'][0]
                 py = self.all_agents[j]['p'][1] - self.all_agents[i]['p'][1]
                 
                 theta = self.calc_theta(i, j, as_degree=True)
-                deltaTTCP = ...
-                Nic = ...
+                deltaTTCP = self.calc_deltaTTCP(i, j)
+                Nic = self.calc_Nic(i, j)
                 
                 self.all_agents[i]['relPx'][current_step][j] = px
                 self.all_agents[i]['relPy'][current_step][j] = py     
                 self.all_agents[i]['theta'][current_step][j] = theta
+                self.all_agents[i]['deltaTTCP'][current_step][j] = deltaTTCP
+                self.all_agents[i]['Nic'][current_step][j] = Nic
                 
     # 1. 
     def set_goals(self, agent: dict[str, np.array]) -> np.array: # [float, float]
@@ -411,31 +413,26 @@ class Simulation:
     
     
     # 6. 
-    def calc_Nic(self, num: int) -> np.array:
+    def calc_Nic(self, num: int, other_num: int) -> int:
         """ 
-        エージェント番号numについて、Nic(Number in the circle)を計算する
-        1. エージェントA(num)とエージェントBの中点cpを計算し、cpから他の全てのエージェントXとの距離cpxを計算
-        2. 1の中で、cpとエージェントAの距離dist_cp_meより小さいcpxの数を計算
-        ex. self.calc_Nic(num=10) -> array([[0,1], [1,2],...,[24,12]]) (相手,Nic)
+        エージェント番号numについて、エージェント番号other_numとのNic(Number in the circle)を計算する
+        1. エージェントA(num)とエージェントB(other_num)の中点cpを計算し、cpから他の全てのエージェントXとの距離cpXを計算
+        2. 1の中で、cpとエージェントAの距離dist_cp_meより小さいcpXの数を計算
+        ex. self.calc_Nic(num=10, other_num=15) -> 5
         """ 
-        all_Nics = []
-        posA = self.all_agents[num]['p']
-        # iは半径を計算するエージェントで、jはその他のエージェント
+        my_pos = self.all_agents[num]['p']
+        other_pos = self.all_agents[other_num]['p']
+        cp = (my_pos + other_pos) / 2
+        radius = np.linalg.norm(cp - my_pos)
+        Nic_agents = []
         for i in range(self.num_agents):
-            posB = self.all_agents[i]['p']
-            cp = (posA + posB) / 2
-            radius = np.linalg.norm(cp - posA)
-            
-            Nic_agents = []
-            for j in range(self.num_agents):
-                posX = self.all_agents[j]['p']
-                dist_cp_posX = np.linalg.norm(posX - cp)
-                if (dist_cp_posX <= radius) and (j != num) and (j != i):
-                    Nic_agents.append(i)
-            all_Nics.append([i, len(Nic_agents)]) 
-        all_Nics = np.array(all_Nics)
-        
-        return all_Nics
+            posX = self.all_agents[i]['p']
+            dist_cp_posX = np.linalg.norm(posX - cp)
+            if (dist_cp_posX <= radius) and (i != num) and (i != other_num):
+                Nic_agents.append(i)
+        Nic = len(Nic_agents)
+    
+        return Nic
     
     # エージェントの向いている方向と反対の相手エージェントとの角度の計算を考える必要あり
     def calc_theta(self, num: int, other_num: int, as_degree: bool = False) -> float:
@@ -457,6 +454,16 @@ class Simulation:
             return theta
         
     
+    def calc_deltaTTCP(self, num: int, other_num: int) -> float or None:
+        my_vel = self.all_agents[num]['v']
+        my_pos = self.all_agents[num]['p']
+        other_vel = self.all_agents[other_num]['v']
+        other_pos = self.all_agents[other_num]['p']
+        
+        deltaTTCP = fs.calc_deltaTTCP(*my_vel, *my_pos, *other_vel, *other_pos)
+        
+        return deltaTTCP
+        
     # 7. 
     def find_agents_to_focus(self, num: int) -> np.array:
         """
@@ -862,21 +869,22 @@ class Simulation:
 
 
     # 14. 
-    def plot_positions(self) -> None:
+    def plot_positions(self, step: int) -> None:
         """
         各エージェントの座標を、エージェントの番号付きでプロットする
         デバッグや新しいメソッドの追加用のメソッド
         プロット中の薄い青色がそのstepでの位置で、濃い青色は次のstepでの位置
         """
         plt.figure(figsize=(8, 8))
+        txt_far = 0.08
         for i in range(self.num_agents):
-            next_pos = self.all_agents[i]['p'] + self.all_agents[i]['v']
-            plt.scatter(self.all_agents[i]['p'][0], 
-                        self.all_agents[i]['p'][1], 
+            next_pos = self.all_agents[i]['all_pos'][step] + self.all_agents[i]['all_vel'][step]
+            plt.scatter(self.all_agents[i]['all_pos'][step][0], 
+                        self.all_agents[i]['all_pos'][step][1], 
                         color='blue', alpha=0.2)
             plt.scatter(*next_pos, color='blue', alpha=0.6)
-            plt.annotate(i, xy=(self.all_agents[i]['p'][0], 
-                                self.all_agents[i]['p'][1]))
+            plt.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
+                                self.all_agents[i]['all_pos'][step][1]+txt_far))
         plt.show()
         
         

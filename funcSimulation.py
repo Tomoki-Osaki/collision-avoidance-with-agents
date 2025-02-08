@@ -74,7 +74,11 @@ def calc_deltaTTCP(velx1: float, vely1: float, posx1: float, posy1: float,
                        -0.9, -0.3, 2.0, 0.8) -> -2.5
     """
     CP = calc_cross_point(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    CPx, CPy = CP[0], CP[1]
+    try:
+        CPx, CPy = CP[0], CP[1]
+    except TypeError: # 'NoneType' object is not subscriptable
+        return None
+    
     TTCP0 = None
     TTCP1 = None
     
@@ -219,18 +223,26 @@ def debug_theta(s, num, other):
     print('rad:', theta, 'deg:', np.rad2deg(theta))
     
     
-def standardize(array):
+def standardize(array, except_nan=False):
     """
     % トレーニングデータの平均と標準偏差で標準化
     mu = mean(X_train);
     sigma = std(X_train);
     X_train = (X_train - mu) ./ sigma;
     """
-    mu = np.mean(array)
-    sigma = np.std(array)
+    if except_nan:
+        mu = np.nanmean(array)
+        sigma = np.nanstd(array)
+    else:
+        mu = np.mean(array)
+        sigma = np.std(array)
     standardized = (array - mu) / sigma
     
     return standardized
+
+def enum(array):
+    for i, j in enumerate(array):
+        print(i, j)
 
 # %% define figure parameters
 def define_fig_ax(width: int = 500, 

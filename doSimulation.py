@@ -35,7 +35,7 @@ for num in range(NUM_OF_TRIAL):
                       agent_size=0.1, 
                       num_agents=NUM_AGENTS, 
                       view=1, 
-                      viewing_angle=180, 
+                      viewing_angle=360, 
                       goal_vec=0.06,  
                       dynamic_percent=dyn_prop,
                       simple_avoid_vec=simple_avoid_vec, 
