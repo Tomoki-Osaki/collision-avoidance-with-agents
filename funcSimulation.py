@@ -46,73 +46,168 @@ def rotate_vec(vec: np.array, # [float, float]
     return val
 
 # %% awareness model
-def calc_cross_point(velx1: float, vely1: float, posx1: float, posy1: float, 
-                     velx2: float, vely2: float, posx2: float, posy2: float
-                     ) -> np.array or None: # [float(x), float(y)]
-    """
-    ex. calc_cross_point(1, 2, 3, 4, 
-                         5, 6, 7, 8) -> array([2.0, 2.0])
-    """
-    nume_x = velx2*vely1*posx1 - velx1*vely2*posx2 + velx1*velx2*(posy2 - posy1)
-    deno_x = velx2*vely1 - velx1*vely2
-    if deno_x == 0:
+# def calc_cross_point(velx1: float, vely1: float, posx1: float, posy1: float, 
+#                      velx2: float, vely2: float, posx2: float, posy2: float
+#                      ) -> np.array or None: # [float(x), float(y)]
+#     """
+#     ex. calc_cross_point(1, 2, 3, 4, 
+#                          5, 6, 7, 8) -> array([2.0, 2.0])
+#     """
+#     nume_x = velx2*vely1*posx1 - velx1*vely2*posx2 + velx1*velx2*(posy2 - posy1)
+#     deno_x = velx2*vely1 - velx1*vely2
+#     if deno_x == 0:
+#         return None
+#     else:
+#         CPx = nume_x / deno_x    
+
+#         CPy = (vely1 / velx1) * (CPx - posx1) + posy1
+#         CP = np.array([CPx, CPy])
+        
+#         return  CP
+
+
+# def calc_deltaTTCP(velx1: float, vely1: float, posx1: float, posy1: float, 
+#                    velx2: float, vely2: float, posx2: float, posy2: float
+#                    ) -> float or None:
+#     """
+#     ex. calc_deltaTTCP(-1.4, 0.4, 1.3, -2.1, 
+#                        -0.9, -0.3, 2.0, 0.8) -> -2.5
+#     """
+#     CP = calc_cross_point(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
+#     try:
+#         CPx, CPy = CP[0], CP[1]
+#     except TypeError: # 'NoneType' object is not subscriptable
+#         return None
+    
+#     TTCP0 = None
+#     TTCP1 = None
+    
+#     if (
+#             ( (posx1 < CPx and velx1 > 0) or (posx1 > CPx and velx1 < 0) ) 
+#         and
+#             ( (posy1 < CPy and vely1 > 0) or (posy1 > CPy and vely1 < 0) )
+#         ):
+        
+#         nume0 = np.sqrt( (CPx - posx1)**2 + (CPy - posy1)**2 )
+#         deno0 = np.sqrt( (velx1**2 + vely1**2) )
+        
+#         TTCP0 = nume0 / deno0
+#     else:
+#         return None
+
+#     if ( 
+#             ( (posx2 < CPx and velx2 > 0) or (posx2 > CPx and velx2 < 0) ) 
+#         and
+#             ( (posy2 < CPy and vely2 > 0) or (posy2 > CPy and vely2 < 0) )
+#         ):
+        
+#         nume1 = np.sqrt( (CPx - posx2)**2 + (CPy - posy2)**2 )
+#         deno1 = np.sqrt( (velx2**2 + vely2**2) )
+        
+#         TTCP1 = nume1 / deno1
+#     else:
+#         return None
+    
+#     # TTCP0とTTCP1がどちらもNoneでない場合のみdeltaTTCPを返す
+#     deltaTTCP = TTCP0 - TTCP1 #　正は道を譲り、負は自分が先に行く
+    
+#     return deltaTTCP    
+    
+def extend_line(pos_tminus1: np.array, 
+                pos_t: np.array, 
+                length: int) -> np.array:
+    # 方向ベクトル
+    direction = np.array(pos_t) - np.array(pos_tminus1)
+    # 単位ベクトルに変換
+    unit_vector = direction / np.linalg.norm(direction)
+    # 指定した長さだけ伸ばした終点を計算
+    extended_end = np.array(pos_t) + unit_vector * length
+ 
+    return extended_end
+
+
+def is_point_on_segment(cp: np.array, 
+                        pos_t: np.array, 
+                        extended_end: np.array) -> bool:
+    x, y = cp[0], cp[1]
+    x1, y1 = pos_t[0], pos_t[1]
+    x2, y2 = extended_end[0], extended_end[1]
+  
+    # 1. 点が直線上にあるか確認
+    if (y - y1) * (x2 - x1) != (y2 - y1) * (x - x1):
+        return False
+    
+    # 2. 点が線分内に収まっているか確認
+    if min(x1, x2) <= x <= max(x1, x2) and min(y1, y2) <= y <= max(y1, y2):
+        return True
+    return False
+
+
+def calc_crossing_point(pos1_tminus1, pos1, pos2_tminus1, pos2):
+    
+    posx1_tminus1, posy1_tminus1 = pos1_tminus1
+    posx1, posy1 = pos1
+    posx2_tminus1, posy2_tminus1 = pos2_tminus1
+    posx2, posy2 = pos2
+    
+    # 傾きと切片を求める
+    m1 = (posy1 - posy1_tminus1) / (posx1 - posx1_tminus1)
+    b1 = posy1_tminus1 - m1 * posx1_tminus1
+    
+    m2 = (posy2 - posy2_tminus1) / (posx2 - posx2_tminus1)
+    b2 = posy2_tminus1 - m2 * posx2_tminus1
+    
+    # 直線が平行な場合、交点は存在しない
+    if m1 == m2:
         return None
+    
+    # 交点の x 座標を求める
+    x_intersect = (b2 - b1) / (m1 - m2)
+    # 交点の y 座標を求める
+    y_intersect = m1 * x_intersect + b1
+    
+    crossing_point = np.array([x_intersect, y_intersect])
+    
+    # crossing_pointが、２つのエージェントの現在値を始点として延長した線分に含まれている場合、crossing_pointを返す
+    extended_end1 = extend_line(pos1_tminus1, pos1, length=100)
+    is_cp_on_seg1 = is_point_on_segment(crossing_point, pos1, extended_end1)
+    
+    extended_end2 = extend_line(pos2_tminus1, pos2, length=100)
+    is_cp_on_seg2 = is_point_on_segment(crossing_point, pos2, extended_end2)
+
+    if is_cp_on_seg1 and is_cp_on_seg2:    
+        return crossing_point
     else:
-        CPx = nume_x / deno_x    
-
-        CPy = (vely1 / velx1) * (CPx - posx1) + posy1
-        CP = np.array([CPx, CPy])
-        
-        return  CP
+        return None
 
 
-def calc_deltaTTCP(velx1: float, vely1: float, posx1: float, posy1: float, 
-                   velx2: float, vely2: float, posx2: float, posy2: float
-                   ) -> float or None:
+def calc_deltaTTCP(pos1: np.array, vel1: np.array, 
+                   pos2: np.array, vel2: np.array) -> float or None:
     """
-    ex. calc_deltaTTCP(-1.4, 0.4, 1.3, -2.1, 
-                       -0.9, -0.3, 2.0, 0.8) -> -2.5
+    エージェント1(pos1, vel1)とエージェント2(pos2, vel2)のdeltaTTCPを計算する
+    deltaTTCP > 0　の場合、エージェント1が後に行く
+    deltaTTCP < 0　の場合、エージェント1が先に行く
+    deltaTTCP = 0　の場合、エージェント1とエージェント2は衝突する
+    pos = (x, y)
+    vel = (x, y)
     """
-    CP = calc_cross_point(velx1, vely1, posx1, posy1, velx2, vely2, posx2, posy2)
-    try:
-        CPx, CPy = CP[0], CP[1]
-    except TypeError: # 'NoneType' object is not subscriptable
+    pos1_tminus1 = pos1 - vel1
+    pos2_tminus1 = pos2 - vel2
+    
+    cp = calc_crossing_point(pos1_tminus1, pos1, pos2_tminus1, pos2)
+    if cp is None:
         return None
     
-    TTCP0 = None
-    TTCP1 = None
+    dist_to_cp1 = cp - pos1
+    TTCP1 = dist_to_cp1 / vel1    
     
-    if (
-            ( (posx1 < CPx and velx1 > 0) or (posx1 > CPx and velx1 < 0) ) 
-        and
-            ( (posy1 < CPy and vely1 > 0) or (posy1 > CPy and vely1 < 0) )
-        ):
-        
-        nume0 = np.sqrt( (CPx - posx1)**2 + (CPy - posy1)**2 )
-        deno0 = np.sqrt( (velx1**2 + vely1**2) )
-        
-        TTCP0 = nume0 / deno0
-    else:
-        return None
+    dist_to_cp2 = cp - pos2
+    TTCP2 = dist_to_cp2 / vel2 
+    
+    deltaTTCP = (TTCP1 - TTCP2)[0]
+    
+    return deltaTTCP
 
-    if ( 
-            ( (posx2 < CPx and velx2 > 0) or (posx2 > CPx and velx2 < 0) ) 
-        and
-            ( (posy2 < CPy and vely2 > 0) or (posy2 > CPy and vely2 < 0) )
-        ):
-        
-        nume1 = np.sqrt( (CPx - posx2)**2 + (CPy - posy2)**2 )
-        deno1 = np.sqrt( (velx2**2 + vely2**2) )
-        
-        TTCP1 = nume1 / deno1
-    else:
-        return None
-    
-    # TTCP0とTTCP1がどちらもNoneでない場合のみdeltaTTCPを返す
-    deltaTTCP = TTCP0 - TTCP1 #　正は道を譲り、負は自分が先に行く
-    
-    return deltaTTCP    
-    
 
 def calc_angle_two_lines(line1: np.array, # shape[2, 2]
                          line2: np.array, # shape[2, 2]

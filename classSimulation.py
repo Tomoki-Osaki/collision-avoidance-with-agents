@@ -100,13 +100,16 @@ class Simulation:
             
             # 座標(0, 0)から座標velへのベクトルがエージェントの初期速度になる
             # self.all_agentsの1つの要素に1体のエージェントの位置と速度が記録
+            # P(t) + V(t+1) = P(t+1)
+            # P(t) - V(t) = P(t-1)
             self.all_agents.append(
                 {'avoidance': avoidance, 
                  'p': pos, 
                  'v': fs.rotate_vec(np.array([self.goal_vec, 0]), 
                                     fs.calc_rad(vel, np.array([0, 0]))),
-                 'all_pos': pos,
+                 'all_pos': np.zeros([self.num_steps+1, 2]),
                  'all_vel': np.zeros(self.num_steps+1),
+                 # ↓他のそれぞれのエージェントに対して算出されるパラメータ
                  'relPx': np.zeros([self.num_steps+1, self.num_agents]),
                  'relPy': np.zeros([self.num_steps+1, self.num_agents]),
                  'theta': np.zeros([self.num_steps+1, self.num_agents]),
@@ -161,19 +164,19 @@ class Simulation:
         """
         # all_vel, all_pos
         for i in range(self.num_agents):
+            pos = self.all_agents[i]['p']
+            self.all_agents[i]['all_pos'][current_step][0] = pos[0]
+            self.all_agents[i]['all_pos'][current_step][1] = pos[1]
+            
             vel = np.linalg.norm(self.all_agents[i]['v'])
             self.all_agents[i]['all_vel'][current_step] = vel
-            if current_step != 0:
-                self.all_agents[i]['all_pos'] = np.vstack([
-                    self.all_agents[i]['all_pos'], self.all_agents[i]['p']
-                ])
+            
             
         # 自分と相手の情報を基に計算するパラメータ
         for i in range(self.num_agents):
             for j in range(self.num_agents):
                 px = self.all_agents[j]['p'][0] - self.all_agents[i]['p'][0]
                 py = self.all_agents[j]['p'][1] - self.all_agents[i]['p'][1]
-                
                 theta = self.calc_theta(i, j, as_degree=True)
                 deltaTTCP = self.calc_deltaTTCP(i, j)
                 Nic = self.calc_Nic(i, j)
@@ -286,14 +289,14 @@ class Simulation:
         # ゴールベクトルの角度を算出する
         goal_angle = np.degrees(
             fs.calc_rad(self.num_agents_goal[num][self.goal_count[num]], 
-                     self.all_agents[num]['p'])
+                        self.all_agents[num]['p'])
         )
 
         for i in near_agents:
             # 近づいたエージェントとの角度を算出
             agent_angle = np.degrees(
                 fs.calc_rad(self.all_agents[i]['p'], 
-                         self.all_agents[num]['p'])
+                            self.all_agents[num]['p'])
             )
             
             # 近づいたエージェントとの角度とゴールベクトルの角度の差を計算
@@ -439,11 +442,11 @@ class Simulation:
         """
         エージェントnumとエージェントother_numのなす角度(radian)を求める
         """
-        coord_a = self.all_agents[num]['p'] + self.all_agents[num]['v'] # mypos at t + 1
+        coord_a = self.all_agents[num]['p'] - self.all_agents[num]['v'] # mypos at t-1
         coord_b = self.all_agents[num]['p'] # mypos at t
         coord_c = self.all_agents[other_num]['p'] # other pos at t
         
-        line1 = np.array([coord_b, coord_a]) # t時点の自分の位置から、t+1時点の自分の位置への直線
+        line1 = np.array([coord_a, coord_b]) # t-1時点の自分の位置から、t時点の自分の位置への直線
         line2 = np.array([coord_b, coord_c]) # t時点の自分の位置から、t時点の相手の位置への直線
         
         theta = fs.calc_angle_two_lines(line1, line2)
@@ -455,15 +458,17 @@ class Simulation:
         
     
     def calc_deltaTTCP(self, num: int, other_num: int) -> float or None:
-        my_vel = self.all_agents[num]['v']
         my_pos = self.all_agents[num]['p']
-        other_vel = self.all_agents[other_num]['v']
-        other_pos = self.all_agents[other_num]['p']
+        my_vel = self.all_agents[num]['v']
         
-        deltaTTCP = fs.calc_deltaTTCP(*my_vel, *my_pos, *other_vel, *other_pos)
+        other_pos = self.all_agents[other_num]['p']
+        other_vel = self.all_agents[other_num]['v']
+        
+        deltaTTCP = fs.calc_deltaTTCP(my_pos, my_vel, other_pos, other_vel)
         
         return deltaTTCP
         
+    
     # 7. 
     def find_agents_to_focus(self, num: int) -> np.array:
         """
@@ -840,6 +845,7 @@ class Simulation:
                     fs.calc_rad(self.goal_temp[i], self.all_agents[i]['p'])
                 ) 
                 
+            # 回避ベクトルを足す
             if self.all_agents[i]['avoidance'] == 'simple': # 単純回避ベクトルを足す
                 self.all_agents[i]['v'] += self.simple_avoidance(i)
                 
@@ -867,7 +873,6 @@ class Simulation:
             self.data.append(row)
             
 
-
     # 14. 
     def plot_positions(self, step: int) -> None:
         """
@@ -878,13 +883,14 @@ class Simulation:
         plt.figure(figsize=(8, 8))
         txt_far = 0.08
         for i in range(self.num_agents):
-            next_pos = self.all_agents[i]['all_pos'][step] + self.all_agents[i]['all_vel'][step]
-            plt.scatter(self.all_agents[i]['all_pos'][step][0], 
-                        self.all_agents[i]['all_pos'][step][1], 
-                        color='blue', alpha=0.2)
-            plt.scatter(*next_pos, color='blue', alpha=0.6)
+            plt.scatter(*self.all_agents[i]['all_pos'][step],
+                        color='blue', alpha=0.6)
             plt.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
                                 self.all_agents[i]['all_pos'][step][1]+txt_far))
+            if not step == 0:
+                tminus1_pos = self.all_agents[i]['all_pos'][step-1]
+                plt.scatter(*tminus1_pos, color='blue', alpha=0.2)
+                
         plt.show()
         
         
@@ -975,6 +981,7 @@ class Simulation:
         
         return approach
         
+    
     def return_results_as_df(self) -> pd.DataFrame:
         """
         1試行の記録をデータフレームにして返す
