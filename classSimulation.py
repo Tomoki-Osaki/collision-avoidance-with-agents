@@ -51,7 +51,7 @@ abcd = {'a1': -5.145, # -0.034298
 # %% シミュレーションに関わるクラス
 class Simulation:
     def __init__(self, 
-                 warmup: int = 50,
+                 warmup: int = 10,
                  num_steps: int = 500,
                  interval: int = 100,
                  agent_size: float = 0.1, 
@@ -100,7 +100,6 @@ class Simulation:
             
             # 座標(0, 0)から座標velへのベクトルがエージェントの初期速度になる
             # self.all_agentsの1つの要素に1体のエージェントの位置と速度が記録
-            # P(t) + V(t+1) = P(t+1)
             # P(t) - V(t) = P(t-1)
             self.all_agents.append(
                 {'avoidance': avoidance, 
@@ -157,7 +156,7 @@ class Simulation:
         
         self.update_parameters(current_step=0)
     
-    
+    # 1
     def update_parameters(self, current_step: int) -> None:
         """
         all_agentsのパラメータを更新する
@@ -187,7 +186,7 @@ class Simulation:
                 self.all_agents[i]['deltaTTCP'][current_step][j] = deltaTTCP
                 self.all_agents[i]['Nic'][current_step][j] = Nic
                 
-    # 1. 
+    # 2 
     def set_goals(self, agent: dict[str, np.array]) -> np.array: # [float, float]
         """ 
         ゴールのxy座標の計算
@@ -259,7 +258,7 @@ class Simulation:
         return goal
 
         
-    # 2. 
+    # 3 
     def calc_distance_all_agents(self) -> np.array:
         """ 
         全エージェントについて、その他のエージェントとの距離を計算
@@ -274,7 +273,7 @@ class Simulation:
         return dist_all
     
     
-    # 3.
+    # 4
     def find_visible_agents(self, dist_all: np.array, num: int) -> list[int]:
         """
         エージェント番号numの視野に入った他のエージェントの番号をリストにして返す
@@ -311,7 +310,7 @@ class Simulation:
         
         return visible_agents
     
-    # 4
+    # 5
     def simple_avoidance(self, num: int # エージェントの番号
                          ) -> np.array: # [float, float]
         """
@@ -337,7 +336,7 @@ class Simulation:
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
     
-    # 5
+    # 6
     def dynamic_avoidance(self, num: int) -> np.array:
         """
         動的回避ベクトルの生成(オリジナル)
@@ -413,7 +412,7 @@ class Simulation:
         return avoid_vec / len(visible_agents)
 
     
-    # 6. 
+    # 7 
     def calc_Nic(self, num: int, other_num: int) -> int:
         """ 
         エージェント番号numについて、エージェント番号other_numとのNic(Number in the circle)を計算する
@@ -436,6 +435,7 @@ class Simulation:
         return Nic
     
     
+    # 8
     def calc_theta(self, num: int, other_num: int) -> float:
         """
         エージェントnumとエージェントother_numのなす角度(radian)を求める
@@ -451,6 +451,7 @@ class Simulation:
         return theta_deg
             
     
+    # 9
     def calc_deltaTTCP(self, num: int, other_num: int) -> float or None:
         my_pos = self.all_agents[num]['p']
         my_vel = self.all_agents[num]['v']
@@ -463,7 +464,28 @@ class Simulation:
         return deltaTTCP
         
     
-    # 7. 
+    def standardize_parameters(self, num, current_step):
+        start = current_step - self.warmup
+        scaled_params = {}
+        scaled_deltaTTCP = fs.standardize(self.all_agents[num]['deltaTTCP'][start:current_step+1])
+        scaled_Px = fs.standardize(self.all_agents[num]['relPx'][start:current_step+1])
+        scaled_Py = fs.standardize(self.all_agents[num]['relPy'][start:current_step+1])
+        scaled_Vself = fs.standardize(self.all_agents[num]['all_vel'][start:current_step+1])
+        scaled_Vother = ...
+        scaled_theta = fs.standardize(self.all_agents[num]['theta'][start:current_step+1])
+        scaled_Nic = fs.standardize(self.all_agents[num]['Nic'][start:current_step+1])
+        
+        scaled_params['deltaTTCP'] = scaled_deltaTTCP[-1]
+        scaled_params['relPx'] = scaled_Px[-1]
+        scaled_params['relPy'] = scaled_Py[-1]
+        scaled_params['Vself'] = scaled_Vself[-1]
+        scaled_params['Vother'] = ...
+        scaled_params['theta'] = scaled_theta[-1]
+        scaled_params['Nic'] = scaled_Nic[-1]
+        
+        return scaled_params
+    
+    # 10 
     def find_agents_to_focus(self, num: int) -> np.array:
         """
         awareness modelを用いて、注視相手を選定する
@@ -498,7 +520,7 @@ class Simulation:
         return agents_to_focus
     
     
-    # 8.
+    # 11
     def record_start_and_goal(self, num: int) -> None:
         """
         完了時間を記録するためのスタート位置とゴール位置を記録
@@ -535,7 +557,7 @@ class Simulation:
             self.goal_pos[num] = self.num_agents_goal[num][self.goal_count[num]]
             
          
-    # 9. 
+    # 12 
     def calc_completion_time(self, num: int, current_step: int) -> float:
         """ 
         ゴールまで到達した際の完了時間を記録
@@ -567,7 +589,7 @@ class Simulation:
         return completion_time
     
     
-    # 10. 
+    # 13 
     def calc_remained_completion_time(self, num: int, step: int) -> float:
         """
         1試行が終わり、ゴールに向かう途中の最後の座標から完了時間を算出(やらなくても良いかもしれない)
@@ -621,7 +643,7 @@ class Simulation:
         return completion_time
 
 
-    # 11.
+    # 14
     def check_if_goaled(self, current_step: int) -> None:
         """
         各エージェントがゴールに到達したかどうかをチェックする
@@ -814,7 +836,7 @@ class Simulation:
                 )
 
     
-    # 12. 
+    # 15 
     def move_agents(self, current_step: int) -> None:
         """
         エージェントを動かす
@@ -855,6 +877,7 @@ class Simulation:
         self.update_parameters(current_step)     
         
         
+    # 16
     def simulate(self) -> None:
         """
         self.num_stepsの回数だけエージェントを動かす
@@ -865,9 +888,11 @@ class Simulation:
             self.move_agents(current_step)
             row = self.record_agent_information()
             self.data.append(row)
+            if self.warmup > 0:
+                self.warmup -= 1
             
 
-    # 14. 
+    # 17 
     def plot_positions(self, step: int) -> None:
         """
         各エージェントの座標を、エージェントの番号付きでプロットする
@@ -888,7 +913,7 @@ class Simulation:
         plt.show()
         
         
-    # 15. 
+    # 18 
     def approach_detect(self, dist: float) -> np.array: 
         """ 
         指定した距離より接近したエージェントの数を返す
@@ -907,7 +932,7 @@ class Simulation:
         return approach_agent
     
         
-    # 16
+    # 19
     def record_agent_information(self) -> np.array:
         """
         全エージェントの位置と速度、接近を記録
@@ -942,7 +967,7 @@ class Simulation:
         return row
     
         
-    # 17
+    # 20
     def record_approaches(self, 
                           approach_dist: Literal['collision','half','quarter','one_eigth'], 
                           step: int, 
@@ -976,6 +1001,7 @@ class Simulation:
         return approach
         
     
+    # 21
     def return_results_as_df(self) -> pd.DataFrame:
         """
         1試行の記録をデータフレームにして返す
