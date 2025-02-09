@@ -109,6 +109,7 @@ class Simulation:
                  'all_pos': np.zeros([self.num_steps+1, 2]),
                  'all_vel': np.zeros(self.num_steps+1),
                  # ↓他のそれぞれのエージェントに対して算出されるパラメータ
+                 'all_other_vel': np.zeros([self.num_steps+1, self.num_agents]),
                  'relPx': np.zeros([self.num_steps+1, self.num_agents]),
                  'relPy': np.zeros([self.num_steps+1, self.num_agents]),
                  'theta': np.zeros([self.num_steps+1, self.num_agents]),
