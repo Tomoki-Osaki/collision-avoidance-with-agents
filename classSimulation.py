@@ -177,7 +177,7 @@ class Simulation:
             for j in range(self.num_agents):
                 px = self.all_agents[j]['p'][0] - self.all_agents[i]['p'][0]
                 py = self.all_agents[j]['p'][1] - self.all_agents[i]['p'][1]
-                theta = self.calc_theta(i, j, as_degree=True)
+                theta = self.calc_theta(i, j)
                 deltaTTCP = self.calc_deltaTTCP(i, j)
                 Nic = self.calc_Nic(i, j)
                 
@@ -311,12 +311,11 @@ class Simulation:
         
         return visible_agents
     
-    
-    # 4. 
-    def simple_avoidance_with_focus(self, num: int # エージェントの番号
-                                    ) -> np.array: # [float, float]
+    # 4
+    def simple_avoidance(self, num: int # エージェントの番号
+                         ) -> np.array: # [float, float]
         """
-        単純な回避ベクトルの生成(awareness modelで計算相手を選定)
+        単純な回避ベクトルの生成(オリジナル)
         ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
         """
         dist_all = self.calc_distance_all_agents()
@@ -324,8 +323,8 @@ class Simulation:
         avoid_vec = np.zeros(2)   # 回避ベクトル
         
         if not visible_agents:
-            return avoid_vec  
-            
+            return avoid_vec    
+        
         ### the followings are simple vectors ###
         for i in visible_agents:
             # dは視界に入ったエージェントに対して反対方向のベクトル
@@ -338,11 +337,10 @@ class Simulation:
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
     
-    
-    # 5. 
-    def dynamic_avoidance_with_focus(self, num: int) -> np.array:
+    # 5
+    def dynamic_avoidance(self, num: int) -> np.array:
         """
-        動的回避ベクトルの生成(awareness modelで計算相手を選定)
+        動的回避ベクトルの生成(オリジナル)
         ex. self.dynamic_avoidance(num=15) -> array([-0.05, 0.2])
         """
         dist_all = self.calc_distance_all_agents()
@@ -350,7 +348,7 @@ class Simulation:
         avoid_vec = np.zeros(2)   # 回避ベクトル
         
         if not visible_agents:
-            return avoid_vec  
+            return avoid_vec    
             
         ### the followings are dynamic vectors ###
         for i in visible_agents:
@@ -413,7 +411,7 @@ class Simulation:
     
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
-    
+
     
     # 6. 
     def calc_Nic(self, num: int, other_num: int) -> int:
@@ -437,25 +435,21 @@ class Simulation:
     
         return Nic
     
-    # エージェントの向いている方向と反対の相手エージェントとの角度の計算を考える必要あり
-    def calc_theta(self, num: int, other_num: int, as_degree: bool = False) -> float:
+    
+    def calc_theta(self, num: int, other_num: int) -> float:
         """
         エージェントnumとエージェントother_numのなす角度(radian)を求める
         """
-        coord_a = self.all_agents[num]['p'] - self.all_agents[num]['v'] # mypos at t-1
-        coord_b = self.all_agents[num]['p'] # mypos at t
-        coord_c = self.all_agents[other_num]['p'] # other pos at t
-        
-        line1 = np.array([coord_a, coord_b]) # t-1時点の自分の位置から、t時点の自分の位置への直線
-        line2 = np.array([coord_b, coord_c]) # t時点の自分の位置から、t時点の相手の位置への直線
-        
-        theta = fs.calc_angle_two_lines(line1, line2)
-        
-        if as_degree:
-            return np.rad2deg(theta)
-        else:
-            return theta
-        
+        my_pos_tminus1 = self.all_agents[num]['p'] - self.all_agents[num]['v'] 
+        my_pos_t = self.all_agents[num]['p'] 
+        extended_end = fs.extend_line(my_pos_tminus1, my_pos_t, length=100)
+
+        other_pos_t = self.all_agents[other_num]['p'] 
+                
+        theta_deg = fs.calc_angle_two_vectors(my_pos_t, extended_end, other_pos_t)
+
+        return theta_deg
+            
     
     def calc_deltaTTCP(self, num: int, other_num: int) -> float or None:
         my_pos = self.all_agents[num]['p']
@@ -881,7 +875,7 @@ class Simulation:
         プロット中の薄い青色がそのstepでの位置で、濃い青色は次のstepでの位置
         """
         plt.figure(figsize=(8, 8))
-        txt_far = 0.08
+        txt_far = 0.05
         for i in range(self.num_agents):
             plt.scatter(*self.all_agents[i]['all_pos'][step],
                         color='blue', alpha=0.6)
@@ -1021,103 +1015,3 @@ class Simulation:
         
         return df_result
     
-################################################################################        
-    def simple_avoidance(self, num: int # エージェントの番号
-                          ) -> np.array: # [float, float]
-        """
-        単純な回避ベクトルの生成(オリジナル)
-        ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
-        """
-        dist_all = self.calc_distance_all_agents()
-        visible_agents = self.find_visible_agents(dist_all, num)
-        avoid_vec = np.zeros(2)   # 回避ベクトル
-        
-        if not visible_agents:
-            return avoid_vec    
-        
-        ### the followings are simple vectors ###
-        for i in visible_agents:
-            # dは視界に入ったエージェントに対して反対方向のベクトル
-            d = self.all_agents[num]['p'] - self.all_agents[i]['p']
-            d = d / (dist_all[num][i] + 2 * self.num_agents_size) # 大きさ1のベクトルにする
-            d = d * self.simple_avoid_vec # 大きさを固定値にする
-            
-            avoid_vec += d # 回避ベクトルを合成する
-            
-        # ベクトルの平均を出す
-        return avoid_vec / len(visible_agents)
-    
-    
-    def dynamic_avoidance(self, num: int) -> np.array:
-        """
-        動的回避ベクトルの生成(オリジナル)
-        ex. self.dynamic_avoidance(num=15) -> array([-0.05, 0.2])
-        """
-        dist_all = self.calc_distance_all_agents()
-        visible_agents = self.find_visible_agents(dist_all, num)
-        avoid_vec = np.zeros(2)   # 回避ベクトル
-        
-        if not visible_agents:
-            return avoid_vec    
-            
-        ### the followings are dynamic vectors ###
-        for i in visible_agents:
-            # 視野の中心にいるエージェントの位置と速度
-            self.num_agents_pos = self.all_agents[num]['p']
-            self.num_agents_vel = self.all_agents[num]['v']
-            # 視野に入ったエージェントの位置と速度
-            self.visible_agent_pos = self.all_agents[i]['p']
-            self.visible_agent_vel = self.all_agents[i]['v']
-
-            
-            dist_former = dist_all[num][i]
-            
-            t = 0
-            # 2体のエージェントを1ステップ動かして距離を測定
-            self.num_agents_pos = self.num_agents_pos + self.num_agents_vel
-            self.visible_agent_pos = self.visible_agent_pos + self.visible_agent_vel
-            d = self.num_agents_pos - self.visible_agent_pos
-            dist_latter = np.linalg.norm(d) - 2 * self.num_agents_size
-            
-            
-            # 視界に入った時が最も近い場合
-            if dist_former < dist_latter:
-                tcpa = 0
-                if dist_former < 0:
-                    dcpa = 0 # 最も近い距離で接触している場合はdcpaは0とみなす
-                else:
-                    dcpa = dist_former * 50 # 単位をピクセルに変換
-                    
-                    
-            # 2者間距離の最小値が出るまでエージェントを動かす
-            else:
-                while dist_former > dist_latter:
-                    dist_former = dist_latter
-                    t += self.interval
-                    self.num_agents_pos = self.num_agents_pos + self.num_agents_vel
-                    self.visible_agent_pos = self.visible_agent_pos + self.visible_agent_vel
-                    d = self.num_agents_pos - self.visible_agent_pos
-                    dist_latter = np.linalg.norm(d) - 2 * self.num_agents_size
-                    
-                if dist_former < 0:
-                    dcpa = 0 # 最も近い距離で接触している場合はdcpaは0とみなす
-                else:
-                    dcpa = dist_former * 50 # 単位をピクセルに変換
-                    
-                tcpa = t
-
-            a1, b1, c1, d1 = abcd['a1'], abcd['b1'], abcd['c1'], abcd['d1']
-            # ブレーキ指標の算出
-            braking_index = (1 / (1 + np.exp(-c1 - d1 * (tcpa/4000)))) * \
-                            (1 / (1 + np.exp(-b1 - a1 * (dcpa/50))))
-            
-            # dは視界に入ったエージェントに対して反対方向のベクトル
-            d = self.all_agents[num]['p'] - self.all_agents[i]['p']
-            d = d / (dist_all[num][i] + 2 * self.num_agents_size) # ベクトルの大きさを1にする
-            d = d * braking_index # ブレーキ指標の値を反映
-            d = d * self.dynamic_avoid_vec # ベクトルの最大値を決定
-            
-            avoid_vec += d # ベクトルの合成
-    
-        # ベクトルの平均を出す
-        return avoid_vec / len(visible_agents)
