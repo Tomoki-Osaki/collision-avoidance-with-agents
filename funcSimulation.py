@@ -266,18 +266,15 @@ def animte_agent_movements(data: np.array, # shape(steps, 2, num_agent)
     anim.save(save_as)
     
     
-def standardize(array: np.array, except_nan: bool = True) -> np.array:
+def standardize(array: np.array, mu: float = None, sigma: float = None) -> np.array:
     """
     標準化したarraｙを返す
     except_nanがTrueの場合、muやsigmaの計算時にarray中のnan値を無視する
     """
-    if except_nan:
+    if mu is None and sigma is None:
         mu = np.nanmean(array)
         sigma = np.nanstd(array)
-    else:
-        mu = np.mean(array)
-        sigma = np.std(array)
-        
+    
     standardized = (array - mu) / sigma
     
     return standardized

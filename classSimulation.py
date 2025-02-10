@@ -51,7 +51,6 @@ abcd = {'a1': -5.145, # -0.034298
 # %% シミュレーションに関わるクラス
 class Simulation:
     def __init__(self, 
-                 warmup: int = 10,
                  num_steps: int = 500,
                  interval: int = 100,
                  agent_size: float = 0.1, 
@@ -64,7 +63,6 @@ class Simulation:
                  dynamic_avoid_vec: float = 0.06,
                  random_seed: int = 0):
         
-        self.warmup = warmup # 値の標準化のために値を保存するwarmupのステップ数
         self.num_steps = num_steps
         self.interval = interval # 100msごとにグラフを更新してアニメーションを作成
         self.num_agents_size = agent_size # エージェントの半径(目盛り) = 5px
@@ -165,10 +163,10 @@ class Simulation:
         # all_vel, all_pos
         for i in range(self.num_agents):
             pos = self.all_agents[i]['p']
-            self.all_agents[i]['all_pos'][current_step][0] = pos[0]
-            self.all_agents[i]['all_pos'][current_step][1] = pos[1]
-            
             vel = np.linalg.norm(self.all_agents[i]['v'])
+
+            self.all_agents[i]['all_pos'][current_step][0] = pos[0] # x
+            self.all_agents[i]['all_pos'][current_step][1] = pos[1] # y           
             self.all_agents[i]['all_vel'][current_step] = vel
             
             
@@ -180,12 +178,14 @@ class Simulation:
                 theta = self.calc_theta(i, j)
                 deltaTTCP = self.calc_deltaTTCP(i, j)
                 Nic = self.calc_Nic(i, j)
+                other_vel = np.linalg.norm(self.all_agents[j]['v'])
                 
                 self.all_agents[i]['relPx'][current_step][j] = px
                 self.all_agents[i]['relPy'][current_step][j] = py     
                 self.all_agents[i]['theta'][current_step][j] = theta
                 self.all_agents[i]['deltaTTCP'][current_step][j] = deltaTTCP
                 self.all_agents[i]['Nic'][current_step][j] = Nic
+                self.all_agents[i]['all_other_vel'][current_step][j] = other_vel
                 
     # 2 
     def set_goals(self, agent: dict[str, np.array]) -> np.array: # [float, float]
@@ -310,6 +310,7 @@ class Simulation:
                 visible_agents.append(i)
         
         return visible_agents
+    
     
     # 5
     def simple_avoidance(self, num: int # エージェントの番号
@@ -465,60 +466,54 @@ class Simulation:
         return deltaTTCP
         
     
-    def standardize_parameters(self, num, current_step):
-        start = current_step - self.warmup
-        scaled_params = {}
-        scaled_deltaTTCP = fs.standardize(self.all_agents[num]['deltaTTCP'][start:current_step+1])
-        scaled_Px = fs.standardize(self.all_agents[num]['relPx'][start:current_step+1])
-        scaled_Py = fs.standardize(self.all_agents[num]['relPy'][start:current_step+1])
-        scaled_Vself = fs.standardize(self.all_agents[num]['all_vel'][start:current_step+1])
-        scaled_Vother = ...
-        scaled_theta = fs.standardize(self.all_agents[num]['theta'][start:current_step+1])
-        scaled_Nic = fs.standardize(self.all_agents[num]['Nic'][start:current_step+1])
-        
-        scaled_params['deltaTTCP'] = scaled_deltaTTCP[-1]
-        scaled_params['relPx'] = scaled_Px[-1]
-        scaled_params['relPy'] = scaled_Py[-1]
-        scaled_params['Vself'] = scaled_Vself[-1]
-        scaled_params['Vother'] = ...
-        scaled_params['theta'] = scaled_theta[-1]
-        scaled_params['Nic'] = scaled_Nic[-1]
-        
-        return scaled_params
-    
-    # 10 
-    def find_agents_to_focus(self, num: int) -> np.array:
+    # FIXME: need to find why it returns nan.
+    # value range must be 0-1
+    def awareness_model(self, num: int, other_num: int, current_step: int, dataclass_aware) -> float:
         """
-        awareness modelを用いて、注視相手を選定する
-        ex. self.find_agents_to_focus(
-            num=10) -> array([[0, 0.2], [1, 0.3],...,[24, 0.8]]) (相手,awareness)
+        awareness modelを用いて、注視相手を選定する(0-1)
+        ex. self.find_agents_to_focus(num=10, other_num=15, current_step=20) -> 0.85
         """ 
-        agents_to_focus = []
-        my_posx, my_posy = self.all_agents[num]['p']
-        vselfxy = self.all_agents[num]['v']
-        Vself = np.linalg.norm(vselfxy)
+        agent = self.all_agents[num]
         
-        for i in range(self.num_agents):
-            other_posx, other_posy = self.all_agents[i]['p']
-            Px = other_posx - my_posx
-            Py = other_posy - my_posy
-            votherxy = self.all_agents[i]['v']
-            Vother = np.linalg.norm(votherxy)
-            
-            theta = self.calc_theta(num, i)
-            
-            # deltaTTCPが計算できるときはawmを返し、そうでなければ0を返す
-            try:
-                deltaTTCP = fs.calc_deltaTTCP(*vselfxy, my_posx, my_posy, 
-                                              *votherxy, other_posx, other_posy)
-                Nic = self.calc_Nic(num)[i][1]
-                awm = fs.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
-                agents_to_focus.append([i, awm])
-            except TypeError:
-                agents_to_focus.append([i, 0])
-        agents_to_focus = np.array(agents_to_focus)
+        all_deltaTTCP = dataclass_aware.deltaTTCP
+        deltaTTCP_mean = np.nanmean(all_deltaTTCP)
+        deltaTTCP_std = np.nanstd(all_deltaTTCP)
+
+        all_Px = dataclass_aware.Px
+        Px_mean = np.mean(all_Px)
+        Px_std = np.std(all_Px)
+
+        all_Py = dataclass_aware.Py
+        Py_mean = np.mean(all_Py)
+        Py_std = np.std(all_Py)
+
+        all_Vself = dataclass_aware.Vself
+        Vself_mean = np.mean(all_Vself)
+        Vself_std = np.std(all_Vself)
+
+        all_Vother = dataclass_aware.Vother
+        Vother_mean = np.mean(all_Vother)
+        Vother_std = np.mean(all_Vother)
+
+        all_theta = dataclass_aware.theta
+        theta_mean = np.nanmean(all_theta)
+        theta_std = np.nanstd(all_theta)
+
+        all_nic = dataclass_aware.Nic
+        nic_mean = np.mean(all_nic)
+        nic_std = np.std(all_nic)
+    
+        deltaTTCP = (agent['deltaTTCP'][other_num][current_step] - deltaTTCP_mean) / deltaTTCP_std
+        Px = (agent['relPx'][other_num][current_step] - Px_mean) / Px_std
+        Py = (agent['relPy'][other_num][current_step] - Py_mean) / Py_std
+        Vself = (agent['all_vel'][current_step] - Vself_mean) / Vself_std
+        Vother = (agent['all_other_vel'][other_num][current_step] - Vother_mean) / Vother_std        
+        theta = (agent['theta'][other_num][current_step] - theta_mean) / theta_std
+        Nic = (agent['Nic'][other_num][current_step] - nic_mean) / nic_std
+    
+        awareness = fs.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
         
-        return agents_to_focus
+        return awareness
     
     
     # 11
@@ -889,8 +884,6 @@ class Simulation:
             self.move_agents(current_step)
             row = self.record_agent_information()
             self.data.append(row)
-            if self.warmup > 0:
-                self.warmup -= 1
             
 
     # 17 
