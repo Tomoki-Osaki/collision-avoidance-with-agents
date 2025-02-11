@@ -12,12 +12,9 @@
 9. debug_theta(s, num, other)
 """
 
-# %%
+# %% import libraries
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from mpl_toolkits.axes_grid1 import Divider, Size 
-from mpl_toolkits.axes_grid1.mpl_axes import Axes
 
 # %% functions to calculate the vectors
 def calc_rad(pos2: np.array, # [float, float]
@@ -228,42 +225,6 @@ def awareness_model(deltaTTCP: float, Px: float, Py: float,
     val = 1 / deno
     
     return val
-
-
-def animte_agent_movements(data: np.array, # shape(steps, 2, num_agent)
-                           sim_obj, 
-                           save_as: str
-                           ) -> None:
-    plt.rcParams['font.family'] = "MS Gothic"
-    plt.rcParams['font.size'] = 14
-    
-    fig, ax = plt.subplots(figsize=(8,8))
-    def update(frame):
-        ax.cla()
-        for i in range(sim_obj.agent):
-            if i < sim_obj.num_dynamic_agent:
-                if i == 0:
-                    color = 'red'
-                    ax.scatter(x=frame[0][i], y=frame[1][i], s=40,
-                                marker="o", c=color, label='動的回避')
-                else:
-                    ax.scatter(x=frame[0][i], y=frame[1][i], s=40,
-                                marker="o", c=color)
-            else:
-                color = 'blue'
-                if i == sim_obj.num_dynamic_agent:
-                    ax.scatter(x=frame[0][i], y=frame[1][i], s=40,
-                                marker="o", c=color, label='単純回避')
-                else:
-                    ax.scatter(x=frame[0][i], y=frame[1][i], s=40,
-                                marker="o", c=color)
-        ax.set_xlim(-5, 5)
-        ax.set_ylim(-5, 5)
-        ax.grid()
-        ax.legend(loc='upper left', framealpha=1)
-    
-    anim = FuncAnimation(fig, update, frames=data, interval=100)
-    anim.save(save_as)
     
     
 def standardize(array: np.array, mu: float = None, sigma: float = None) -> np.array:
@@ -286,36 +247,6 @@ def show(array):
     """
     for i, j in enumerate(array):
         print(i, j)
-
-# %% define figure parameters
-def define_fig_ax(width: int = 500, 
-                  height: int = 500,
-                  field_size: int = 5) -> plt.subplots:
-    ax_w_px = width  # プロット領域の幅をピクセル単位で指定
-    ax_h_px = height  # プロット領域の高さをピクセル単位で指定
-    
-    #  サイズ指定のための処理、20行目までhttps://qiita.com/code0327/items/43118813b6085dc7e3d1　を参照
-    fig_dpi = 100
-    ax_w_inch = ax_w_px / fig_dpi
-    ax_h_inch = ax_h_px / fig_dpi
-    ax_margin_inch = (0.5, 0.5, 0.5, 0.5)  #  Left, Top, Right, Bottom [inch]
-    
-    fig_w_inch = ax_w_inch + ax_margin_inch[0] + ax_margin_inch[2] 
-    fig_h_inch = ax_h_inch + ax_margin_inch[1] + ax_margin_inch[3]
-    
-    fig = plt.figure(dpi=fig_dpi, figsize=(fig_w_inch, fig_h_inch))
-    ax_p_w = [Size.Fixed(ax_margin_inch[0]), Size.Fixed(ax_w_inch)]
-    ax_p_h = [Size.Fixed(ax_margin_inch[1]), Size.Fixed(ax_h_inch)]
-    divider = Divider(fig, (0.0, 0.0, 1.0, 1.0), ax_p_w, ax_p_h, aspect=False)
-    ax = Axes(fig, divider.get_position())
-    ax.set_axes_locator(divider.new_locator(nx=1, ny=1))
-    fig.add_axes(ax)
-    
-    ax.set_xlim(-field_size, field_size)
-    ax.set_ylim(-field_size, field_size)
-    ax.grid(True)
-    
-    return fig, ax
 
 # %% old version of deltaTTCP
 # def calc_cross_point(velx1: float, vely1: float, posx1: float, posy1: float, 

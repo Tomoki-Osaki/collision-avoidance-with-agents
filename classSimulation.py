@@ -25,10 +25,12 @@ __init__(self)
 # %% import libraries
 from copy import deepcopy
 from typing import Literal
+from dataclasses import dataclass
 import tqdm
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import funcSimulation as fs
 
 # %% 
@@ -37,17 +39,27 @@ FIELD_SIZE = 5
 # 目盛りは最大値5、最小値-5で10目盛り
 # グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
 
-# 妨害指標の4係数は標準化したやつを使う
-abcd = {'a1': -5.145, # -0.034298
-        'b1': 3.348, # 3.348394
-        'c1': 4.286, # 4.252840
-        'd1': -13.689} # -0.003423
-
-# a1: -5.145 (-0.034298)
-# b1: 3.348 (3.348394)
-# c1: 4.286 (4.252840)
-# d1: -13.689 (-0.003423)
-
+# ブレーキ指標の4係数は標準化したやつを使う
+@dataclass
+class BrakeWeight:
+    a1: float = -5.145 # -0.034298
+    b1: float = 3.348 # 3.348394
+    c1: float = 4.286 # 4.252840
+    d1: float = -13.689 # -0.003423
+   
+# awareness modelの重み
+@dataclass
+class AwarenessWeight:
+    bias: float = -1.2
+    deltaTTCP: float = 0.018
+    Px: float = -0.1
+    Py: float = -1.1
+    Vself: float = -0.25
+    Vother: float = 0.29
+    theta: float = -2.5
+    Nic: float = -0.62    
+   
+    
 # %% シミュレーションに関わるクラス
 class Simulation:
     def __init__(self, 
@@ -115,12 +127,6 @@ class Simulation:
                  'Nic': np.zeros([self.num_steps+1, self.num_agents])}
             )
             
-        # 毎時点での位置xyを全て記録する
-        # self.all_pos[0]の0は初期位置を表す
-        # 例えば5ステップ目の記録はself.all_pos[5]
-        self.all_pos = np.zeros([num_steps+1, 2, self.num_agents])
-        self.all_vel = np.zeros([num_steps+1, self.num_agents])
-            
         # 初期位置と初期速度をコピー
         self.all_agents2 = deepcopy(self.all_agents)
         self.first_agent = deepcopy(self.all_agents)
@@ -155,6 +161,18 @@ class Simulation:
         
         self.update_parameters(current_step=0)
     
+    def disp_info(self) -> None:
+        print('\nシミュレーションの環境情報')
+        print('-----------------------------')
+        print('ステップ数:', self.num_steps)
+        print('エージェント数:', self.num_agents)
+        print('エージェントの視野角度:', self.viewing_angle)
+        print('動的回避エージェントの割合:', self.dynamic_percent)
+        print('単純回避の回避量:', self.simple_avoid_vec*50, 'px')
+        print('ランダムシード:', self.random_seed)
+        print('-----------------------------\n')
+    
+    
     # 1
     def update_parameters(self, current_step: int) -> None:
         """
@@ -186,6 +204,7 @@ class Simulation:
                 self.all_agents[i]['deltaTTCP'][current_step][j] = deltaTTCP
                 self.all_agents[i]['Nic'][current_step][j] = Nic
                 self.all_agents[i]['all_other_vel'][current_step][j] = other_vel
+              
                 
     # 2 
     def set_goals(self, agent: dict[str, np.array]) -> np.array: # [float, float]
@@ -397,7 +416,10 @@ class Simulation:
                     
                 tcpa = t
 
-            a1, b1, c1, d1 = abcd['a1'], abcd['b1'], abcd['c1'], abcd['d1']
+            # ブレーキ指標の重み
+            w_brake = BrakeWeight()
+            a1, b1, c1, d1 = w_brake.a1, w_brake.b1, w_brake.c1, w_brake.d1
+            
             # ブレーキ指標の算出
             braking_index = (1 / (1 + np.exp(-c1 - d1 * (tcpa/4000)))) * \
                             (1 / (1 + np.exp(-b1 - a1 * (dcpa/50))))
@@ -466,9 +488,8 @@ class Simulation:
         return deltaTTCP
         
     
-    # FIXME: need to find why it returns nan.
-    # value range must be 0-1
-    def awareness_model(self, num: int, other_num: int, current_step: int, dataclass_aware) -> float:
+    # now adjusting the weights of each explanatory variables
+    def awareness_model(self, num: int, other_num: int, current_step: int, dataclass_aware, debug=False) -> float:
         """
         awareness modelを用いて、注視相手を選定する(0-1)
         ex. self.find_agents_to_focus(num=10, other_num=15, current_step=20) -> 0.85
@@ -476,44 +497,62 @@ class Simulation:
         agent = self.all_agents[num]
         
         all_deltaTTCP = dataclass_aware.deltaTTCP
-        deltaTTCP_mean = np.nanmean(all_deltaTTCP)
-        deltaTTCP_std = np.nanstd(all_deltaTTCP)
+        deltaTTCP_mean, deltaTTCP_std = np.nanmean(all_deltaTTCP), np.nanstd(all_deltaTTCP)
 
         all_Px = dataclass_aware.Px
-        Px_mean = np.mean(all_Px)
-        Px_std = np.std(all_Px)
+        Px_mean, Px_std = np.nanmean(all_Px), np.nanstd(all_Px)
 
         all_Py = dataclass_aware.Py
-        Py_mean = np.mean(all_Py)
-        Py_std = np.std(all_Py)
+        Py_mean, Py_std = np.nanmean(all_Py), np.nanstd(all_Py)
 
         all_Vself = dataclass_aware.Vself
-        Vself_mean = np.mean(all_Vself)
-        Vself_std = np.std(all_Vself)
+        Vself_mean, Vself_std = np.nanmean(all_Vself), np.nanstd(all_Vself)
 
         all_Vother = dataclass_aware.Vother
-        Vother_mean = np.mean(all_Vother)
-        Vother_std = np.mean(all_Vother)
+        Vother_mean, Vother_std = np.nanmean(all_Vother), np.nanmean(all_Vother)
 
         all_theta = dataclass_aware.theta
-        theta_mean = np.nanmean(all_theta)
-        theta_std = np.nanstd(all_theta)
+        theta_mean, theta_std = np.nanmean(all_theta), np.nanstd(all_theta)
 
         all_nic = dataclass_aware.Nic
-        nic_mean = np.mean(all_nic)
-        nic_std = np.std(all_nic)
+        nic_mean, nic_std = np.nanmean(all_nic), np.nanstd(all_nic)
     
-        deltaTTCP = (agent['deltaTTCP'][other_num][current_step] - deltaTTCP_mean) / deltaTTCP_std
-        Px = (agent['relPx'][other_num][current_step] - Px_mean) / Px_std
-        Py = (agent['relPy'][other_num][current_step] - Py_mean) / Py_std
+        deltaTTCP = (agent['deltaTTCP'][current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
+        if np.isnan(deltaTTCP):
+            return 0
+        Px = (agent['relPx'][current_step][other_num] - Px_mean) / Px_std
+        Py = (agent['relPy'][current_step][other_num] - Py_mean) / Py_std
         Vself = (agent['all_vel'][current_step] - Vself_mean) / Vself_std
-        Vother = (agent['all_other_vel'][other_num][current_step] - Vother_mean) / Vother_std        
-        theta = (agent['theta'][other_num][current_step] - theta_mean) / theta_std
-        Nic = (agent['Nic'][other_num][current_step] - nic_mean) / nic_std
-    
-        awareness = fs.awareness_model(deltaTTCP, Px, Py, Vself, Vother, theta, Nic)
+        Vother = (agent['all_other_vel'][current_step][other_num] - Vother_mean) / Vother_std        
+        theta = (agent['theta'][current_step][other_num] - theta_mean) / theta_std
+        Nic = (agent['Nic'][current_step][other_num] - nic_mean) / nic_std
         
-        return awareness
+        # # awareness model original
+        # deno = 1 + np.exp(
+        #     -(-1.2 +0.018*deltaTTCP -0.1*Px -1.1*Py -0.25*Vself +0.29*Vother -2.5*theta -0.62*Nic)    
+        # )
+        # val = 1 / deno
+        
+        # awareness model adjusted parameters
+        w = AwarenessWeight(deltaTTCP=5, Nic=-4, theta=-.8)        
+        
+        deno = 1 + np.exp(
+            -(w.bias + w.deltaTTCP*deltaTTCP + w.Px*Px + w.Py*Py + w.Vself*Vself + \
+              w.Vother*Vother + w.theta*theta + w.Nic*Nic)    
+        )
+        val = 1 / deno
+        
+        if debug:
+            print(f'\ndeltaTTCP {deltaTTCP:.3f}; {deltaTTCP*w.deltaTTCP:.3f}')
+            print(f'Px {Px:.3f}; {Px*w.Px:.3f}')
+            print(f'Py {Py:.3f}; {Py*w.Py:.3f}')
+            print(f'Vself {Vself:.3f}; {Vself*w.Vself:.3f}')
+            print(f'Vother {Vother:.3f}; {Vother*w.Vother:.3f}')
+            print(f'theta {theta:.3f}; {theta*w.theta:.3f}')
+            print(f'Nic {Nic:.3f}; {Nic*w.Nic:.3f}')
+            print(f'Awareness {val:.3f}\n')
+        else:
+            return val
     
     
     # 11
@@ -879,6 +918,7 @@ class Simulation:
         self.num_stepsの回数だけエージェントを動かす
         シミュレーションを行うときに最終的に呼び出すメソッド
         """
+        self.disp_info()
         for t in tqdm.tqdm(range(self.num_steps)):
             current_step = t + 1
             self.move_agents(current_step)
@@ -903,9 +943,49 @@ class Simulation:
             if not step == 0:
                 tminus1_pos = self.all_agents[i]['all_pos'][step-1]
                 plt.scatter(*tminus1_pos, color='blue', alpha=0.2)
-                
+        
+        plt.grid()
         plt.show()
         
+    # 18
+    def plot_positions_aware(self, num, step: int, dataclass_aware) -> None:
+        """
+        各エージェントの座標を、エージェントの番号付きでプロットし、エージェント番号numのAwareness modelを計算する
+        """
+        plt.figure(figsize=(8, 8))
+        txt_far = 0.05
+        for i in range(self.num_agents):
+            if i == num:
+                color = 'green'
+            else:
+                color = 'blue'
+            plt.scatter(*self.all_agents[i]['all_pos'][step],
+                        color=color, alpha=0.6)
+            plt.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
+                                self.all_agents[i]['all_pos'][step][1]+txt_far))
+            if not step == 0:
+                tminus1_pos = self.all_agents[i]['all_pos'][step-1]
+                plt.scatter(*tminus1_pos, color=color, alpha=0.2)
+        
+        awms = []
+        for i in range(self.num_agents):
+            awm = self.awareness_model(num, i, step, dataclass_aware, debug=False)
+            if awm is not None and awm >= 0.8:
+                awms.append([i, awm])
+        
+        my_posx = self.all_agents[num]['all_pos'][step][0]
+        my_posy = self.all_agents[num]['all_pos'][step][1]
+        
+        for i in awms:
+            other_posx = self.all_agents[i[0]]['all_pos'][step][0]
+            other_posy = self.all_agents[i[0]]['all_pos'][step][1]
+            
+            plt.arrow(x=my_posx, y=my_posy,
+                      dx=other_posx-my_posx, dy=other_posy-my_posy,
+                      color='tab:blue', alpha=0.5)
+        
+        plt.grid()
+        plt.show()    
         
     # 18 
     def approach_detect(self, dist: float) -> np.array: 
@@ -1034,4 +1114,41 @@ class Simulation:
         df_result = pd.DataFrame(dict_result, index=[f'seed_{self.random_seed}'])
         
         return df_result
+    
+    
+    def animate_agent_movements(self, save_as: str = 'simulation.mp4') -> None:
+        plt.rcParams['font.family'] = "MS Gothic"
+        plt.rcParams['font.size'] = 14
+        
+        data_arr = np.zeros([self.num_steps+1, self.num_agents, 2])
+        for step in range(self.num_steps+1):
+            for agent in range(self.num_agents):
+                data_arr[step][agent][0] = self.all_agents[agent]['all_pos'][step][0]
+                data_arr[step][agent][1] = self.all_agents[agent]['all_pos'][step][1]
+        
+        fig, ax = plt.subplots(figsize=(8,8))
+        def update(frame):
+            ax.cla()
+            for i in range(self.num_agents):
+                pos = frame[i]
+                if i < self.num_dynamic_agent:
+                    if i == 0:
+                        color = 'red'
+                        ax.scatter(*pos, s=40, marker="o", c=color, label='動的回避')
+                    else:
+                        ax.scatter(*pos, s=40, marker="o", c=color)
+                else:
+                    color = 'blue'
+                    if i == self.num_dynamic_agent:
+                        ax.scatter(*pos, s=40, marker="o", c=color, label='単純回避')
+                    else:
+                        ax.scatter(*pos, s=40, marker="o", c=color)
+            ax.set_xlim(-5, 5)
+            ax.set_ylim(-5, 5)
+            ax.grid()
+            ax.legend(loc='upper left', framealpha=1)
+        
+        anim = FuncAnimation(fig, update, frames=data_arr, interval=self.interval)
+        anim.save(save_as)
+
     
