@@ -1089,4 +1089,39 @@ class Simulation:
         anim = FuncAnimation(fig, update, frames=data_arr, interval=self.interval)
         anim.save(save_as)
 
-    
+
+    def save_data_for_awareness(self, 
+                                save_as: str = 'data_for_awareness.npz',
+                                return_dict: bool = False) -> None or dict:
+        """
+        Awarenessモデルの計算時の平均、標準偏差のためのデータを保存する
+        return_dictがTrueのとき、データの保存は行わない
+        """
+        all_data = {
+            'all_deltaTTCP': np.array(
+                [self.all_agents[i]['deltaTTCP'] for i in range(self.num_agents)]
+            ),
+            'all_Px': np.array(
+                [self.all_agents[i]['relPx'] for i in range(self.num_agents)]
+            ),
+            'all_Py': np.array(
+                [self.all_agents[i]['relPy'] for i in range(self.num_agents)]
+            ),
+            'all_Vself': np.array(
+                [self.all_agents[i]['all_vel'] for i in range(self.num_agents)]
+            ),
+            'all_Vother': np.array(
+                [self.all_agents[i]['all_other_vel'] for i in range(self.num_agents)]
+            ),
+            'all_theta': np.array(
+                [self.all_agents[i]['theta'] for i in range(self.num_agents)]
+            ),
+            'all_Nic': np.array(
+                [self.all_agents[i]['Nic'] for i in range(self.num_agents)]
+            )    
+        }        
+        if return_dict:
+            return all_data
+        else:
+            np.savez_compressed(save_as, **all_data)
+        

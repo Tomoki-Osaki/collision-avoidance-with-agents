@@ -198,12 +198,27 @@ def calc_angle_two_vectors(common_pos: np.array,
         return theta_rad
     return theta_deg
 
+
+def standardize(array: np.array, mu: float = None, sigma: float = None) -> np.array:
+    """
+    標準化したarraｙを返す
+    except_nanがTrueの場合、muやsigmaの計算時にarray中のnan値を無視する
+    """
+    if mu is None and sigma is None:
+        mu = np.nanmean(array)
+        sigma = np.nanstd(array)
+    
+    standardized = (array - mu) / sigma
+    
+    return standardized
+
+
+# FIXME: need to split functions for calc awareness model and standardization
 # now adjusting the weights of each explanatory variables
 def awareness_model(sim_obj, 
                     num: int, 
                     other_num: int, 
                     current_step: int, 
-                    dataclass_aware, 
                     awareness_weight,
                     debug=False) -> float:
     """
@@ -281,21 +296,6 @@ def awareness_model(sim_obj,
         print(f'Awareness {val:.3f}\n')
     else:
         return val
-    
-        
-def standardize(array: np.array, mu: float = None, sigma: float = None) -> np.array:
-    """
-    標準化したarraｙを返す
-    except_nanがTrueの場合、muやsigmaの計算時にarray中のnan値を無視する
-    """
-    if mu is None and sigma is None:
-        mu = np.nanmean(array)
-        sigma = np.nanstd(array)
-    
-    standardized = (array - mu) / sigma
-    
-    return standardized
-
 
 def show(array):
     """
