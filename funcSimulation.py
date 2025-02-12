@@ -198,35 +198,91 @@ def calc_angle_two_vectors(common_pos: np.array,
         return theta_rad
     return theta_deg
 
-
-def awareness_model(deltaTTCP: float, Px: float, Py: float, 
-                    Vself: float, Vother: float, theta: float, Nic: int) -> float:
+# now adjusting the weights of each explanatory variables
+def awareness_model(sim_obj, 
+                    num: int, 
+                    other_num: int, 
+                    current_step: int, 
+                    dataclass_aware, 
+                    awareness_weight,
+                    debug=False) -> float:
     """
-    Inputsの値は標準化されている必要あり
+    awareness modelを用いて、エージェント番号numの注視相手を選定する(0-1)
+    ex. awareness_model(sim, num=10, other_num=15, current_step=20, dataclass_aware) -> 0.85
     
-    Inputs
-        deltaTTCP: 自分のTTCPから相手のTTCPを引いた値
-        Px: 自分から見た相手の相対位置
-        Py: 自分から見た相手の相対位置
-        Vself: 自分の歩行速度
-        Vother: 相手の歩行速度 
-        theta: 自分の向いている方向と相手の位置の角度差 
-        Nic: 円内他歩行者数 
-    Output
-        0(注視しない) - 1 (注視する)
-    """
-    if deltaTTCP is None:
+    説明変数
+            deltaTTCP: 自分のTTCPから相手のTTCPを引いた値
+            Px: 自分から見た相手の相対位置
+            Py: 自分から見た相手の相対位置
+            Vself: 自分の歩行速度
+            Vother: 相手の歩行速度 
+            theta: 自分の向いている方向と相手の位置の角度差 
+            Nic: 円内他歩行者数 
+            
+    被説明変数
+            0(注視しない) - 1 (注視する)
+    """ 
+    agent = sim_obj.all_agents[num]
+    
+    all_deltaTTCP = dataclass_aware.deltaTTCP
+    deltaTTCP_mean, deltaTTCP_std = np.nanmean(all_deltaTTCP), np.nanstd(all_deltaTTCP)
+
+    all_Px = dataclass_aware.Px
+    Px_mean, Px_std = np.nanmean(all_Px), np.nanstd(all_Px)
+
+    all_Py = dataclass_aware.Py
+    Py_mean, Py_std = np.nanmean(all_Py), np.nanstd(all_Py)
+
+    all_Vself = dataclass_aware.Vself
+    Vself_mean, Vself_std = np.nanmean(all_Vself), np.nanstd(all_Vself)
+
+    all_Vother = dataclass_aware.Vother
+    Vother_mean, Vother_std = np.nanmean(all_Vother), np.nanmean(all_Vother)
+
+    all_theta = dataclass_aware.theta
+    theta_mean, theta_std = np.nanmean(all_theta), np.nanstd(all_theta)
+
+    all_nic = dataclass_aware.Nic
+    nic_mean, nic_std = np.nanmean(all_nic), np.nanstd(all_nic)
+
+    deltaTTCP = (agent['deltaTTCP'][current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
+    if np.isnan(deltaTTCP):
         return 0
+    Px = (agent['relPx'][current_step][other_num] - Px_mean) / Px_std
+    Py = (agent['relPy'][current_step][other_num] - Py_mean) / Py_std
+    Vself = (agent['all_vel'][current_step] - Vself_mean) / Vself_std
+    Vother = (agent['all_other_vel'][current_step][other_num] - Vother_mean) / Vother_std        
+    theta = (agent['theta'][current_step][other_num] - theta_mean) / theta_std
+    Nic = (agent['Nic'][current_step][other_num] - nic_mean) / nic_std
+    
+    # # awareness model original
+    # deno = 1 + np.exp(
+    #     -(-1.2 +0.018*deltaTTCP -0.1*Px -1.1*Py -0.25*Vself +0.29*Vother -2.5*theta -0.62*Nic)    
+    # )
+    # val = 1 / deno
+    
+    # awareness model adjusted parameters
+    w = awareness_weight
     
     deno = 1 + np.exp(
-        -(-1.2 +0.018*deltaTTCP -0.1*Px -1.1*Py \
-          -0.25*Vself +0.29*Vother -2.5*theta -0.62*Nic)    
+        -(w.bias + w.deltaTTCP*deltaTTCP + w.Px*Px + w.Py*Py + w.Vself*Vself + \
+          w.Vother*Vother + w.theta*theta + w.Nic*Nic)    
     )
     val = 1 / deno
     
-    return val
+    if debug:
+        print(f'\ndeltaTTCP {deltaTTCP:.3f}; {deltaTTCP*w.deltaTTCP:.3f}')
+        print(f'Px {Px:.3f}; {Px*w.Px:.3f}')
+        print(f'Py {Py:.3f}; {Py*w.Py:.3f}')
+        print(f'Vself {Vself:.3f}; {Vself*w.Vself:.3f}')
+        print(f'Vother {Vother:.3f}; {Vother*w.Vother:.3f}')
+        print(f'theta {theta:.3f}; {theta*w.theta:.3f}')
+        print(f'Nic {Nic:.3f}; {Nic*w.Nic:.3f}')
+        print(f'Awareness {val:.3f}\n')
+    else:
+        return val
     
-    
+        
 def standardize(array: np.array, mu: float = None, sigma: float = None) -> np.array:
     """
     標準化したarraｙを返す

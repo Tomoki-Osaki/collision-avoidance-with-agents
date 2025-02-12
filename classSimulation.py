@@ -487,74 +487,7 @@ class Simulation:
         
         return deltaTTCP
         
-    
-    # now adjusting the weights of each explanatory variables
-    def awareness_model(self, num: int, other_num: int, current_step: int, dataclass_aware, debug=False) -> float:
-        """
-        awareness modelを用いて、注視相手を選定する(0-1)
-        ex. self.find_agents_to_focus(num=10, other_num=15, current_step=20) -> 0.85
-        """ 
-        agent = self.all_agents[num]
-        
-        all_deltaTTCP = dataclass_aware.deltaTTCP
-        deltaTTCP_mean, deltaTTCP_std = np.nanmean(all_deltaTTCP), np.nanstd(all_deltaTTCP)
 
-        all_Px = dataclass_aware.Px
-        Px_mean, Px_std = np.nanmean(all_Px), np.nanstd(all_Px)
-
-        all_Py = dataclass_aware.Py
-        Py_mean, Py_std = np.nanmean(all_Py), np.nanstd(all_Py)
-
-        all_Vself = dataclass_aware.Vself
-        Vself_mean, Vself_std = np.nanmean(all_Vself), np.nanstd(all_Vself)
-
-        all_Vother = dataclass_aware.Vother
-        Vother_mean, Vother_std = np.nanmean(all_Vother), np.nanmean(all_Vother)
-
-        all_theta = dataclass_aware.theta
-        theta_mean, theta_std = np.nanmean(all_theta), np.nanstd(all_theta)
-
-        all_nic = dataclass_aware.Nic
-        nic_mean, nic_std = np.nanmean(all_nic), np.nanstd(all_nic)
-    
-        deltaTTCP = (agent['deltaTTCP'][current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
-        if np.isnan(deltaTTCP):
-            return 0
-        Px = (agent['relPx'][current_step][other_num] - Px_mean) / Px_std
-        Py = (agent['relPy'][current_step][other_num] - Py_mean) / Py_std
-        Vself = (agent['all_vel'][current_step] - Vself_mean) / Vself_std
-        Vother = (agent['all_other_vel'][current_step][other_num] - Vother_mean) / Vother_std        
-        theta = (agent['theta'][current_step][other_num] - theta_mean) / theta_std
-        Nic = (agent['Nic'][current_step][other_num] - nic_mean) / nic_std
-        
-        # # awareness model original
-        # deno = 1 + np.exp(
-        #     -(-1.2 +0.018*deltaTTCP -0.1*Px -1.1*Py -0.25*Vself +0.29*Vother -2.5*theta -0.62*Nic)    
-        # )
-        # val = 1 / deno
-        
-        # awareness model adjusted parameters
-        w = AwarenessWeight(deltaTTCP=5, Nic=-4, theta=-.8)        
-        
-        deno = 1 + np.exp(
-            -(w.bias + w.deltaTTCP*deltaTTCP + w.Px*Px + w.Py*Py + w.Vself*Vself + \
-              w.Vother*Vother + w.theta*theta + w.Nic*Nic)    
-        )
-        val = 1 / deno
-        
-        if debug:
-            print(f'\ndeltaTTCP {deltaTTCP:.3f}; {deltaTTCP*w.deltaTTCP:.3f}')
-            print(f'Px {Px:.3f}; {Px*w.Px:.3f}')
-            print(f'Py {Py:.3f}; {Py*w.Py:.3f}')
-            print(f'Vself {Vself:.3f}; {Vself*w.Vself:.3f}')
-            print(f'Vother {Vother:.3f}; {Vother*w.Vother:.3f}')
-            print(f'theta {theta:.3f}; {theta*w.theta:.3f}')
-            print(f'Nic {Nic:.3f}; {Nic*w.Nic:.3f}')
-            print(f'Awareness {val:.3f}\n')
-        else:
-            return val
-    
-    
     # 11
     def record_start_and_goal(self, num: int) -> None:
         """
@@ -933,43 +866,48 @@ class Simulation:
         デバッグや新しいメソッドの追加用のメソッド
         プロット中の薄い青色がそのstepでの位置で、濃い青色は次のstepでの位置
         """
-        plt.figure(figsize=(8, 8))
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.set_xlim(-5, 5)
+        ax.set_ylim(-5, 5)
         txt_far = 0.05
         for i in range(self.num_agents):
-            plt.scatter(*self.all_agents[i]['all_pos'][step],
+            ax.scatter(*self.all_agents[i]['all_pos'][step],
                         color='blue', alpha=0.6)
-            plt.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
-                                self.all_agents[i]['all_pos'][step][1]+txt_far))
+            ax.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
+                               self.all_agents[i]['all_pos'][step][1]+txt_far))
             if not step == 0:
                 tminus1_pos = self.all_agents[i]['all_pos'][step-1]
-                plt.scatter(*tminus1_pos, color='blue', alpha=0.2)
+                ax.scatter(*tminus1_pos, color='blue', alpha=0.2)
         
-        plt.grid()
+        ax.grid()
         plt.show()
         
     # 18
-    def plot_positions_aware(self, num, step: int, dataclass_aware) -> None:
+    def plot_positions_aware(self, num, step: int, dataclass_aware, awareness_weight) -> None:
         """
         各エージェントの座標を、エージェントの番号付きでプロットし、エージェント番号numのAwareness modelを計算する
         """
-        plt.figure(figsize=(8, 8))
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.set_xlim(-5, 5)
+        ax.set_ylim(-5, 5)
         txt_far = 0.05
         for i in range(self.num_agents):
             if i == num:
                 color = 'green'
             else:
                 color = 'blue'
-            plt.scatter(*self.all_agents[i]['all_pos'][step],
+            ax.scatter(*self.all_agents[i]['all_pos'][step],
                         color=color, alpha=0.6)
-            plt.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
+            ax.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
                                 self.all_agents[i]['all_pos'][step][1]+txt_far))
             if not step == 0:
                 tminus1_pos = self.all_agents[i]['all_pos'][step-1]
-                plt.scatter(*tminus1_pos, color=color, alpha=0.2)
+                ax.scatter(*tminus1_pos, color=color, alpha=0.2)
         
         awms = []
         for i in range(self.num_agents):
-            awm = self.awareness_model(num, i, step, dataclass_aware, debug=False)
+            awm = fs.awareness_model(self, num, i, step, dataclass_aware, 
+                                     awareness_weight, debug=False)
             if awm is not None and awm >= 0.8:
                 awms.append([i, awm])
         
@@ -980,11 +918,11 @@ class Simulation:
             other_posx = self.all_agents[i[0]]['all_pos'][step][0]
             other_posy = self.all_agents[i[0]]['all_pos'][step][1]
             
-            plt.arrow(x=my_posx, y=my_posy,
+            ax.arrow(x=my_posx, y=my_posy,
                       dx=other_posx-my_posx, dy=other_posy-my_posy,
                       color='tab:blue', alpha=0.5)
         
-        plt.grid()
+        ax.grid()
         plt.show()    
         
     # 18 

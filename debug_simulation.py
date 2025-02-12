@@ -21,23 +21,44 @@ from dataclasses import dataclass
 from dataclass_csv import DataclassWriter
 import funcSimulation as fs
 
+# awareness modelの重み
+@dataclass
+class AwarenessWeight:
+    """
+    値は標準化されている必要あり
+    """
+    bias: float = -1.2
+    deltaTTCP: float = 0.018
+    Px: float = -0.1
+    Py: float = -1.1
+    Vself: float = -0.25
+    Vother: float = 0.29
+    theta: float = -2.5
+    Nic: float = -0.62    
+
 import classSimulation as cs
 steps = 500
 num_agents = 25
 
-t = cs.Simulation(random_seed=0, num_steps=steps, num_agents=num_agents, dynamic_percent=.5)
+t = cs.Simulation(random_seed=10, num_steps=steps, num_agents=num_agents, dynamic_percent=.5)
 t.simulate()
 
-step = 50
+step = 45
 t.plot_positions(step)
+
+# agent22 to agent8 step45
+# w = AwarenessWeight(deltaTTCP=20, Nic=-4, theta=-0.5)
+# t.plot_positions_aware(agent=22, step=45, all_aware, w)        
+w = AwarenessWeight(deltaTTCP=20, Nic=-6, theta=-0.5)   
 
 agent = 22
 for i in range(25):
-    print(i, t.awareness_model(agent, i, step, all_aware, debug=True))
+    print(i, fs.awareness_model(t, agent, i, step, all_aware, w, debug=True))
     
-t.plot_positions_aware(agent, step, all_aware)
+for step in range(35, 45):
+    t.plot_positions_aware(agent, step, all_aware, w)
 
-# %%
+# %% plot awareness model
 fig, ax = plt.subplots(figsize=(8, 8))
 artists = []
 agent = 23
