@@ -11,8 +11,8 @@ import classSimulation as cs
 
 # %% シミュレーション
 # 一度にsim.num_steps数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
-NUM_OF_TRIAL = 4 # 試行回数
-NUM_STEPS = 200
+NUM_OF_TRIAL = 2 # 試行回数
+NUM_STEPS = 100
 NUM_AGENTS = 50
 
 df_result = pd.DataFrame()
@@ -24,6 +24,8 @@ print('\nsimple_avoid_vec:', simple_avoid_vec_px, 'px')
 print('num of agents:', NUM_AGENTS)
 dyn_prop = float(input('\nProportions of dynamic agents(0-1): '))
 print('dyn_prop:', dyn_prop)
+
+start_ = time.time()
 
 t_now = datetime.now()
 print(f'\nシミュレーション開始時刻は {t_now.strftime("%H:%M")} です。\n')
@@ -64,10 +66,6 @@ for num in range(NUM_OF_TRIAL):
     print(f'({finish_hr}時間{finish_min}分) です。')
     print(f'現在時刻は {datetime.now().strftime("%H:%M")} です。')
     print(f'終了時刻の目安は {expected_end_time.strftime("%H:%M")} です。\n')
-    print('Settings of simulation')
-    print('simple_avoid_vec:', simple_avoid_vec_px, 'px')
-    print('dyn_prop:', dyn_prop)
-    print('num of agents:', NUM_AGENTS)
     print('--------------------------------------------------------------------\n')
     ##### シミュレーション終了 ######    
         
@@ -78,7 +76,8 @@ for num in range(NUM_OF_TRIAL):
 print(f'シミュレーション終了時刻は {datetime.now().strftime("%H:%M")} です。\n')
 print(f'dyn_prop {dyn_prop}終了')
     
-    
+print('detailed exe time', time.time() - start_)    
+
 ##### 全TRIALの結果の記録 #####
 # 値をまとめたcsvファイルの作成
 backup_result = df_result.copy()

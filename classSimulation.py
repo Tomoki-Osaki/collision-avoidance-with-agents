@@ -26,7 +26,7 @@ __init__(self)
 from copy import deepcopy
 from typing import Literal
 from dataclasses import dataclass
-import tqdm
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -46,19 +46,6 @@ class BrakeWeight:
     b1: float = 3.348 # 3.348394
     c1: float = 4.286 # 4.252840
     d1: float = -13.689 # -0.003423
-   
-# awareness modelの重み
-@dataclass
-class AwarenessWeight:
-    bias: float = -1.2
-    deltaTTCP: float = 0.018
-    Px: float = -0.1
-    Py: float = -1.1
-    Vself: float = -0.25
-    Vother: float = 0.29
-    theta: float = -2.5
-    Nic: float = -0.62    
-   
     
 # %% シミュレーションに関わるクラス
 class Simulation:
@@ -207,7 +194,7 @@ class Simulation:
               
                 
     # 2 
-    def set_goals(self, agent: dict[str, np.array]) -> np.array: # [float, float]
+    def set_goals(self, agent: dict[str, np.ndarray]) -> np.ndarray: # [float, float]
         """ 
         ゴールのxy座標の計算
         エージェントが初期速度のまま進んだ場合に通過する、グラフ領域の境界線の座標
@@ -294,7 +281,7 @@ class Simulation:
     
     
     # 4
-    def find_visible_agents(self, dist_all: np.array, num: int) -> list[int]:
+    def find_visible_agents(self, dist_all: np.ndarray, num: int) -> list[int]:
         """
         エージェント番号numの視野に入った他のエージェントの番号をリストにして返す
         ex. self.find_visible_agents(dist_all, 5) -> [14, 20, 30]
@@ -333,7 +320,7 @@ class Simulation:
     
     # 5
     def simple_avoidance(self, num: int # エージェントの番号
-                         ) -> np.array: # [float, float]
+                         ) -> np.ndarray: # [float, float]
         """
         単純な回避ベクトルの生成(オリジナル)
         ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
@@ -852,7 +839,7 @@ class Simulation:
         シミュレーションを行うときに最終的に呼び出すメソッド
         """
         self.disp_info()
-        for t in tqdm.tqdm(range(self.num_steps)):
+        for t in tqdm(range(self.num_steps)):
             current_step = t + 1
             self.move_agents(current_step)
             row = self.record_agent_information()
@@ -883,7 +870,7 @@ class Simulation:
         plt.show()
         
     # 18
-    def plot_positions_aware(self, num, step: int, dataclass_aware, awareness_weight) -> None:
+    def plot_positions_aware(self, num, step: int, prepared_data, awareness_weight) -> None:
         """
         各エージェントの座標を、エージェントの番号付きでプロットし、エージェント番号numのAwareness modelを計算する
         """
@@ -906,7 +893,7 @@ class Simulation:
         
         awms = []
         for i in range(self.num_agents):
-            awm = fs.awareness_model(self, num, i, step, dataclass_aware, 
+            awm = fs.awareness_model(self, num, i, step, prepared_data, 
                                      awareness_weight, debug=False)
             if awm is not None and awm >= 0.8:
                 awms.append([i, awm])
@@ -925,8 +912,9 @@ class Simulation:
         ax.grid()
         plt.show()    
         
+        
     # 18 
-    def approach_detect(self, dist: float) -> np.array: 
+    def approach_detect(self, dist: float) -> np.ndarray: 
         """ 
         指定した距離より接近したエージェントの数を返す
         ex. self.approach_detect(dist=0.5) -> array([[0, 3],[1, 2],...[24, 1]])
@@ -945,7 +933,7 @@ class Simulation:
     
         
     # 19
-    def record_agent_information(self) -> np.array:
+    def record_agent_information(self) -> np.ndarray:
         """
         全エージェントの位置と速度、接近を記録
         """
@@ -983,7 +971,7 @@ class Simulation:
     def record_approaches(self, 
                           approach_dist: Literal['collision','half','quarter','one_eigth'], 
                           step: int, 
-                          sim_data: np.array) -> list[int]:
+                          sim_data: np.ndarray) -> list[int]:
         """
         エージェント同士が接近した回数を、接近度合い別で出力する
         ex. self.record_approaches('collision', STEP=500, data) -> [0,0,3,...,12]
@@ -1014,7 +1002,7 @@ class Simulation:
         
     
     # 21
-    def return_results_as_df(self) -> pd.DataFrame:
+    def return_results_as_df(self) -> pd.core.frame.DataFrame:
         """
         1試行の記録をデータフレームにして返す
         """

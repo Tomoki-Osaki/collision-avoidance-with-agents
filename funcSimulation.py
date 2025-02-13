@@ -15,10 +15,11 @@
 # %% import libraries
 import numpy as np
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
 
 # %% functions to calculate the vectors
-def calc_rad(pos2: np.array, # [float, float]
-             pos1: np.array # [float, float]
+def calc_rad(pos2: np.ndarray, # [float, float]
+             pos1: np.ndarray # [float, float]
              ) -> float: 
     """
     pos1からpos2のベクトルの角度を返す
@@ -29,9 +30,9 @@ def calc_rad(pos2: np.array, # [float, float]
     return val
 
 
-def rotate_vec(vec: np.array, # [float, float] 
+def rotate_vec(vec: np.ndarray, # [float, float] 
                rad: float
-               ) -> np.array: # [float, float]
+               ) -> np.ndarray: # [float, float]
     """
     ベクトルをradだけ回転させる (回転行列)
     ex. rotate_vec(vec=np.array([3.0, 5.0]), rad=1.2) -> array([-3.6, 4.6])
@@ -43,9 +44,9 @@ def rotate_vec(vec: np.array, # [float, float]
     return val
 
 # %% awareness model    
-def extend_line(start_point: np.array, 
-                through_point: np.array, 
-                length: int) -> np.array:
+def extend_line(start_point: np.ndarray, 
+                through_point: np.ndarray, 
+                length: int) -> np.ndarray:
     # 方向ベクトル
     direction = np.array(through_point) - np.array(start_point)
     # 単位ベクトルに変換
@@ -56,7 +57,7 @@ def extend_line(start_point: np.array,
     return extended_end
 
 
-def is_point_on_segment(cp: np.array, pos_t: np.array, extended_end: np.array) -> bool:
+def is_point_on_segment(cp: np.ndarray, pos_t: np.ndarray, extended_end: np.ndarray) -> bool:
     
     # 線分の範囲内にあるか (bounding box のチェック)
     if ( min(pos_t[0], extended_end[0]) <= cp[0] <= max(pos_t[0], extended_end[0]) 
@@ -68,10 +69,10 @@ def is_point_on_segment(cp: np.array, pos_t: np.array, extended_end: np.array) -
     return False
 
 
-def calc_crossing_point(pos1_tminus1: np.array, 
-                        pos1: np.array, 
-                        pos2_tminus1: np.array, 
-                        pos2: np.array) -> np.array or None:
+def calc_crossing_point(pos1_tminus1: np.ndarray, 
+                        pos1: np.ndarray, 
+                        pos2_tminus1: np.ndarray, 
+                        pos2: np.ndarray) -> np.ndarray or None:
     
     posx1_tminus1, posy1_tminus1 = pos1_tminus1
     posx1, posy1 = pos1
@@ -109,8 +110,8 @@ def calc_crossing_point(pos1_tminus1: np.array,
         return None
     
 
-def calc_deltaTTCP(pos1: np.array, vel1: np.array, 
-                   pos2: np.array, vel2: np.array) -> float or None:
+def calc_deltaTTCP(pos1: np.ndarray, vel1: np.ndarray, 
+                   pos2: np.ndarray, vel2: np.ndarray) -> float or None:
     """
     エージェント1(pos1, vel1)とエージェント2(pos2, vel2)のdeltaTTCPを計算する
     deltaTTCP > 0　の場合、エージェント1が後に行く
@@ -132,13 +133,13 @@ def calc_deltaTTCP(pos1: np.array, vel1: np.array,
     dist_to_cp2 = cp - pos2
     TTCP2 = dist_to_cp2 / vel2 
     
-    deltaTTCP = (TTCP1 - TTCP2)[0]
+    deltaTTCP = (TTCP1 - TTCP2)[0] # x座標とy座標それぞれで同一の値が出るため、インデックスを使って１つの値を返す
     
     return deltaTTCP
 
 
-def calc_angle_two_lines(line1: np.array, # shape[2, 2]
-                         line2: np.array, # shape[2, 2]
+def calc_angle_two_lines(line1: np.ndarray, # shape[2, 2]
+                         line2: np.ndarray, # shape[2, 2]
                          ) -> float:
     """
     2直線がなす角度(radian)を求める関数
@@ -170,9 +171,9 @@ def calc_angle_two_lines(line1: np.array, # shape[2, 2]
     return angle_rad
 
 
-def calc_angle_two_vectors(common_pos: np.array, 
-                           vec1: np.array, 
-                           vec2: np.array, 
+def calc_angle_two_vectors(common_pos: np.ndarray, 
+                           vec1: np.ndarray, 
+                           vec2: np.ndarray, 
                            as_radian: bool = False) -> float:
     #角度の中心位置
     x0, y0 = common_pos
@@ -199,7 +200,7 @@ def calc_angle_two_vectors(common_pos: np.array,
     return theta_deg
 
 
-def standardize(array: np.array, mu: float = None, sigma: float = None) -> np.array:
+def standardize(array: np.ndarray, mu: float = None, sigma: float = None) -> np.ndarray:
     """
     標準化したarraｙを返す
     except_nanがTrueの場合、muやsigmaの計算時にarray中のnan値を無視する
@@ -212,18 +213,59 @@ def standardize(array: np.array, mu: float = None, sigma: float = None) -> np.ar
     
     return standardized
 
+# awareness modelの重み
+@dataclass
+class AwarenessWeight:
+    """
+    値は標準化されている必要あり
+    """
+    bias: float = -1.2
+    deltaTTCP: float = 0.018
+    Px: float = -0.1
+    Py: float = -1.1
+    Vself: float = -0.25
+    Vother: float = 0.29
+    theta: float = -2.5
+    Nic: float = -0.62
 
-# FIXME: need to split functions for calc awareness model and standardization
+    @staticmethod
+    def multiple(k):
+        return AwarenessWeight(
+            bias = -1.2 * k,
+            deltaTTCP = 0.018 * k,
+            Px = -0.1 * k,
+            Py = -1.1 * k,
+            Vself = -0.25 * k,
+            Vother = 0.29 * k,
+            theta = -2.5 * k,
+            Nic = -0.62 * k
+        )
+
+    def show_params(self) -> None:
+        print('\nWeights of Awareness model')
+        print('-------------------')
+        print('bias:', np.round(self.bias, 4))
+        print('deltaTTCP:', np.round(self.deltaTTCP, 4))
+        print('Px:', np.round(self.Px, 4))
+        print('Py:', np.round(self.Py, 4))
+        print('Vself:', np.round(self.Vself, 4))
+        print('Vother:', np.round(self.Vother, 4))
+        print('theta:', np.round(self.theta, 4))
+        print('Nic:', np.round(self.Nic, 4))
+        print('-------------------\n')
+        
+
 # now adjusting the weights of each explanatory variables
 def awareness_model(sim_obj, 
                     num: int, 
                     other_num: int, 
                     current_step: int, 
+                    prepared_data: np.lib.npyio.NpzFile, # np.load()で作成されるオブジェクト
                     awareness_weight,
                     debug=False) -> float:
     """
     awareness modelを用いて、エージェント番号numの注視相手を選定する(0-1)
-    ex. awareness_model(sim, num=10, other_num=15, current_step=20, dataclass_aware) -> 0.85
+    ex. awareness_model(sim, num=10, other_num=15, current_step=20, prepared_data) -> 0.85
     
     説明変数
             deltaTTCP: 自分のTTCPから相手のTTCPを引いた値
@@ -239,27 +281,28 @@ def awareness_model(sim_obj,
     """ 
     agent = sim_obj.all_agents[num]
     
-    all_deltaTTCP = dataclass_aware.deltaTTCP
+    all_deltaTTCP = prepared_data['all_deltaTTCP']
+    
     deltaTTCP_mean, deltaTTCP_std = np.nanmean(all_deltaTTCP), np.nanstd(all_deltaTTCP)
-
-    all_Px = dataclass_aware.Px
+    
+    all_Px = prepared_data['all_Px']
     Px_mean, Px_std = np.nanmean(all_Px), np.nanstd(all_Px)
-
-    all_Py = dataclass_aware.Py
+    
+    all_Py = prepared_data['all_Py']
     Py_mean, Py_std = np.nanmean(all_Py), np.nanstd(all_Py)
-
-    all_Vself = dataclass_aware.Vself
+    
+    all_Vself = prepared_data['all_Vself']
     Vself_mean, Vself_std = np.nanmean(all_Vself), np.nanstd(all_Vself)
-
-    all_Vother = dataclass_aware.Vother
+    
+    all_Vother = prepared_data['all_Vother']
     Vother_mean, Vother_std = np.nanmean(all_Vother), np.nanmean(all_Vother)
-
-    all_theta = dataclass_aware.theta
+    
+    all_theta = prepared_data['all_theta']
     theta_mean, theta_std = np.nanmean(all_theta), np.nanstd(all_theta)
-
-    all_nic = dataclass_aware.Nic
+    
+    all_nic = prepared_data['all_Nic']
     nic_mean, nic_std = np.nanmean(all_nic), np.nanstd(all_nic)
-
+    
     deltaTTCP = (agent['deltaTTCP'][current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
     if np.isnan(deltaTTCP):
         return 0
@@ -297,12 +340,52 @@ def awareness_model(sim_obj,
     else:
         return val
 
+
 def show(array):
     """
     arrayの要素を、インデックス付きで表示する
     """
     for i, j in enumerate(array):
         print(i, j)
+        
+@dataclass
+class PedData:
+    """
+    歩行者の交差実験から得られた各パラメータの平均値・標準偏差
+    """
+    deltaTTCP_mean = 0
+    deltaTTCP_std = 16.9540
+    Px_mean = 287.4392 
+    Px_std = 374.4476
+    Py_mean = 0.6823
+    Py_std = 3.2914 
+    Vself_mean = 0.9839
+    Vself_std = 0.8156
+    Vother_mean = 0.9839
+    Vother_std = 0.8157
+    theta_mean = 82.4291
+    theta_std = 50.5367
+    Nic_mean = 0.6625
+    Nic_std = 0.8297
+    
+    def show_params(self):
+        print('\n-------------------------')
+        print('deltaTTCP_mean:', self.deltaTTCP_mean)
+        print('deltaTTCP_std:', self.deltaTTCP_std)
+        print('\nPx_mean:', self.Px_mean) 
+        print('Px_std:', self.Px_std)
+        print('\nPy_mean:', self.Py_mean)
+        print('Py_std:', self.Py_std)
+        print('\nVself_mean:', self.Vself_mean)
+        print('Vself_std:', self.Vself_std)
+        print('\nVother_mean:', self.Vother_mean)
+        print('Vother_std:', self.Vother_std)
+        print('\ntheta_mean:', self.theta_mean)
+        print('theta_std:', self.theta_std)
+        print('\nNic_mean:', self.Nic_mean)
+        print('Nic_std:', self.Nic_std)
+        print('-------------------------\n')
+        
 
 # %% old version of deltaTTCP
 # def calc_cross_point(velx1: float, vely1: float, posx1: float, posy1: float, 

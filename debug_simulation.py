@@ -11,47 +11,41 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import ArtistAnimation
-from funcSimulation import show, standardize
 from dataclasses import dataclass
+from funcSimulation import show, standardize
 import funcSimulation as fs
 
-# awareness modelの重み
-@dataclass
-class AwarenessWeight:
-    """
-    値は標準化されている必要あり
-    """
-    bias: float = -1.2
-    deltaTTCP: float = 0.018
-    Px: float = -0.1
-    Py: float = -1.1
-    Vself: float = -0.25
-    Vother: float = 0.29
-    theta: float = -2.5
-    Nic: float = -0.62
+ped_data = fs.PedData()
+ped_data.show_params()
 
-    @staticmethod
-    def multiple(k):
-        return AwarenessWeight(
-            bias = -1.2 * k,
-            deltaTTCP = 0.018 * k,
-            Px = -0.1 * k,
-            Py = -1.1 * k,
-            Vself = -0.25 * k,
-            Vother = 0.29 * k,
-            theta = -2.5 * k,
-            Nic = -0.62 * k
-        )
+prepared_data = np.load('tmp_comp.npz')
+print(prepared_data['all_Px'].shape) # agent, steps, other_agent
+show(prepared_data.files)
 
+def stats(key):
+    print('mean', np.nanmean(prepared_data[key]))
+    print('std', np.nanstd(prepared_data[key]))
+
+def hist(key, bins=100):
+    x = np.where(~np.isnan(prepared_data[key]))[0]
+    plt.hist(x, bins=bins)
+
+arr1 = np.array([1, 2])
+vel1 = np.array([0.5, 0.2])
+
+arr2 = np.array([6, 9])
+vel2 = np.array([-1, -3])
+
+fs.calc_deltaTTCP(arr1, vel1, arr2, vel2)
 
 import classSimulation as cs
-steps = 500
+steps = 100
 num_agents = 25
 
 t = cs.Simulation(random_seed=10, num_steps=steps, num_agents=num_agents, dynamic_percent=.5)
 t.simulate()
 
-t.save_data_for_awareness(save_as='tmp_comp.npz')
+#t.save_data_for_awareness(save_as='tmp_comp.npz')
 
 step = 45
 t.plot_positions(step)
@@ -59,11 +53,16 @@ t.plot_positions(step)
 # agent22 to agent8 step45
 # w = AwarenessWeight(deltaTTCP=20, Nic=-4, theta=-0.5)
 # t.plot_positions_aware(agent=22, step=45, all_aware, w)        
-w = AwarenessWeight.multiple(1)
+w = fs.AwarenessWeight.multiple(5)
+w.show_params()
 
 agent = 22
+t.plot_positions_aware(agent, step, prepared_data, w)
+
 for i in range(25):
-    print(i, fs.awareness_model(t, agent, i, step, all_aware, w, debug=True))
+    print(i, fs.awareness_model(t, agent, i, step, prepared_data, w, debug=True))
+    
     
 for step in range(35, 45):
-    t.plot_positions_aware(agent, step, all_aware, w)
+    t.plot_positions_aware(agent, step, prepared_data, w)
+
