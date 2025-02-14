@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = "MS Gothic"
+plt.rcParams['font.size'] = 18
+
 
 # %%
 folder = 'シミュレーション結果_コピー/'    
@@ -20,14 +22,19 @@ def merge_result_seed_files(folder: str, agent: int, avoid_vec: float):
     return df
 
 
-def plot_values_transitions(df_dict: dict, variable: str, vectors: iter,
-                            color='blue', figsize=(30, 6), 
-                            xticks=[i for i in np.arange(0, 1.1, 0.2)]):
+def plot_values_transitions(df_dict: dict, 
+                            variable: str, 
+                            vectors: iter,
+                            color: str = 'blue', 
+                            size: int = 35,
+                            figsize: tuple = (30, 6), 
+                            xticks: iter = [i for i in np.arange(0, 1.1, 0.2)]):
     figsize = (30, 6)
     fig, ax = plt.subplots(1, len(df_dict), figsize=figsize, sharex=True, sharey=True)
     for i, vec in enumerate(vectors):
         vec = np.round(vec, 1)
-        ax[i].errorbar(df_dict[vec]['mean']['dynamic_percent'], df_dict[vec]['mean'][variable], 
+        ax[i].errorbar(x=df_dict[vec]['mean']['dynamic_percent'], 
+                       y=df_dict[vec]['mean'][variable], 
                        yerr=df_dict[vec]['std'][variable], 
                        capsize=5, marker='o', c=color)
         ax[i].grid()
@@ -92,8 +99,17 @@ df_agt50 = {1: {'mean': df_agt50_avoid1_mean, 'std': df_agt50_avoid1_std},
             5: {'mean': df_agt50_avoid5_mean, 'std': df_agt50_avoid5_std}}
 
 # %% agent 50 1-5px plot collision
-plot_values_transitions(df_agt50, 'time', range(1,5), color='tab:blue')
-plot_values_transitions(df_agt50, 'collision', range(1,5), color='tab:orange')
+plot_values_transitions(df_agt50, 'time', range(1,6), color='tab:blue')
+plot_values_transitions(df_agt50, 'collision', range(1,6), color='tab:orange')
+
+# %% for gammed plots
+annots = ['0', '.1', '.2', '.3', '.4', '.5', '.6', '.7', '.8', '.9', '1.']
+txt_far = 0.008
+fig, ax = plt.subplots()
+for i, annot in zip(df_agt50_avoid2_mean.iterrows(), annots):
+    ax.scatter(i[1]['time'], i[1]['collision'], color='tab:green', s=150)
+    ax.text(x=i[1]['time']+txt_far, y=i[1]['collision'], s=annot)
+ax.grid()
 
 # %% agent50 1.5-2.5px
 df_agt50_avoid16 = merge_result_seed_files(folder, 50, 1.6)
@@ -143,9 +159,11 @@ df_agt50_1623 = {1.6: {'mean': df_agt50_avoid16_mean, 'std': df_agt50_avoid16_st
                  2.3: {'mean': df_agt50_avoid23_mean, 'std': df_agt50_avoid23_std}}
 
 # %%
+xticks = [i for i in np.arange(0, 1.1, 0.3)]
 plot_values_transitions(df_agt50_1623, 'time', np.arange(1.6, 2.4, 0.1), 
-                        color='tab:blue', figsize=(34, 5))
-plot_values_transitions(df_agt50_1623, 'collision', np.arange(1.6, 2.4, 0.1), color='tab:orange')
+                        color='tab:blue', figsize=(30, 6), xticks=xticks)
+plot_values_transitions(df_agt50_1623, 'collision', np.arange(1.6, 2.4, 0.1), 
+                        color='tab:orange', xticks=xticks)
 
 # %% agent 100
 df_agt100_avoid1 = merge_result_seed_files(folder, 100, 1)
@@ -175,8 +193,8 @@ df_agt100 = {1: {'mean': df_agt100_avoid1_mean, 'std': df_agt100_avoid1_std},
              5: {'mean': df_agt100_avoid5_mean, 'std': df_agt100_avoid5_std}}
 
 # %%
-plot_values_transitions(df_agt100, 'time', range(1,5), color='tab:blue')
-plot_values_transitions(df_agt100, 'collision', range(1,5), color='tab:orange')
+plot_values_transitions(df_agt100, 'time', range(1,6), color='tab:blue')
+plot_values_transitions(df_agt100, 'collision', range(1,6), color='tab:orange')
  
 # %%
 path50 = "C:/Users/Tomoki/Downloads/motiduki_agents50.csv"
@@ -216,8 +234,10 @@ size = 60
 txt_far = 0.05
 figsize = (18, 9)
 
-# %%
+# %% result of Motiduki's simulation
 fig, ax = plt.subplots(figsize=figsize)
+ax.set_xlim(16.5, 31.5)
+ax.set_ylim(0, 16)
 for i, j in enumerate(df50simple.avoid_vec):
     j = np.round(j, 2)
     if i == 0:
@@ -238,8 +258,10 @@ ax.legend(title='回避ベクトルの大きさ')
 ax.grid()
 
 # %%
-def plot_visible_transitions(df_dict, vec, color='tab:orange'):
+def plot_visible_transitions(df_dict, vec, color='tab:orange', size=30):
     fig, ax = plt.subplots(figsize=figsize)
+    ax.set_xlim(16.5, 31.5)
+    ax.set_ylim(0, 16)
     ax.scatter(df50simple.time, df50simple.collision, color='tab:gray', alpha=grayalpha, s=30,
                label='1-5px(0.1px刻み)')
     for i, annot in zip(range(11), annots):
@@ -261,15 +283,18 @@ def plot_visible_transitions(df_dict, vec, color='tab:orange'):
     plt.show()
 
 # %% 
-plot_visible_transitions(df_agt50, 1, color='tab:orange')
-plot_visible_transitions(df_agt50, 2, color='tab:green')
-plot_visible_transitions(df_agt50, 3, color='tab:red')
-plot_visible_transitions(df_agt50, 4, color='tab:blue')
-plot_visible_transitions(df_agt50, 5, color='tab:brown')
+size = 80
+plot_visible_transitions(df_agt50, 1, color='tab:orange', size=size)
+plot_visible_transitions(df_agt50, 2, color='tab:green', size=size)
+plot_visible_transitions(df_agt50, 3, color='tab:red', size=size)
+plot_visible_transitions(df_agt50, 4, color='tab:blue', size=size)
+plot_visible_transitions(df_agt50, 5, color='tab:brown', size=size)
 
 # %%
 figsize = (18, 9)
 fig, ax = plt.subplots(figsize=figsize)
+ax.set_xlim(16.5, 31.5)
+ax.set_ylim(0, 16)
 plot_continuous(df_agt50_avoid1_mean, color='tab:orange', label='1px')
 plot_continuous(df_agt50_avoid2_mean, color='tab:green', label='2px')
 plot_continuous(df_agt50_avoid3_mean, color='tab:red', label='3px')
