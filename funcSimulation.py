@@ -341,11 +341,11 @@ def awareness_model(sim_obj,
         return val
 
 
-def show(array):
+def show(obj):
     """
-    arrayの要素を、インデックス付きで表示する
+    objの要素を、インデックス付きで表示する
     """
-    for i, j in enumerate(array):
+    for i, j in enumerate(obj):
         print(i, j)
         
 @dataclass
