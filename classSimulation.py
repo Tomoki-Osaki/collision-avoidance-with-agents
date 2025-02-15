@@ -60,11 +60,13 @@ class Simulation:
                  dynamic_percent: float = 1.0,
                  simple_avoid_vec: float = 0.06, 
                  dynamic_avoid_vec: float = 0.06,
+                 prepared_data=None,
+                 awareness=False,
                  random_seed: int = 0):
         
         self.num_steps = num_steps
         self.interval = interval # 100msごとにグラフを更新してアニメーションを作成
-        self.num_agents_size = agent_size # エージェントの半径(目盛り) = 5px
+        self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
         self.num_agents = num_agents # エージェント数
         self.view = view # 視野の半径(目盛り) = 50px:エージェント5体分
         self.viewing_angle = viewing_angle # 視野の角度
@@ -73,13 +75,15 @@ class Simulation:
         self.simple_avoid_vec = simple_avoid_vec # 単純回避での回避ベクトルの大きさ(目盛り)
         self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
         self.random_seed = random_seed
+        self.prepared_data = prepared_data
+        self.awareness = awareness
 
         self.all_agents = [] # 全エージェントの座標を記録
         self.all_agents2 = [] # ゴールの計算用
         self.first_agent = [] # 初期位置記録用
         self.num_agents_goal = []
         self.first_pos =[]
-        
+                
         # 動的回避を行うエージェントの数
         self.num_dynamic_agent = int(np.round(self.num_agents*self.dynamic_percent))
         
@@ -178,9 +182,8 @@ class Simulation:
         # 自分と相手の情報を基に計算するパラメータ
         for i in range(self.num_agents):
             for j in range(self.num_agents):
-                px = self.all_agents[j]['p'][0] - self.all_agents[i]['p'][0]
-                py = self.all_agents[j]['p'][1] - self.all_agents[i]['p'][1]
                 theta = self.calc_theta(i, j)
+                px, py = self.calc_relative_positions(i, j, theta)
                 deltaTTCP = self.calc_deltaTTCP(i, j)
                 Nic = self.calc_Nic(i, j)
                 other_vel = np.linalg.norm(self.all_agents[j]['v'])
@@ -275,7 +278,7 @@ class Simulation:
             for j in range(self.num_agents):
                 d = self.all_agents[i]['p'] - self.all_agents[j]['p']
                 # エージェント間の距離を算出、エージェントのサイズも考慮
-                dist_all[i][j] = np.linalg.norm(d) - 2 * self.num_agents_size
+                dist_all[i][j] = np.linalg.norm(d) - 2 * self.agent_size
         
         return dist_all
     
@@ -318,6 +321,17 @@ class Simulation:
         return visible_agents
     
     
+    def find_agents_to_focus_with_awareness(self, num: int, current_step):
+        w = fs.AwarenessWeight.multiple(1)
+        agents_to_focus = []
+        for i in range(self.num_agents):
+            aw = fs.awareness_model(self, num, i, current_step, self.prepared_data, w)
+            if aw > 0.8:
+                agents_to_focus.append(i)
+                
+        return agents_to_focus
+    
+    
     # 5
     def simple_avoidance(self, num: int # エージェントの番号
                          ) -> np.ndarray: # [float, float]
@@ -336,7 +350,7 @@ class Simulation:
         for i in visible_agents:
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agents[num]['p'] - self.all_agents[i]['p']
-            d = d / (dist_all[num][i] + 2 * self.num_agents_size) # 大きさ1のベクトルにする
+            d = d / (dist_all[num][i] + 2 * self.agent_size) # 大きさ1のベクトルにする
             d = d * self.simple_avoid_vec # 大きさを固定値にする
             
             avoid_vec += d # 回避ベクトルを合成する
@@ -345,17 +359,21 @@ class Simulation:
         return avoid_vec / len(visible_agents)
     
     # 6
-    def dynamic_avoidance(self, num: int) -> np.array:
+    def dynamic_avoidance(self, num: int, current_step, awareness: bool = False) -> np.ndarray:
         """
         動的回避ベクトルの生成(オリジナル)
         ex. self.dynamic_avoidance(num=15) -> array([-0.05, 0.2])
         """
         dist_all = self.calc_distance_all_agents()
-        visible_agents = self.find_visible_agents(dist_all, num)
         avoid_vec = np.zeros(2)   # 回避ベクトル
         
+        if awareness:
+            visible_agents = self.find_agents_to_focus_with_awareness(num, current_step)
+        else:
+            visible_agents = self.find_visible_agents(dist_all, num)   
         if not visible_agents:
             return avoid_vec    
+        
             
         ### the followings are dynamic vectors ###
         for i in visible_agents:
@@ -365,8 +383,7 @@ class Simulation:
             # 視野に入ったエージェントの位置と速度
             self.visible_agent_pos = self.all_agents[i]['p']
             self.visible_agent_vel = self.all_agents[i]['v']
-
-            
+   
             dist_former = dist_all[num][i]
             
             t = 0
@@ -374,7 +391,7 @@ class Simulation:
             self.num_agents_pos = self.num_agents_pos + self.num_agents_vel
             self.visible_agent_pos = self.visible_agent_pos + self.visible_agent_vel
             d = self.num_agents_pos - self.visible_agent_pos
-            dist_latter = np.linalg.norm(d) - 2 * self.num_agents_size
+            dist_latter = np.linalg.norm(d) - 2 * self.agent_size
             
             
             # 視界に入った時が最も近い場合
@@ -394,7 +411,7 @@ class Simulation:
                     self.num_agents_pos = self.num_agents_pos + self.num_agents_vel
                     self.visible_agent_pos = self.visible_agent_pos + self.visible_agent_vel
                     d = self.num_agents_pos - self.visible_agent_pos
-                    dist_latter = np.linalg.norm(d) - 2 * self.num_agents_size
+                    dist_latter = np.linalg.norm(d) - 2 * self.agent_size
                     
                 if dist_former < 0:
                     dcpa = 0 # 最も近い距離で接触している場合はdcpaは0とみなす
@@ -413,7 +430,7 @@ class Simulation:
             
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agents[num]['p'] - self.all_agents[i]['p']
-            d = d / (dist_all[num][i] + 2 * self.num_agents_size) # ベクトルの大きさを1にする
+            d = d / (dist_all[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
             d = d * braking_index # ブレーキ指標の値を反映
             d = d * self.dynamic_avoid_vec # ベクトルの最大値を決定
             
@@ -474,6 +491,56 @@ class Simulation:
         
         return deltaTTCP
         
+    
+    def calc_relative_positions(self, num: int, other_num: int, theta: float | None) -> tuple:
+        """
+        エージェントnumから見たエージェントother_numの相対位置のxy座標を返す
+        """
+        if theta is None:
+            return 0, 0
+        
+        arr1 = self.all_agents[num]['p'] - self.all_agents[num]['v']
+        arr1_next = self.all_agents[num]['p']
+
+        arr2_next = self.all_agents[other_num]['p']
+        
+        # 傾きと切片を求める
+        # y = ax + b
+        # b = y - ax
+        # 2直線が垂直 → a*a' = -1 (a' = -(1 / a))
+        
+        # (1) agent1のPt-1からPtに伸びる直線の傾きと切片
+        a1 = (arr1_next[1] - arr1[1]) / (arr1_next[0] - arr1[0])
+        b1 = arr1_next[1] - a1 * arr1_next[0]
+        
+        # (2) (1)に対して垂直な直線の傾きと切片
+        a2 = -(1 / a1)
+        b2 = arr1_next[1] - a2 * arr1_next[0]
+        
+        # (3) agent2のPtから(2)に対して垂直な直線の傾きと切片(relPx用)
+        a3 = a2
+        b3 = arr2_next[1] - a3 * arr2_next[0]
+        
+        # (4) (1)に並行で、agent2のPtを通る直線の傾きと切片(relPy用)
+        a4 = a1
+        b4 = arr2_next[1] - a4 * arr2_next[0]
+        
+        # (5) (1)と(3)の交点
+        x1 = -( (b1 - b3) / (a1 - a3) ) 
+        y1 = a3 * x1 + b3
+        cp1 = np.array([x1, y1])
+        relPx = np.linalg.norm(cp1 - arr2_next)
+        
+        # (6) (2)と(4)の交点
+        x2 = -( (b2 - b4) / (a2 - a4) ) 
+        y2 = a4 * x2 + b4
+        cp2 = np.array([x2, y2])
+        relPy = np.linalg.norm(cp2 - arr2_next)
+        if theta > 90:
+            relPy *= -1
+        
+        return relPx, relPy
+
 
     # 11
     def record_start_and_goal(self, num: int) -> None:
@@ -821,7 +888,10 @@ class Simulation:
                 self.all_agents[i]['v'] += self.simple_avoidance(i)
                 
             elif self.all_agents[i]['avoidance'] == 'dynamic': # 動的回避ベクトルを足す
-                self.all_agents[i]['v'] += self.dynamic_avoidance(i)
+                if self.awareness:
+                    self.all_agents[i]['v'] += self.dynamic_avoidance(i, current_step, awareness=True)
+                else:
+                    self.all_agents[i]['v'] += self.dynamic_avoidance(i, current_step, awareness=False)
         
         self.check_if_goaled(current_step)
         

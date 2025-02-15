@@ -11,9 +11,10 @@ import classSimulation as cs
 
 # %% シミュレーション
 # 一度にsim.num_steps数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
-NUM_OF_TRIAL = 2 # 試行回数
-NUM_STEPS = 100
+NUM_OF_TRIAL = 3 # 試行回数
+NUM_STEPS = 200
 NUM_AGENTS = 50
+VIEWING_ANGLE = 360
 
 df_result = pd.DataFrame()
 
@@ -25,8 +26,6 @@ print('num of agents:', NUM_AGENTS)
 dyn_prop = float(input('\nProportions of dynamic agents(0-1): '))
 print('dyn_prop:', dyn_prop)
 
-start_ = time.time()
-
 t_now = datetime.now()
 print(f'\nシミュレーション開始時刻は {t_now.strftime("%H:%M")} です。\n')
 
@@ -37,7 +36,7 @@ for num in range(NUM_OF_TRIAL):
                         agent_size=0.1, 
                         num_agents=NUM_AGENTS, 
                         view=1, 
-                        viewing_angle=360, 
+                        viewing_angle=VIEWING_ANGLE, 
                         goal_vec=0.06,  
                         dynamic_percent=dyn_prop,
                         simple_avoid_vec=simple_avoid_vec, 
@@ -76,8 +75,6 @@ for num in range(NUM_OF_TRIAL):
 print(f'シミュレーション終了時刻は {datetime.now().strftime("%H:%M")} です。\n')
 print(f'dyn_prop {dyn_prop}終了')
     
-print('detailed exe time', time.time() - start_)    
-
 ##### 全TRIALの結果の記録 #####
 # 値をまとめたcsvファイルの作成
 backup_result = df_result.copy()

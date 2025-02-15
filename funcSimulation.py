@@ -336,6 +336,8 @@ def awareness_model(sim_obj,
         print(f'Vother {Vother:.3f}; {Vother*w.Vother:.3f}')
         print(f'theta {theta:.3f}; {theta*w.theta:.3f}')
         print(f'Nic {Nic:.3f}; {Nic*w.Nic:.3f}')
+        print(f'exp-({w.bias+w.deltaTTCP*deltaTTCP+w.Px*Px+w.Py*Py+w.Vself*Vself+w.Vother*Vother+w.theta*theta+w.Nic*Nic:.3f})')
+        print('----------------------------------------------')
         print(f'Awareness {val:.3f}\n')
     else:
         return val
