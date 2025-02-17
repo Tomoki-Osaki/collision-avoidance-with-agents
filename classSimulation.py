@@ -40,6 +40,7 @@ FIELD_SIZE = 5
 # 目盛りは最大値5、最小値-5で10目盛り
 # グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
 
+# %% モデルの重みをまとめたデータクラス
 # ブレーキ指標の4係数は標準化したやつを使う
 @dataclass
 class BrakeWeight:
@@ -47,6 +48,47 @@ class BrakeWeight:
     b1: float = 3.348 # 3.348394
     c1: float = 4.286 # 4.252840
     d1: float = -13.689 # -0.003423
+    
+# awareness modelの重み
+@dataclass
+class AwarenessWeight:
+    """
+    値は標準化されている必要あり
+    """
+    bias: float = -1.2
+    deltaTTCP: float = 0.018
+    Px: float = -0.1
+    Py: float = -1.1
+    Vself: float = -0.25
+    Vother: float = 0.29
+    theta: float = -2.5
+    Nic: float = -0.62
+
+    @staticmethod
+    def multiple(k):
+        return AwarenessWeight(
+            bias = -1.2 * k,
+            deltaTTCP = 0.018 * k,
+            Px = -0.1 * k,
+            Py = -1.1 * k,
+            Vself = -0.25 * k,
+            Vother = 0.29 * k,
+            theta = -2.5 * k,
+            Nic = -0.62 * k
+        )
+
+    def show_params(self) -> None:
+        print('\nWeights of Awareness model')
+        print('-------------------')
+        print('bias:', np.round(self.bias, 4))
+        print('deltaTTCP:', np.round(self.deltaTTCP, 4))
+        print('Px:', np.round(self.Px, 4))
+        print('Py:', np.round(self.Py, 4))
+        print('Vself:', np.round(self.Vself, 4))
+        print('Vother:', np.round(self.Vother, 4))
+        print('theta:', np.round(self.theta, 4))
+        print('Nic:', np.round(self.Nic, 4))
+        print('-------------------\n')
     
 # %% シミュレーションに関わるクラス
 class Simulation:
@@ -61,8 +103,8 @@ class Simulation:
                  dynamic_percent: float = 1.0,
                  simple_avoid_vec: float = 0.06, 
                  dynamic_avoid_vec: float = 0.06,
-                 prepared_data=None,
-                 awareness=False,
+                 prepared_data: fs.PreparedData = None,
+                 awareness: bool = False,
                  random_seed: int = 0):
         
         self.num_steps = num_steps
@@ -190,7 +232,11 @@ class Simulation:
         for i in range(self.num_agents):
             for j in range(self.num_agents):
                 theta = self.calc_theta(i, j)
-                px, py = self.calc_relative_positions(i, j, theta)
+                relP = self.calc_relative_positions(i, j, theta)
+                if relP is None:
+                    px = py = None
+                else:
+                    px, py = relP
                 deltaTTCP = self.calc_deltaTTCP(i, j)
                 Nic = self.calc_Nic(i, j)
                 other_vel = np.linalg.norm(self.all_agents[j]['v'])
@@ -328,11 +374,89 @@ class Simulation:
         return visible_agents
     
     
-    def find_agents_to_focus_with_awareness(self, num: int, threshold=0.8):
-        w = fs.AwarenessWeight.multiple(1)
-        agents_to_focus = []
+    def awareness_model(self, 
+                        num: int, 
+                        other_num: int, 
+                        awareness_weights: AwarenessWeight,
+                        debug: bool = False) -> float:
+        """
+        エージェント番号numのawareness modelを計算する(0-1)
+        ex. awareness_model(sim, num=10, other_num=15, current_step=20, prepared_data) -> 0.85
+        
+        説明変数
+                deltaTTCP: 自分のTTCPから相手のTTCPを引いた値
+                Px: 自分から見た相手の相対位置
+                Py: 自分から見た相手の相対位置
+                Vself: 自分の歩行速度
+                Vother: 相手の歩行速度 
+                theta: 自分の向いている方向と相手の位置の角度差 
+                Nic: 円内他歩行者数 
+                
+        被説明変数
+                0(注視しない) - 1 (注視する)
+        """ 
+        agent = self.all_agents[num]
+                
+        deltaTTCP_mean = self.prepared_data.deltaTTCP_mean
+        deltaTTCP_std = self.prepared_data.deltaTTCP_std
+        
+        Px_mean = self.prepared_data.Px_mean
+        Px_std = self.prepared_data.Px_std
+        
+        Py_mean = self.prepared_data.Py_mean
+        Py_std = self.prepared_data.Py_std
+        
+        Vself_mean = self.prepared_data.Vself_mean
+        Vself_std = self.prepared_data.Vself_std
+        
+        Vother_mean = self.prepared_data.Vother_mean
+        Vother_std = self.prepared_data.Vother_std
+        
+        theta_mean = self.prepared_data.theta_mean
+        theta_std = self.prepared_data.theta_std
+        
+        nic_mean = self.prepared_data.Nic_mean
+        nic_std = self.prepared_data.Nic_std
+        
+        deltaTTCP = (agent['deltaTTCP'][self.current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
+        if np.isnan(deltaTTCP):
+            return 0
+        Px = (agent['relPx'][self.current_step][other_num] - Px_mean) / Px_std
+        Py = (agent['relPy'][self.current_step][other_num] - Py_mean) / Py_std
+        Vself = (agent['all_vel'][self.current_step] - Vself_mean) / Vself_std
+        Vother = (agent['all_other_vel'][self.current_step][other_num] - Vother_mean) / Vother_std        
+        theta = (agent['theta'][self.current_step][other_num] - theta_mean) / theta_std
+        Nic = (agent['Nic'][self.current_step][other_num] - nic_mean) / nic_std
+
+        w = awareness_weights
+        
+        deno = 1 + np.exp(
+            -(w.bias + w.deltaTTCP*deltaTTCP + w.Px*Px + w.Py*Py + w.Vself*Vself + \
+              w.Vother*Vother + w.theta*theta + w.Nic*Nic)    
+        )
+        val = 1 / deno
+        
+        if debug:
+            print(f'\ndeltaTTCP {deltaTTCP:.3f}; {deltaTTCP*w.deltaTTCP:.3f}')
+            print(f'Px {Px:.3f}; {Px*w.Px:.3f}')
+            print(f'Py {Py:.3f}; {Py*w.Py:.3f}')
+            print(f'Vself {Vself:.3f}; {Vself*w.Vself:.3f}')
+            print(f'Vother {Vother:.3f}; {Vother*w.Vother:.3f}')
+            print(f'theta {theta:.3f}; {theta*w.theta:.3f}')
+            print(f'Nic {Nic:.3f}; {Nic*w.Nic:.3f}')
+            print(f'exp-({w.bias+w.deltaTTCP*deltaTTCP+w.Px*Px+w.Py*Py+w.Vself*Vself+w.Vother*Vother+w.theta*theta+w.Nic*Nic:.3f})')
+            print('----------------------------------------------')
+            print(f'Awareness {val:.3f}\n')
+        else:
+            return val
+        
+    
+    def find_agents_to_focus_with_awareness(self, num: int, threshold: float = 0.8) -> list[int]:
+        agents_to_focus = [] 
+        w = AwarenessWeight.multiple(1)
+        
         for i in range(self.num_agents):
-            aw = fs.awareness_model(self, num, i, self.prepared_data, w)
+            aw = self.awareness_model(num, i, w)
             if aw > threshold:
                 agents_to_focus.append(i)
                 
@@ -360,7 +484,8 @@ class Simulation:
             d = d / (dist_all[num][i] + 2 * self.agent_size) # 大きさ1のベクトルにする
             d = d * self.simple_avoid_vec # 大きさを固定値にする
             
-            avoid_vec += d # 回避ベクトルを合成する
+            if not np.isnan(d).all():
+                avoid_vec += d # ベクトルの合成
             
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
@@ -442,8 +567,9 @@ class Simulation:
             d = d * braking_index # ブレーキ指標の値を反映
             d = d * self.dynamic_avoid_vec # ベクトルの最大値を決定
             
-            avoid_vec += d # ベクトルの合成
-    
+            if not np.isnan(d).all():
+                avoid_vec += d # ベクトルの合成
+                    
         # ベクトルの平均を出す
         return avoid_vec / len(visible_agents)
 
@@ -483,7 +609,7 @@ class Simulation:
         other_pos_t = self.all_agents[other_num]['p'] 
                 
         theta_deg = fs.calc_angle_two_vectors(my_pos_t, extended_end, other_pos_t)
-
+        
         return theta_deg
             
     
@@ -500,12 +626,15 @@ class Simulation:
         return deltaTTCP
         
     
-    def calc_relative_positions(self, num: int, other_num: int, theta: float | None) -> tuple:
+    def calc_relative_positions(self, 
+                                num: int, 
+                                other_num: int,
+                                theta: float | None) -> tuple or None:
         """
         エージェントnumから見たエージェントother_numの相対位置のxy座標を返す
         """
-        if theta is None:
-            return 0, 0
+        if theta is None: # エージェントnum自身に対しての計算の場合、thetaはNoneになる
+            return None
         
         arr1 = self.all_agents[num]['p'] - self.all_agents[num]['v']
         arr1_next = self.all_agents[num]['p']
@@ -545,9 +674,9 @@ class Simulation:
         cp2 = np.array([x2, y2])
         relPy = np.linalg.norm(cp2 - arr2_next)
         if theta > 90:
-            relPy *= -1
+            return None
         
-        return relPx, relPy
+        return (relPx, relPy)
 
 
     # 11
@@ -969,15 +1098,15 @@ class Simulation:
             ax.scatter(*self.all_agents[i]['all_pos'][step],
                         color=color, alpha=0.6)
             ax.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
-                                self.all_agents[i]['all_pos'][step][1]+txt_far))
+                               self.all_agents[i]['all_pos'][step][1]+txt_far))
             if not step == 0:
                 tminus1_pos = self.all_agents[i]['all_pos'][step-1]
                 ax.scatter(*tminus1_pos, color=color, alpha=0.2)
         
         awms = []
         for i in range(self.num_agents):
-            awm = fs.awareness_model(self, num, i, step, prepared_data, 
-                                     awareness_weight, debug=False)
+            awm = self.awareness_model(num, i, prepared_data, 
+                                       awareness_weight, debug=False)
             if awm is not None and awm >= 0.8:
                 awms.append([i, awm])
         
@@ -1120,7 +1249,8 @@ class Simulation:
                        'dynamic_percent': self.dynamic_percent,
                        'simple_avoid_vec': self.simple_avoid_vec,
                        'exe_time_second': np.round(self.exe_time, 3),
-                       'exe_time_min': np.round(self.exe_time/60, 3)}
+                       'exe_time_min': np.round(self.exe_time/60, 3),
+                       'exe_time_hour': np.round(self.exe_time/60/60, 3)}
         
         df_result = pd.DataFrame(dict_result, index=[f'seed_{self.random_seed}'])
         

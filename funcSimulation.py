@@ -98,10 +98,10 @@ def calc_crossing_point(pos1_tminus1: np.ndarray,
     crossing_point = np.array([x_intersect, y_intersect])
     
     # crossing_pointが、2つのエージェントの現在値を始点として延長した線分に含まれている場合、crossing_pointを返す
-    extended_end1 = extend_line(pos1_tminus1, pos1, length=100)
+    extended_end1 = extend_line(pos1_tminus1, pos1, length=5)
     is_cp_on_seg1 = is_point_on_segment(crossing_point, pos1, extended_end1)
     
-    extended_end2 = extend_line(pos2_tminus1, pos2, length=100)
+    extended_end2 = extend_line(pos2_tminus1, pos2, length=5)
     is_cp_on_seg2 = is_point_on_segment(crossing_point, pos2, extended_end2)
 
     if is_cp_on_seg1 and is_cp_on_seg2:    
@@ -199,150 +199,7 @@ def calc_angle_two_vectors(common_pos: np.ndarray,
         return theta_rad
     return theta_deg
 
-
-def standardize(array: np.ndarray, mu: float = None, sigma: float = None) -> np.ndarray:
-    """
-    標準化したarraｙを返す
-    except_nanがTrueの場合、muやsigmaの計算時にarray中のnan値を無視する
-    """
-    if mu is None and sigma is None:
-        mu = np.nanmean(array)
-        sigma = np.nanstd(array)
-    
-    standardized = (array - mu) / sigma
-    
-    return standardized
-
-# awareness modelの重み
-@dataclass
-class AwarenessWeight:
-    """
-    値は標準化されている必要あり
-    """
-    bias: float = -1.2
-    deltaTTCP: float = 0.018
-    Px: float = -0.1
-    Py: float = -1.1
-    Vself: float = -0.25
-    Vother: float = 0.29
-    theta: float = -2.5
-    Nic: float = -0.62
-
-    @staticmethod
-    def multiple(k):
-        return AwarenessWeight(
-            bias = -1.2 * k,
-            deltaTTCP = 0.018 * k,
-            Px = -0.1 * k,
-            Py = -1.1 * k,
-            Vself = -0.25 * k,
-            Vother = 0.29 * k,
-            theta = -2.5 * k,
-            Nic = -0.62 * k
-        )
-
-    def show_params(self) -> None:
-        print('\nWeights of Awareness model')
-        print('-------------------')
-        print('bias:', np.round(self.bias, 4))
-        print('deltaTTCP:', np.round(self.deltaTTCP, 4))
-        print('Px:', np.round(self.Px, 4))
-        print('Py:', np.round(self.Py, 4))
-        print('Vself:', np.round(self.Vself, 4))
-        print('Vother:', np.round(self.Vother, 4))
-        print('theta:', np.round(self.theta, 4))
-        print('Nic:', np.round(self.Nic, 4))
-        print('-------------------\n')
-        
-
-# now adjusting the weights of each explanatory variables
-def awareness_model(sim_obj, 
-                    num: int, 
-                    other_num: int, 
-                    current_step: int, 
-                    prepared_data: np.lib.npyio.NpzFile, # np.load()で作成されるオブジェクト
-                    awareness_weight,
-                    debug=False) -> float:
-    """
-    awareness modelを用いて、エージェント番号numの注視相手を選定する(0-1)
-    ex. awareness_model(sim, num=10, other_num=15, current_step=20, prepared_data) -> 0.85
-    
-    説明変数
-            deltaTTCP: 自分のTTCPから相手のTTCPを引いた値
-            Px: 自分から見た相手の相対位置
-            Py: 自分から見た相手の相対位置
-            Vself: 自分の歩行速度
-            Vother: 相手の歩行速度 
-            theta: 自分の向いている方向と相手の位置の角度差 
-            Nic: 円内他歩行者数 
-            
-    被説明変数
-            0(注視しない) - 1 (注視する)
-    """ 
-    agent = sim_obj.all_agents[num]
-    
-    all_deltaTTCP = prepared_data['all_deltaTTCP']
-    
-    deltaTTCP_mean, deltaTTCP_std = np.nanmean(all_deltaTTCP), np.nanstd(all_deltaTTCP)
-    
-    all_Px = prepared_data['all_Px']
-    Px_mean, Px_std = np.nanmean(all_Px), np.nanstd(all_Px)
-    
-    all_Py = prepared_data['all_Py']
-    Py_mean, Py_std = np.nanmean(all_Py), np.nanstd(all_Py)
-    
-    all_Vself = prepared_data['all_Vself']
-    Vself_mean, Vself_std = np.nanmean(all_Vself), np.nanstd(all_Vself)
-    
-    all_Vother = prepared_data['all_Vother']
-    Vother_mean, Vother_std = np.nanmean(all_Vother), np.nanmean(all_Vother)
-    
-    all_theta = prepared_data['all_theta']
-    theta_mean, theta_std = np.nanmean(all_theta), np.nanstd(all_theta)
-    
-    all_nic = prepared_data['all_Nic']
-    nic_mean, nic_std = np.nanmean(all_nic), np.nanstd(all_nic)
-    
-    deltaTTCP = (agent['deltaTTCP'][current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
-    if np.isnan(deltaTTCP):
-        return 0
-    Px = (agent['relPx'][current_step][other_num] - Px_mean) / Px_std
-    Py = (agent['relPy'][current_step][other_num] - Py_mean) / Py_std
-    Vself = (agent['all_vel'][current_step] - Vself_mean) / Vself_std
-    Vother = (agent['all_other_vel'][current_step][other_num] - Vother_mean) / Vother_std        
-    theta = (agent['theta'][current_step][other_num] - theta_mean) / theta_std
-    Nic = (agent['Nic'][current_step][other_num] - nic_mean) / nic_std
-    
-    # # awareness model original
-    # deno = 1 + np.exp(
-    #     -(-1.2 +0.018*deltaTTCP -0.1*Px -1.1*Py -0.25*Vself +0.29*Vother -2.5*theta -0.62*Nic)    
-    # )
-    # val = 1 / deno
-    
-    # awareness model adjusted parameters
-    w = awareness_weight
-    
-    deno = 1 + np.exp(
-        -(w.bias + w.deltaTTCP*deltaTTCP + w.Px*Px + w.Py*Py + w.Vself*Vself + \
-          w.Vother*Vother + w.theta*theta + w.Nic*Nic)    
-    )
-    val = 1 / deno
-    
-    if debug:
-        print(f'\ndeltaTTCP {deltaTTCP:.3f}; {deltaTTCP*w.deltaTTCP:.3f}')
-        print(f'Px {Px:.3f}; {Px*w.Px:.3f}')
-        print(f'Py {Py:.3f}; {Py*w.Py:.3f}')
-        print(f'Vself {Vself:.3f}; {Vself*w.Vself:.3f}')
-        print(f'Vother {Vother:.3f}; {Vother*w.Vother:.3f}')
-        print(f'theta {theta:.3f}; {theta*w.theta:.3f}')
-        print(f'Nic {Nic:.3f}; {Nic*w.Nic:.3f}')
-        print(f'exp-({w.bias+w.deltaTTCP*deltaTTCP+w.Px*Px+w.Py*Py+w.Vself*Vself+w.Vother*Vother+w.theta*theta+w.Nic*Nic:.3f})')
-        print('----------------------------------------------')
-        print(f'Awareness {val:.3f}\n')
-    else:
-        return val
-
-
+# %%
 def show(obj):
     """
     objの要素を、インデックス付きで表示する
@@ -371,21 +228,102 @@ class PedData:
     Nic_std = 0.8297
     
     def show_params(self):
-        print('\n-------------------------')
-        print('deltaTTCP_mean:', self.deltaTTCP_mean)
-        print('deltaTTCP_std:', self.deltaTTCP_std)
-        print('\nPx_mean:', self.Px_mean) 
-        print('Px_std:', self.Px_std)
-        print('\nPy_mean:', self.Py_mean)
-        print('Py_std:', self.Py_std)
-        print('\nVself_mean:', self.Vself_mean)
-        print('Vself_std:', self.Vself_std)
-        print('\nVother_mean:', self.Vother_mean)
-        print('Vother_std:', self.Vother_std)
-        print('\ntheta_mean:', self.theta_mean)
-        print('theta_std:', self.theta_std)
-        print('\nNic_mean:', self.Nic_mean)
-        print('Nic_std:', self.Nic_std)
+        print('\nParameters of pedestrian exp data')
+        print('-------------------------')
+        print('deltaTTCP_mean:', np.round(self.deltaTTCP_mean, 3))
+        print('deltaTTCP_std:', np.round(self.deltaTTCP_std, 3))
+        print('mean-std ratio:', np.round(self.deltaTTCP_mean/self.deltaTTCP_std, 3))
+        
+        print('\nPx_mean:', np.round(self.Px_mean, 3)) 
+        print('Px_std:', np.round(self.Px_std, 3))
+        print('mean-std ratio:', np.round(self.Px_mean/self.Px_std, 3))        
+        
+        print('\nPy_mean:', np.round(self.Py_mean, 3))
+        print('Py_std:', np.round(self.Py_std, 3))
+        print('mean-std ratio:', np.round(self.Py_mean/self.Py_std, 3))
+        
+        print('\nVself_mean:', np.round(self.Vself_mean, 3))
+        print('Vself_std:', np.round(self.Vself_std, 3))
+        print('mean-std ratio:', np.round(self.Vself_mean/self.Vself_std, 3))
+        
+        print('\nVother_mean:', np.round(self.Vother_mean, 3))
+        print('Vother_std:', np.round(self.Vother_std, 3))
+        print('mean-std ratio:', np.round(self.Vother_mean/self.Vother_std, 3))
+        
+        print('\ntheta_mean:', np.round(self.theta_mean, 3))
+        print('theta_std:', np.round(self.theta_std, 3))
+        print('mean-std ratio:', np.round(self.theta_mean/self.theta_std, 3))
+        
+        print('\nNic_mean:', np.round(self.Nic_mean, 3))
+        print('Nic_std:', np.round(self.Nic_std, 3))
+        print('mean-std ratio:', np.round(self.Nic_mean/self.Nic_std, 3))
+        print('-------------------------\n')
+
+
+class PreparedData:
+    """
+    Awareness modelをシミュレーションで適用する際、事前にシミュレーションを行い各説明変数の平均と標準偏差を
+    求める必要がある
+    その際の
+    """
+    def __init__(self, npz_file_path: str):
+        self.data = np.load(npz_file_path)
+        
+        self.deltaTTCP_mean = np.nanmean(self.data['all_deltaTTCP'])
+        self.deltaTTCP_std = np.nanstd(self.data['all_deltaTTCP'])
+        
+        self.Px_mean = np.nanmean(self.data['all_Px'])
+        self.Px_std = np.nanstd(self.data['all_Px'])
+        
+        self.Py_mean = np.nanmean(self.data['all_Py'])
+        self.Py_std = np.nanstd(self.data['all_Py'])
+        
+        self.Vself_mean = np.nanmean(self.data['all_Vself'])
+        self.Vself_std = np.nanstd(self.data['all_Vself'])
+        
+        self.Vother_mean = np.nanmean(self.data['all_Vother'])
+        self.Vother_std = np.nanstd(self.data['all_Vother'])
+        
+        self.theta_mean = np.nanmean(self.data['all_theta'])
+        self.theta_std = np.nanstd(self.data['all_theta'])
+        
+        self.Nic_mean = np.nanmean(self.data['all_Nic'])
+        self.Nic_std = np.nanstd(self.data['all_Nic'])
+    
+    def show_files(self):
+        for i, j in enumerate(self.data.files):
+            print(i, j)
+    
+    def show_params(self):
+        print('\nParameters of pre-run simulation')
+        print('-------------------------')
+        print('deltaTTCP_mean:', np.round(self.deltaTTCP_mean, 3))
+        print('deltaTTCP_std:', np.round(self.deltaTTCP_std, 3))
+        print('mean-std ratio:', np.round(self.deltaTTCP_mean/self.deltaTTCP_std, 3))
+        
+        print('\nPx_mean:', np.round(self.Px_mean, 3)) 
+        print('Px_std:', np.round(self.Px_std, 3))
+        print('mean-std ratio:', np.round(self.Px_mean/self.Px_std, 3))        
+        
+        print('\nPy_mean:', np.round(self.Py_mean, 3))
+        print('Py_std:', np.round(self.Py_std, 3))
+        print('mean-std ratio:', np.round(self.Py_mean/self.Py_std, 3))
+        
+        print('\nVself_mean:', np.round(self.Vself_mean, 3))
+        print('Vself_std:', np.round(self.Vself_std, 3))
+        print('mean-std ratio:', np.round(self.Vself_mean/self.Vself_std, 3))
+        
+        print('\nVother_mean:', np.round(self.Vother_mean, 3))
+        print('Vother_std:', np.round(self.Vother_std, 3))
+        print('mean-std ratio:', np.round(self.Vother_mean/self.Vother_std, 3))
+        
+        print('\ntheta_mean:', np.round(self.theta_mean, 3))
+        print('theta_std:', np.round(self.theta_std, 3))
+        print('mean-std ratio:', np.round(self.theta_mean/self.theta_std, 3))
+        
+        print('\nNic_mean:', np.round(self.Nic_mean, 3))
+        print('Nic_std:', np.round(self.Nic_std, 3))
+        print('mean-std ratio:', np.round(self.Nic_mean/self.Nic_std, 3))
         print('-------------------------\n')
         
 

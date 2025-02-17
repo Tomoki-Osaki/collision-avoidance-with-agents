@@ -13,17 +13,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import ArtistAnimation
 from dataclasses import dataclass
-from funcSimulation import show, standardize
+from funcSimulation import show
 import funcSimulation as fs
 import time 
+from gc import collect
 
-prepared_data = np.load('data_for_awarenss_agt25.npz')
-print('shape:', prepared_data['all_Px'].shape) # agent, steps, other_agent
-show(prepared_data.files)
+prepared_data = fs.PreparedData('data_for_awarenss_agt25.npz')
+prepared_data.show_params()
 
 # %%
 import classSimulation as cs
-steps = 5
+steps = 300
 num_agents = 25
 
 t = cs.Simulation(random_seed=0, 
@@ -33,37 +33,32 @@ t = cs.Simulation(random_seed=0,
                   prepared_data=prepared_data, 
                   awareness=True)
 
-# RuntimeWarning: invalid value encountered in divide ln439
-# d = d / (dist_all[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
-t.move_agents(1)
+t.simulate()
+
+t.move_agents()
 aw = t.find_agents_to_focus_with_awareness(0, 0)
 dist_all = t.calc_distance_all_agents()
 vis = t.find_visible_agents(dist_all, 0)
 for i in range(num_agents):
-    print(t.dynamic_avoidance(i, 0, True))
+    print(t.dynamic_avoidance(i))
 
-
-start = time.perf_counter()
-t.simulate()
-print('\n', time.perf_counter() - start)
 #df_res25 = t.return_results_as_df()
 #t.save_data_for_awareness(save_as='data_for_awarenss_agt25.npz')
+
+t.animate_agent_movements(save_as='awareness.mp4')
 
 step = 500
 t.plot_positions(step)
 
-# agent22 to agent8 step45
-# w = AwarenessWeight(deltaTTCP=20, Nic=-4, theta=-0.5)
-# t.plot_positions_aware(agent=22, step=45, all_aware, w)    
-w = fs.AwarenessWeight()    
-w = fs.AwarenessWeight.multiple(3)
+w = cs.AwarenessWeight()    
 w.show_params()
 
-agent = 28
-t.plot_positions_aware(agent, step, prepared_data, w)
+agent = 7
+t.plot_positions_aware(agent, 1, prepared_data, w)
 
 for i in range(num_agents):
-    print(i, fs.awareness_model(t, agent, i, step, prepared_data, w, debug=True))
+    print('agent', i)
+    print(t.awareness_model(agent, i, prepared_data, w, debug=True))
 
 
 # %%
