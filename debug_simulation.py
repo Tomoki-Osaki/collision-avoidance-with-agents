@@ -23,21 +23,31 @@ show(prepared_data.files)
 
 # %%
 import classSimulation as cs
-steps = 200
+steps = 5
 num_agents = 25
 
-t = cs.Simulation(random_seed=5, 
+t = cs.Simulation(random_seed=0, 
                   num_steps=steps, 
                   num_agents=num_agents, 
                   dynamic_percent=1,
                   prepared_data=prepared_data, 
                   awareness=True)
 
+# RuntimeWarning: invalid value encountered in divide ln439
+# d = d / (dist_all[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
+t.move_agents(1)
+aw = t.find_agents_to_focus_with_awareness(0, 0)
+dist_all = t.calc_distance_all_agents()
+vis = t.find_visible_agents(dist_all, 0)
+for i in range(num_agents):
+    print(t.dynamic_avoidance(i, 0, True))
+
+
 start = time.perf_counter()
 t.simulate()
 print('\n', time.perf_counter() - start)
-df_res25 = t.return_results_as_df()
-#t.save_data_for_awareness(save_as='tmp_comp.npz')
+#df_res25 = t.return_results_as_df()
+#t.save_data_for_awareness(save_as='data_for_awarenss_agt25.npz')
 
 step = 500
 t.plot_positions(step)

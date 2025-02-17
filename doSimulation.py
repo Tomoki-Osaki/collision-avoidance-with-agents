@@ -11,10 +11,12 @@ import classSimulation as cs
 
 # %% シミュレーション
 # 一度にsim.num_steps数simaulateメソッドを使用するシミュレーションを、TRIALの回数行う
-NUM_OF_TRIAL = 3 # 試行回数
-NUM_STEPS = 200
-NUM_AGENTS = 50
+NUM_OF_TRIAL = 1 # 試行回数
+NUM_STEPS = 500
+NUM_AGENTS = 25
 VIEWING_ANGLE = 360
+
+prepared_data = np.load('data_for_awarenss_agt25.npz')
 
 df_result = pd.DataFrame()
 
@@ -41,9 +43,12 @@ for num in range(NUM_OF_TRIAL):
                         dynamic_percent=dyn_prop,
                         simple_avoid_vec=simple_avoid_vec, 
                         dynamic_avoid_vec=0.06,
+                        prepared_data=prepared_data,
+                        awareness=True,
                         random_seed=num)
     
     print('random seed:', sim.random_seed)
+    print('with Awareness:', sim.awareness)
 
     ##### シミュレーション (sim.num_steps数だけ繰り返す) #####
     start_time = time.time()
@@ -78,8 +83,9 @@ print(f'dyn_prop {dyn_prop}終了')
 ##### 全TRIALの結果の記録 #####
 # 値をまとめたcsvファイルの作成
 backup_result = df_result.copy()
-file = f'simulation_results/agt{sim.num_agents}_avoidvec{int(sim.simple_avoid_vec*500)}px_dynper0{int(sim.dynamic_percent*10)}.csv'
-#df_result.to_csv(file, mode='x')
+#file = f'simulation_results/agt{sim.num_agents}_avoidvec{int(sim.simple_avoid_vec*500)}px_dynper0{int(sim.dynamic_percent*10)}.csv'
+file = f'simulation_results/agt{sim.num_agents}_dynmic_awareness_seed{sim.random_seed}.csv' 
+df_result.to_csv(file, mode='x')
 
 # %% make animations
 # sim.animte_agent_movements(save_as='simulation.mp4')
