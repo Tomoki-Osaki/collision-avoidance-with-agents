@@ -11,10 +11,10 @@ __init__(self)
 6. calc_Nic(num)
 7. find_agents_to_focus(num)
 8. record_start_and_goal(num)
-9. calc_completion_time(num, current_step)
+9. calc_completion_time(num)
 10. calc_last_completion_time(num)
-11. check_if_goaled(current_step)
-12. simulate(current_step)
+11. check_if_goaled()
+12. simulate()
 13. show_image()
 14. plot_positions()
 15. approach_detect(dist)
@@ -84,8 +84,6 @@ class Simulation:
         self.first_agent = [] # 初期位置記録用
         self.agent_goals = []
         self.first_pos =[]
-        
-        
         
         #エージェント間の距離を記録するリスト
         self.dist = np.zeros([self.num_agents, self.num_agents])
@@ -158,7 +156,8 @@ class Simulation:
         
         self.exe_time = None
         
-        self.update_parameters(current_step=0)
+        self.current_step = 0
+        self.update_parameters()
     
     def disp_info(self) -> None:
         print('\nシミュレーションの環境情報')
@@ -173,7 +172,7 @@ class Simulation:
     
     
     # 1
-    def update_parameters(self, current_step: int) -> None:
+    def update_parameters(self) -> None:
         """
         all_agentsのパラメータを更新する
         """
@@ -182,9 +181,9 @@ class Simulation:
             pos = self.all_agents[i]['p']
             vel = np.linalg.norm(self.all_agents[i]['v'])
 
-            self.all_agents[i]['all_pos'][current_step][0] = pos[0] # x
-            self.all_agents[i]['all_pos'][current_step][1] = pos[1] # y           
-            self.all_agents[i]['all_vel'][current_step] = vel
+            self.all_agents[i]['all_pos'][self.current_step][0] = pos[0] # x
+            self.all_agents[i]['all_pos'][self.current_step][1] = pos[1] # y           
+            self.all_agents[i]['all_vel'][self.current_step] = vel
             
             
         # 自分と相手の情報を基に計算するパラメータ
@@ -196,12 +195,12 @@ class Simulation:
                 Nic = self.calc_Nic(i, j)
                 other_vel = np.linalg.norm(self.all_agents[j]['v'])
                 
-                self.all_agents[i]['relPx'][current_step][j] = px
-                self.all_agents[i]['relPy'][current_step][j] = py     
-                self.all_agents[i]['theta'][current_step][j] = theta
-                self.all_agents[i]['deltaTTCP'][current_step][j] = deltaTTCP
-                self.all_agents[i]['Nic'][current_step][j] = Nic
-                self.all_agents[i]['all_other_vel'][current_step][j] = other_vel
+                self.all_agents[i]['relPx'][self.current_step][j] = px
+                self.all_agents[i]['relPy'][self.current_step][j] = py     
+                self.all_agents[i]['theta'][self.current_step][j] = theta
+                self.all_agents[i]['deltaTTCP'][self.current_step][j] = deltaTTCP
+                self.all_agents[i]['Nic'][self.current_step][j] = Nic
+                self.all_agents[i]['all_other_vel'][self.current_step][j] = other_vel
               
                 
     # 2 
@@ -329,11 +328,11 @@ class Simulation:
         return visible_agents
     
     
-    def find_agents_to_focus_with_awareness(self, num: int, current_step, threshold=0.8):
+    def find_agents_to_focus_with_awareness(self, num: int, threshold=0.8):
         w = fs.AwarenessWeight.multiple(1)
         agents_to_focus = []
         for i in range(self.num_agents):
-            aw = fs.awareness_model(self, num, i, current_step, self.prepared_data, w)
+            aw = fs.awareness_model(self, num, i, self.prepared_data, w)
             if aw > threshold:
                 agents_to_focus.append(i)
                 
@@ -367,7 +366,7 @@ class Simulation:
         return avoid_vec / len(visible_agents)
     
     # 6
-    def dynamic_avoidance(self, num: int, current_step) -> np.ndarray:
+    def dynamic_avoidance(self, num: int) -> np.ndarray:
         """
         動的回避ベクトルの生成(オリジナル)
         ex. self.dynamic_avoidance(num=15) -> array([-0.05, 0.2])
@@ -376,7 +375,7 @@ class Simulation:
         avoid_vec = np.zeros(2)   # 回避ベクトル
         
         if self.awareness:
-            visible_agents = self.find_agents_to_focus_with_awareness(num, current_step)
+            visible_agents = self.find_agents_to_focus_with_awareness(num)
         else:
             visible_agents = self.find_visible_agents(dist_all, num)   
             
@@ -589,14 +588,14 @@ class Simulation:
             
          
     # 12 
-    def calc_completion_time(self, num: int, current_step: int) -> float:
+    def calc_completion_time(self, num: int) -> float:
         """ 
         ゴールまで到達した際の完了時間を記録
-        ex. self.calc_completion_time(num=10, current_step=10) -> 35.6
+        ex. self.calc_completion_time(num=10) -> 35.6
         """
         # 一回のゴールにおける初めのステップと終わりのステップを記録
         self.start_step[num] = self.goal_step[num] + 1
-        self.goal_step[num] = current_step
+        self.goal_step[num] = self.current_step
         
         # 一回目のゴール
         if (self.start_step[num] == 1):
@@ -675,7 +674,7 @@ class Simulation:
 
 
     # 14
-    def check_if_goaled(self, current_step: int) -> None:
+    def check_if_goaled(self) -> None:
         """
         各エージェントがゴールに到達したかどうかをチェックする
         ゴールしていた場合、完了時間の算出、ゴールカウントの更新、はみ出た時用のゴールの初期化を行う
@@ -704,7 +703,7 @@ class Simulation:
                     # 通常のゴールに到着
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 完了時間を算出
-                        completion_time = self.calc_completion_time(i, current_step)
+                        completion_time = self.calc_completion_time(i)
                         if not completion_time == None:
                             self.completion_time.append(completion_time)
                         # ゴールした回数を更新
@@ -755,7 +754,7 @@ class Simulation:
                     # ゴールが調整されているか確認
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 完了時間を算出
-                        completion_time = self.calc_completion_time(i, current_step)
+                        completion_time = self.calc_completion_time(i)
                         if not completion_time == None:
                             self.completion_time.append(completion_time)
                         self.goal_count[i] = self.goal_count[i] + 1
@@ -799,7 +798,7 @@ class Simulation:
                     # ゴールが調整されているか確認
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 完了時間を算出
-                        completion_time = self.calc_completion_time(i, current_step)
+                        completion_time = self.calc_completion_time(i)
                         if not completion_time == None:
                             self.completion_time.append(completion_time)
                         self.goal_count[i] = self.goal_count[i] + 1
@@ -842,7 +841,7 @@ class Simulation:
                     # ゴールが調整されているか確認
                     if (self.goal_temp[i][0] == 0 and self.goal_temp[i][1] == 0):
                         # 完了時間を算出
-                        completion_time = self.calc_completion_time(i, current_step)
+                        completion_time = self.calc_completion_time(i)
                         if not completion_time == None:
                             self.completion_time.append(completion_time)
                         self.goal_count[i] = self.goal_count[i] + 1
@@ -869,12 +868,13 @@ class Simulation:
 
     
     # 15 
-    def move_agents(self, current_step: int) -> None:
+    def move_agents(self) -> None:
         """
         エージェントを動かす
         更新されるパラメータ：
         self.all_agents
         """
+        self.current_step += 1
         for i in range(self.num_agents):
             # はみ出た時用のゴールが設定されていない
             # 通常のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
@@ -899,16 +899,16 @@ class Simulation:
                 self.all_agents[i]['v'] += self.simple_avoidance(i)
                 
             elif self.all_agents[i]['avoidance'] == 'dynamic': # 動的回避ベクトルを足す
-                self.all_agents[i]['v'] += self.dynamic_avoidance(i, current_step)
+                self.all_agents[i]['v'] += self.dynamic_avoidance(i)
                 
         
-        self.check_if_goaled(current_step)
+        self.check_if_goaled()
         
         for i in range(self.num_agents):
             # 移動後の座標を確定      
             self.all_agents[i]['p'] += self.all_agents[i]['v']
                     
-        self.update_parameters(current_step)     
+        self.update_parameters()     
         
         
     # 16
@@ -918,14 +918,15 @@ class Simulation:
         シミュレーションを行うときに最終的に呼び出すメソッド
         """
         self.disp_info()
-        start = time.perf_counter()
+        start = time.perf_counter() # 実行時間を結果csvに記録する
+        
         for t in tqdm(range(self.num_steps)):
-            current_step = t + 1
-            self.move_agents(current_step)
+            self.move_agents()
             row = self.record_agent_information()
             self.data.append(row)
-        exe_time = time.perf_counter() - start
-        self.exe_time = exe_time
+            
+        end = time.perf_counter()
+        self.exe_time = end - start
 
 
     # 17 
