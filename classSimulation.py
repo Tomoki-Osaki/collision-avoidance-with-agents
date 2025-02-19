@@ -42,7 +42,7 @@ FIELD_SIZE = 5
 
 # %% クラス： BrakeWeight, AwarenessWeight, PreparedData
 @dataclass
-class BrakeWeight:
+class BrakeWeight(frozen=True):
     """
     ブレーキ指標の4係数は標準化したものを使用する
     """
@@ -52,7 +52,7 @@ class BrakeWeight:
     d1: float = -13.689 # -0.003423
     
 @dataclass
-class AwarenessWeight:
+class AwarenessWeight(frozen=True):
     """
     awareness modelの重み
     値は標準化されている必要あり
@@ -520,7 +520,7 @@ class Simulation:
         
         deltaTTCP = (agent['deltaTTCP'][self.current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
         if np.isnan(deltaTTCP):
-            return 0
+            deltaTTCP = 0
         Px = (agent['relPx'][self.current_step][other_num] - Px_mean) / Px_std
         Py = (agent['relPy'][self.current_step][other_num] - Py_mean) / Py_std
         Vself = (agent['all_vel'][self.current_step] - Vself_mean) / Vself_std
@@ -559,7 +559,7 @@ class Simulation:
         
         for i in range(self.num_agents):
             # -1すると適切な値になったが、検証が必要
-            aw = self.all_agents[num]['awareness'][self.current_step-1][i]
+            aw = self.all_agents[num]['awareness'][self.current_step][i]
             if aw >= self.awareness:
                 agents_to_focus.append(i)
                 
@@ -1109,7 +1109,7 @@ class Simulation:
         更新されるパラメータ：
         self.all_agents
         """
-        self.current_step += 1
+        #self.current_step += 1
         for i in range(self.num_agents):
             # はみ出た時用のゴールが設定されていない
             # 通常のゴールに向かうベクトルと、回避ベクトルを足したものが速度になる
@@ -1136,7 +1136,7 @@ class Simulation:
             elif self.all_agents[i]['avoidance'] == 1: # 動的回避ベクトルを足す
                 self.all_agents[i]['v'] += self.dynamic_avoidance(i)
                 
-        
+        self.current_step += 1
         self.check_if_goaled()
         
         for i in range(self.num_agents):

@@ -23,32 +23,31 @@ from tqdm import tqdm
 ped_data = fs.PedData()
 ped_data.show_params()
 
-# %%
+# %% debug simulation
 import classSimulation as cs
-prepared_data = cs.PreparedData('data_for_awarenss_agt25.npz', 2)
+prepared_data = cs.PreparedData('data_for_awarenss_agt50.npz', 2)
 prepared_data.show_params()
 #prepared_data.plot_dist('all_deltaTTCP')
 
 steps = 500
-num_agents = 25
+num_agents = 50
 
 t = cs.Simulation(random_seed=0, 
                   num_steps=steps, 
                   num_agents=num_agents, 
                   dynamic_percent=1,
                   prepared_data=prepared_data, 
-                  awareness=0.9)
+                  awareness=0.95)
 #t.move_agents()
 
 t.simulate()
-t.animate_agent_movements(save_as='awareness_agt25_step500.mp4')
+t.animate_agent_movements(save_as='tmp50.mp4')
+res50 = t.return_results_as_df()
 
-# %%
-w = cs.AwarenessWeight()    
+# %% animate movements
 #w.show_params()
 
 num = 10
-awareness_weight = w
 
 fig, ax = plt.subplots(figsize=(8, 8))
 ax.grid()
@@ -60,7 +59,7 @@ ax.set_xlabel('Pixel')
 ax.set_ylabel('Pixel')
 
 frames = []
-for step in tqdm(range(200)):
+for step in tqdm(range(500)):
     artists = []
     #artists.append(ax.set_title(f'{step}'))    
     for i in range(t.num_agents):
@@ -98,33 +97,5 @@ for step in tqdm(range(200)):
 
 anim = ArtistAnimation(fig, frames, interval=150)
 print('drawing the animation...')
-anim.save('tmp_awm.mp4')
+anim.save('tmp50_10.mp4')
 plt.close() 
-
-# %%
-
-t.move_agents()
-
-aw = t.find_agents_to_focus_with_awareness(0, 0)
-dist_all = t.calc_distance_all_agents()
-vis = t.find_visible_agents(dist_all, 0)
-for i in range(num_agents):
-    print(t.dynamic_avoidance(i))
-
-#df_res50 = t.return_results_as_df()
-#t.save_data_for_awareness(save_as='data_for_awarenss_agt50.npz')
-
-t.animate_agent_movements(save_as='awareness25.mp4')
-
-step = 500
-t.plot_positions(step)
-
-w = cs.AwarenessWeight()    
-w.show_params()
-
-agent = 7
-t.plot_positions_aware(agent, 1, prepared_data, w)
-
-for i in range(num_agents):
-    print('agent', i)
-    print(t.awareness_model(agent, i, w, debug=True))
