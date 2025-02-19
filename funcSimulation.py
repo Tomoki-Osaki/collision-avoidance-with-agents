@@ -207,6 +207,11 @@ def show(obj):
     for i, j in enumerate(obj):
         print(i, j)
         
+        
+def remove_outliers(data, sd):
+    return data[abs(data - np.nanmean(data)) < sd * np.nanstd(data)]
+        
+
 @dataclass
 class PedData:
     """
@@ -229,73 +234,6 @@ class PedData:
     
     def show_params(self):
         print('\nParameters of pedestrian exp data')
-        print('-------------------------')
-        print('deltaTTCP_mean:', np.round(self.deltaTTCP_mean, 3))
-        print('deltaTTCP_std:', np.round(self.deltaTTCP_std, 3))
-        print('mean-std ratio:', np.round(self.deltaTTCP_mean/self.deltaTTCP_std, 3))
-        
-        print('\nPx_mean:', np.round(self.Px_mean, 3)) 
-        print('Px_std:', np.round(self.Px_std, 3))
-        print('mean-std ratio:', np.round(self.Px_mean/self.Px_std, 3))        
-        
-        print('\nPy_mean:', np.round(self.Py_mean, 3))
-        print('Py_std:', np.round(self.Py_std, 3))
-        print('mean-std ratio:', np.round(self.Py_mean/self.Py_std, 3))
-        
-        print('\nVself_mean:', np.round(self.Vself_mean, 3))
-        print('Vself_std:', np.round(self.Vself_std, 3))
-        print('mean-std ratio:', np.round(self.Vself_mean/self.Vself_std, 3))
-        
-        print('\nVother_mean:', np.round(self.Vother_mean, 3))
-        print('Vother_std:', np.round(self.Vother_std, 3))
-        print('mean-std ratio:', np.round(self.Vother_mean/self.Vother_std, 3))
-        
-        print('\ntheta_mean:', np.round(self.theta_mean, 3))
-        print('theta_std:', np.round(self.theta_std, 3))
-        print('mean-std ratio:', np.round(self.theta_mean/self.theta_std, 3))
-        
-        print('\nNic_mean:', np.round(self.Nic_mean, 3))
-        print('Nic_std:', np.round(self.Nic_std, 3))
-        print('mean-std ratio:', np.round(self.Nic_mean/self.Nic_std, 3))
-        print('-------------------------\n')
-
-
-class PreparedData:
-    """
-    Awareness modelをシミュレーションで適用する際、事前にシミュレーションを行い各説明変数の平均と標準偏差を
-    求める必要がある
-    その際の
-    """
-    def __init__(self, npz_file_path: str):
-        self.data = np.load(npz_file_path)
-        
-        self.deltaTTCP_mean = np.nanmean(self.data['all_deltaTTCP'])
-        self.deltaTTCP_std = np.nanstd(self.data['all_deltaTTCP'])
-        
-        self.Px_mean = np.nanmean(self.data['all_Px'])
-        self.Px_std = np.nanstd(self.data['all_Px'])
-        
-        self.Py_mean = np.nanmean(self.data['all_Py'])
-        self.Py_std = np.nanstd(self.data['all_Py'])
-        
-        self.Vself_mean = np.nanmean(self.data['all_Vself'])
-        self.Vself_std = np.nanstd(self.data['all_Vself'])
-        
-        self.Vother_mean = np.nanmean(self.data['all_Vother'])
-        self.Vother_std = np.nanstd(self.data['all_Vother'])
-        
-        self.theta_mean = np.nanmean(self.data['all_theta'])
-        self.theta_std = np.nanstd(self.data['all_theta'])
-        
-        self.Nic_mean = np.nanmean(self.data['all_Nic'])
-        self.Nic_std = np.nanstd(self.data['all_Nic'])
-    
-    def show_files(self):
-        for i, j in enumerate(self.data.files):
-            print(i, j)
-    
-    def show_params(self):
-        print('\nParameters of pre-run simulation')
         print('-------------------------')
         print('deltaTTCP_mean:', np.round(self.deltaTTCP_mean, 3))
         print('deltaTTCP_std:', np.round(self.deltaTTCP_std, 3))

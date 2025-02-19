@@ -1,29 +1,35 @@
 """
-メモ (02/12)
-スケールを合わせるためにAwareness modelの標準化していない重み係数を教えてもらう必要ありかも？
-deltaTTCPの合計は0になるため、平均が0になる
-現状のPxとPyは絶対座標をもとにしているが、エージェントの向きをy座標とした座標系を構築する必要あり
-また、このときPxは絶対値を取るようにする
-VselfとVotherはノルムを計算しているため、新しく座標系を構築する必要はないと思われる
-classSimulationの関数を一部funcSimulationに移動させる
+メモ (02/19)
+動的回避ベクトルを生成する際、近くと遠くの両方にエージェントがいると、遠くのエージェントに対して生成される回避ベクトルが小さいため、
+平均されると回避ベクトルが小さくなり、ほとんど回避できないという事態が生じる
+
+awareness_modelにおいて、ループ中に値が全て同じになるバグあり
+find_agents_to_focus_with_awareness単体で使用した場合は正常に動くが、move_agents中に呼び出された場合、
+全て値が0になる
+
 """
 # %%
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.animation import ArtistAnimation
+from matplotlib.animation import ArtistAnimation, FuncAnimation
 from dataclasses import dataclass
 from funcSimulation import show
 import funcSimulation as fs
 import time 
 from gc import collect
+from tqdm import tqdm
 
-prepared_data = fs.PreparedData('data_for_awarenss_agt25.npz')
-prepared_data.show_params()
+ped_data = fs.PedData()
+ped_data.show_params()
 
 # %%
 import classSimulation as cs
-steps = 300
+prepared_data = cs.PreparedData('data_for_awarenss_agt25.npz', 2)
+prepared_data.show_params()
+#prepared_data.plot_dist('all_deltaTTCP')
+
+steps = 500
 num_agents = 25
 
 t = cs.Simulation(random_seed=0, 
@@ -31,21 +37,84 @@ t = cs.Simulation(random_seed=0,
                   num_agents=num_agents, 
                   dynamic_percent=1,
                   prepared_data=prepared_data, 
-                  awareness=True)
+                  awareness=0.9)
+#t.move_agents()
 
 t.simulate()
+t.animate_agent_movements(save_as='awareness_agt25_step500.mp4')
+
+# %%
+w = cs.AwarenessWeight()    
+#w.show_params()
+
+num = 10
+awareness_weight = w
+
+fig, ax = plt.subplots(figsize=(8, 8))
+ax.grid()
+ax.set_xlim(0, 500)
+ax.set_ylim(0, 500)
+ax.set_xticks(range(0, 501, 50))
+ax.set_yticks(range(0, 501, 50))
+ax.set_xlabel('Pixel')
+ax.set_ylabel('Pixel')
+
+frames = []
+for step in tqdm(range(200)):
+    artists = []
+    #artists.append(ax.set_title(f'{step}'))    
+    for i in range(t.num_agents):
+        color = 'green' if i == num else 'red'
+        
+        artists.append(ax.scatter(*(t.all_agents[i]['all_pos'][step]*50)+250,
+                                  color=color, alpha=0.6))
+        artists.append(ax.text(x=(t.all_agents[i]['all_pos'][step][0]*50)+250, 
+                               y=(t.all_agents[i]['all_pos'][step][1]*50)+250, 
+                               s=i, size=10))
+        if not step == 0:
+            tminus1_pos = (t.all_agents[i]['all_pos'][step-1]*50)+250
+            artists.append(ax.scatter(*tminus1_pos, color=color, alpha=0.2))
+    
+    awms = []
+    for i in range(t.num_agents):
+        awm = t.all_agents[num]['awareness'][step][i]
+        if awm >= t.awareness:
+            awms.append([i, awm])
+                         
+    my_posx = (t.all_agents[num]['all_pos'][step][0]*50)+250
+    my_posy = (t.all_agents[num]['all_pos'][step][1]*50)+250
+    
+    for i in awms:
+        other_posx = (t.all_agents[i[0]]['all_pos'][step][0]*50)+250
+        other_posy = (t.all_agents[i[0]]['all_pos'][step][1]*50)+250
+        
+        artists.append(ax.arrow(x=my_posx, y=my_posy,
+                                dx=other_posx-my_posx, dy=other_posy-my_posy,
+                                color='tab:blue', alpha=0.5))
+        artists.append(ax.text(x=other_posx-15, y=other_posy-15, 
+                               s=np.round(i[1], 2), size=10, color='blue'))
+    
+    frames.append(artists)
+
+anim = ArtistAnimation(fig, frames, interval=150)
+print('drawing the animation...')
+anim.save('tmp_awm.mp4')
+plt.close() 
+
+# %%
 
 t.move_agents()
+
 aw = t.find_agents_to_focus_with_awareness(0, 0)
 dist_all = t.calc_distance_all_agents()
 vis = t.find_visible_agents(dist_all, 0)
 for i in range(num_agents):
     print(t.dynamic_avoidance(i))
 
-#df_res25 = t.return_results_as_df()
-#t.save_data_for_awareness(save_as='data_for_awarenss_agt25.npz')
+#df_res50 = t.return_results_as_df()
+#t.save_data_for_awareness(save_as='data_for_awarenss_agt50.npz')
 
-t.animate_agent_movements(save_as='awareness.mp4')
+t.animate_agent_movements(save_as='awareness25.mp4')
 
 step = 500
 t.plot_positions(step)
@@ -58,24 +127,4 @@ t.plot_positions_aware(agent, 1, prepared_data, w)
 
 for i in range(num_agents):
     print('agent', i)
-    print(t.awareness_model(agent, i, prepared_data, w, debug=True))
-
-
-# %%
-ped_data = fs.PedData()
-ped_data.show_params()
-
-# key = [all_deltaTTCP, all_Px, all_Py, all_Vself, all_Vother, all_theta, all_Nic]
-def stats(key):
-    print('mean', np.nanmean(prepared_data[key]))
-    print('std', np.nanstd(prepared_data[key]))
-
-def hist(key, bins=20):
-    x = np.where(~np.isnan(prepared_data[key]))[0]
-    plt.hist(x, bins=bins)
-
-pos1 = t.all_agents[agent]['p']
-vel1 = t.all_agents[agent]['v']
-
-pos1 = t.all_agents[agent]['p']
-vel1 = t.all_agents[agent]['v']
+    print(t.awareness_model(agent, i, w, debug=True))

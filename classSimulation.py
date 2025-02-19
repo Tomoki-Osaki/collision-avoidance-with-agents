@@ -40,19 +40,21 @@ FIELD_SIZE = 5
 # 目盛りは最大値5、最小値-5で10目盛り
 # グラフ領域の幅と高さは500pxなので、1pxあたり0.02目盛りとなる
 
-# %% モデルの重みをまとめたデータクラス
-# ブレーキ指標の4係数は標準化したやつを使う
+# %% クラス： BrakeWeight, AwarenessWeight, PreparedData
 @dataclass
 class BrakeWeight:
+    """
+    ブレーキ指標の4係数は標準化したものを使用する
+    """
     a1: float = -5.145 # -0.034298
     b1: float = 3.348 # 3.348394
     c1: float = 4.286 # 4.252840
     d1: float = -13.689 # -0.003423
     
-# awareness modelの重み
 @dataclass
 class AwarenessWeight:
     """
+    awareness modelの重み
     値は標準化されている必要あり
     """
     bias: float = -1.2
@@ -89,6 +91,102 @@ class AwarenessWeight:
         print('theta:', np.round(self.theta, 4))
         print('Nic:', np.round(self.Nic, 4))
         print('-------------------\n')
+        
+class PreparedData:
+    """
+    Awareness modelをシミュレーションで適用する際、事前にシミュレーションを行い各説明変数の平均と標準偏差を
+    求める必要がある
+    その際の平均と標準偏差を格納するクラス
+    """
+    def __init__(self, npz_file_path: str, remove_outliers_deltaTTCP=None):
+        self.data = np.load(npz_file_path)
+        
+        self.deltaTTCP = np.ravel(self.data['all_deltaTTCP'])
+        if remove_outliers_deltaTTCP:
+            self.deltaTTCP = np.ravel(self.deltaTTCP)
+            not_nan, = np.where(~np.isnan(self.deltaTTCP))
+            self.deltaTTCP = self.deltaTTCP[not_nan]
+            self.deltaTTCP = fs.remove_outliers(
+                self.deltaTTCP, sd=remove_outliers_deltaTTCP
+            )
+        self.deltaTTCP_mean = np.nanmean(self.deltaTTCP)
+        self.deltaTTCP_std = np.nanstd(self.deltaTTCP)
+
+        # self.deltaTTCP_mean = np.nanmean(self.data['all_deltaTTCP'])
+        # self.deltaTTCP_std = np.nanstd(self.data['all_deltaTTCP'])
+        
+        self.Px_mean = np.nanmean(self.data['all_Px'])
+        self.Px_std = np.nanstd(self.data['all_Px'])
+        
+        self.Py_mean = np.nanmean(self.data['all_Py'])
+        self.Py_std = np.nanstd(self.data['all_Py'])
+        
+        self.Vself_mean = np.nanmean(self.data['all_Vself'])
+        self.Vself_std = np.nanstd(self.data['all_Vself'])
+        
+        self.Vother_mean = np.nanmean(self.data['all_Vother'])
+        self.Vother_std = np.nanstd(self.data['all_Vother'])
+        
+        self.theta_mean = np.nanmean(self.data['all_theta'])
+        self.theta_std = np.nanstd(self.data['all_theta'])
+        
+        self.Nic_mean = np.nanmean(self.data['all_Nic'])
+        self.Nic_std = np.nanstd(self.data['all_Nic'])
+    
+    
+    def show_files(self) -> None:
+        for i, j in enumerate(self.data.files):
+            print(i, j)
+    
+    
+    def show_params(self) -> None:
+        print('\nParameters of pre-run simulation')
+        print('-------------------------')
+        print('deltaTTCP_mean:', np.round(self.deltaTTCP_mean, 3))
+        print('deltaTTCP_std:', np.round(self.deltaTTCP_std, 3))
+        print('mean-std ratio:', np.round(self.deltaTTCP_mean/self.deltaTTCP_std, 3))
+        
+        print('\nPx_mean:', np.round(self.Px_mean, 3)) 
+        print('Px_std:', np.round(self.Px_std, 3))
+        print('mean-std ratio:', np.round(self.Px_mean/self.Px_std, 3))        
+        
+        print('\nPy_mean:', np.round(self.Py_mean, 3))
+        print('Py_std:', np.round(self.Py_std, 3))
+        print('mean-std ratio:', np.round(self.Py_mean/self.Py_std, 3))
+        
+        print('\nVself_mean:', np.round(self.Vself_mean, 3))
+        print('Vself_std:', np.round(self.Vself_std, 3))
+        print('mean-std ratio:', np.round(self.Vself_mean/self.Vself_std, 3))
+        
+        print('\nVother_mean:', np.round(self.Vother_mean, 3))
+        print('Vother_std:', np.round(self.Vother_std, 3))
+        print('mean-std ratio:', np.round(self.Vother_mean/self.Vother_std, 3))
+        
+        print('\ntheta_mean:', np.round(self.theta_mean, 3))
+        print('theta_std:', np.round(self.theta_std, 3))
+        print('mean-std ratio:', np.round(self.theta_mean/self.theta_std, 3))
+        
+        print('\nNic_mean:', np.round(self.Nic_mean, 3))
+        print('Nic_std:', np.round(self.Nic_std, 3))
+        print('mean-std ratio:', np.round(self.Nic_mean/self.Nic_std, 3))
+        print('-------------------------\n')
+    
+    
+    def plot_dist(self, 
+                  key: Literal['all_deltaTTCP', 'all_Px', 'all_Py', 'all_Vself', 
+                               'all_Vother', 'all_theta', 'all_Nic']) -> None:
+        if key == 'all_deltaTTCP':
+            x = self.deltaTTCP
+        else:
+            x = np.ravel(self.data[key])
+        not_nan, = np.where(~np.isnan(x))
+        x = x[not_nan]
+        fig, ax = plt.subplots(1, 2, figsize=(7, 5))
+        ax[0].violinplot(x, showmeans=True)
+        ax[1].boxplot(x)
+        fig.suptitle(key)
+        plt.show()
+    
     
 # %% シミュレーションに関わるクラス
 class Simulation:
@@ -103,8 +201,8 @@ class Simulation:
                  dynamic_percent: float = 1.0,
                  simple_avoid_vec: float = 0.06, 
                  dynamic_avoid_vec: float = 0.06,
-                 prepared_data: fs.PreparedData = None,
-                 awareness: bool = False,
+                 prepared_data: PreparedData = None,
+                 awareness: bool or float = False,
                  random_seed: int = 0):
         
         self.num_steps = num_steps
@@ -113,7 +211,7 @@ class Simulation:
         self.num_agents = num_agents # エージェント数
         self.view = view # 視野の半径(目盛り) = 50px:エージェント5体分
         self.viewing_angle = viewing_angle # 視野の角度
-        self.goal_vec = goal_vec # ゴールベクトルの大きさ(目盛り)
+        self.goal_vec = goal_vec # ゴールベクトルのs大きさ(目盛り)
         self.dynamic_percent = dynamic_percent # 動的回避を基に回避するエージェントの割合
         self.simple_avoid_vec = simple_avoid_vec # 単純回避での回避ベクトルの大きさ(目盛り)
         self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
@@ -140,10 +238,8 @@ class Simulation:
             pos = np.random.uniform(-FIELD_SIZE, FIELD_SIZE, 2)
             vel = np.random.uniform(-FIELD_SIZE, FIELD_SIZE, 2)
             
-            if n < self.num_dynamic_agent:
-                avoidance = 'dynamic'
-            else:
-                avoidance = 'simple'
+            # 1は動的回避で、0は単純回避
+            avoidance = 1 if n < self.num_dynamic_agent else 0
             
             # 座標(0, 0)から座標velへのベクトルがエージェントの初期速度になる
             # self.all_agentsの1つの要素に1体のエージェントの位置と速度が記録
@@ -161,7 +257,8 @@ class Simulation:
                  'relPy': np.zeros([self.num_steps+1, self.num_agents]),
                  'theta': np.zeros([self.num_steps+1, self.num_agents]),
                  'deltaTTCP': np.zeros([self.num_steps+1, self.num_agents]),
-                 'Nic': np.zeros([self.num_steps+1, self.num_agents])}
+                 'Nic': np.zeros([self.num_steps+1, self.num_agents]),
+                 'awareness': np.zeros([self.num_steps+1, self.num_agents])}
             )
             
         # 初期位置と初期速度をコピー
@@ -227,7 +324,8 @@ class Simulation:
             self.all_agents[i]['all_pos'][self.current_step][1] = pos[1] # y           
             self.all_agents[i]['all_vel'][self.current_step] = vel
             
-            
+        awareness_weights = AwarenessWeight()    
+        
         # 自分と相手の情報を基に計算するパラメータ
         for i in range(self.num_agents):
             for j in range(self.num_agents):
@@ -248,6 +346,8 @@ class Simulation:
                 self.all_agents[i]['Nic'][self.current_step][j] = Nic
                 self.all_agents[i]['all_other_vel'][self.current_step][j] = other_vel
               
+                awm = self.awareness_model(i, j, awareness_weights)
+                self.all_agents[i]['awareness'][self.current_step][j] = awm
                 
     # 2 
     def set_goals(self, agent: dict[str, np.ndarray]) -> np.ndarray: # [float, float]
@@ -380,7 +480,7 @@ class Simulation:
                         awareness_weights: AwarenessWeight,
                         debug: bool = False) -> float:
         """
-        エージェント番号numのawareness modelを計算する(0-1)
+        エージェント番号numの他エージェントに対するawareness modelを計算する(0-1)
         ex. awareness_model(sim, num=10, other_num=15, current_step=20, prepared_data) -> 0.85
         
         説明変数
@@ -451,13 +551,16 @@ class Simulation:
             return val
         
     
-    def find_agents_to_focus_with_awareness(self, num: int, threshold: float = 0.8) -> list[int]:
+    def find_agents_to_focus_with_awareness(self, num: int) -> list[int]:
+        """
+        他エージェントに対してAwarenessモデルを計算し、その値がthresholdより高いエージェント番号をリストにして返す
+        """
         agents_to_focus = [] 
-        w = AwarenessWeight.multiple(1)
         
         for i in range(self.num_agents):
-            aw = self.awareness_model(num, i, w)
-            if aw > threshold:
+            # -1すると適切な値になったが、検証が必要
+            aw = self.all_agents[num]['awareness'][self.current_step-1][i]
+            if aw >= self.awareness:
                 agents_to_focus.append(i)
                 
         return agents_to_focus
@@ -467,7 +570,7 @@ class Simulation:
     def simple_avoidance(self, num: int # エージェントの番号
                          ) -> np.ndarray: # [float, float]
         """
-        単純な回避ベクトルの生成(オリジナル)
+        単純な回避ベクトルの生成
         ex. self.simple_avoidance(num=15) -> array([-0.05, 0.02])
         """
         dist_all = self.calc_distance_all_agents()
@@ -488,22 +591,24 @@ class Simulation:
                 avoid_vec += d # ベクトルの合成
             
         # ベクトルの平均を出す
-        return avoid_vec / len(visible_agents)
+        ave_avoid_vec = avoid_vec / len(visible_agents)
+        
+        return ave_avoid_vec
     
     # 6
     def dynamic_avoidance(self, num: int) -> np.ndarray:
         """
-        動的回避ベクトルの生成(オリジナル)
+        動的回避ベクトルの生成
         ex. self.dynamic_avoidance(num=15) -> array([-0.05, 0.2])
         """
         dist_all = self.calc_distance_all_agents()
-        avoid_vec = np.zeros(2)   # 回避ベクトル
+        avoid_vec = np.zeros(2) # 回避ベクトル
         
-        if self.awareness:
+        if not self.awareness is False:
             visible_agents = self.find_agents_to_focus_with_awareness(num)
         else:
             visible_agents = self.find_visible_agents(dist_all, num)   
-            
+
         if not visible_agents:
             return avoid_vec    
         
@@ -569,9 +674,12 @@ class Simulation:
             
             if not np.isnan(d).all():
                 avoid_vec += d # ベクトルの合成
+                
                     
         # ベクトルの平均を出す
-        return avoid_vec / len(visible_agents)
+        ave_avoid_vec = avoid_vec / len(visible_agents)
+        
+        return ave_avoid_vec
 
 
     # 7 
@@ -742,7 +850,6 @@ class Simulation:
         # 外れ値を除外
         if (completion_time > 200):
             #print("消します")
-            print(completion_time)
             return None
         
         return completion_time
@@ -796,7 +903,6 @@ class Simulation:
 
         if (completion_time > 200 or completion_time < 10):
             #print("消しました")
-            print(completion_time)
             return None
         
         return completion_time
@@ -1024,10 +1130,10 @@ class Simulation:
                 
                 
             # 回避ベクトルを足す
-            if self.all_agents[i]['avoidance'] == 'simple': # 単純回避ベクトルを足す
+            if self.all_agents[i]['avoidance'] == 0: # 単純回避ベクトルを足す
                 self.all_agents[i]['v'] += self.simple_avoidance(i)
                 
-            elif self.all_agents[i]['avoidance'] == 'dynamic': # 動的回避ベクトルを足す
+            elif self.all_agents[i]['avoidance'] == 1: # 動的回避ベクトルを足す
                 self.all_agents[i]['v'] += self.dynamic_avoidance(i)
                 
         
@@ -1091,10 +1197,8 @@ class Simulation:
         ax.set_ylim(-5, 5)
         txt_far = 0.05
         for i in range(self.num_agents):
-            if i == num:
-                color = 'green'
-            else:
-                color = 'blue'
+            color = 'green' if i == num else 'blue'
+            
             ax.scatter(*self.all_agents[i]['all_pos'][step],
                         color=color, alpha=0.6)
             ax.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
@@ -1249,48 +1353,50 @@ class Simulation:
                        'dynamic_percent': self.dynamic_percent,
                        'simple_avoid_vec': self.simple_avoid_vec,
                        'exe_time_second': np.round(self.exe_time, 3),
-                       'exe_time_min': np.round(self.exe_time/60, 3),
-                       'exe_time_hour': np.round(self.exe_time/60/60, 3)}
+                       'exe_time_min': np.round(self.exe_time/60, 3)}
         
         df_result = pd.DataFrame(dict_result, index=[f'seed_{self.random_seed}'])
         
         return df_result
     
     
-    def animate_agent_movements(self, save_as: str = 'simulation.mp4') -> None:
+    def animate_agent_movements(self, save_as: str = 'simulation.mp4', debug=False) -> None:
         plt.rcParams['font.family'] = "MS Gothic"
         plt.rcParams['font.size'] = 14
         
-        data_arr = np.zeros([self.num_steps+1, self.num_agents, 2])
+        # data_arrの形を、フレームとしてアニメーションを回せるように作り変える        
+        data_arr = pd.DataFrame(columns=['Agent', 'Px', 'Py'])
         for step in range(self.num_steps+1):
             for agent in range(self.num_agents):
-                data_arr[step][agent][0] = self.all_agents[agent]['all_pos'][step][0]
-                data_arr[step][agent][1] = self.all_agents[agent]['all_pos'][step][1]
+                px, py = self.all_agents[agent]['all_pos'][step]
+                tmp = pd.DataFrame({'Agent': agent, 'Px': px, 'Py': py}, index=[step])
+                data_arr = pd.concat([data_arr, tmp])
         
         fig, ax = plt.subplots(figsize=(8,8))
+        
         def update(frame):
             ax.cla()
-            for i in range(self.num_agents):
-                pos = frame[i]
-                if i < self.num_dynamic_agent:
-                    if i == 0:
-                        color = 'red'
-                        ax.scatter(*pos, s=40, marker="o", c=color, label='動的回避')
-                    else:
-                        ax.scatter(*pos, s=40, marker="o", c=color)
-                else:
-                    color = 'blue'
-                    if i == self.num_dynamic_agent:
-                        ax.scatter(*pos, s=40, marker="o", c=color, label='単純回避')
-                    else:
-                        ax.scatter(*pos, s=40, marker="o", c=color)
-            ax.set_xlim(-5, 5)
-            ax.set_ylim(-5, 5)
+            for row in frame[1].iterrows():
+                # プロットする際の位置をピクセルに合わせる(*50)
+                x, y = (row[1]['Px']*50)+250, (row[1]['Py']*50)+250
+
+                color = 'red' if row[1]['Agent'] < self.num_dynamic_agent else 'blue'
+                
+                ax.scatter(x, y, color=color)
+                ax.text(x, y, row[1]['Agent'], size=10) # エージェントを番号付きで表示
+                
+            ax.set_xlim(0, 500)
+            ax.set_ylim(0, 500)
+            ax.set_xticks(range(0, 501, 50))
+            ax.set_yticks(range(0, 501, 50))
+            ax.set_xlabel('Pixel')
+            ax.set_ylabel('Pixel')
+            ax.set_title(f'Step: {row[0]}')
             ax.grid()
-            ax.legend(loc='upper left', framealpha=1)
-        
-        anim = FuncAnimation(fig, update, frames=data_arr, interval=self.interval)
+                        
+        anim = FuncAnimation(fig, update, frames=data_arr.groupby(data_arr.index), interval=self.interval)
         anim.save(save_as)
+        plt.close()
 
 
     def save_data_for_awareness(self, 
