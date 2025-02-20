@@ -42,7 +42,7 @@ FIELD_SIZE = 5
 
 # %% クラス： BrakeWeight, AwarenessWeight, PreparedData
 @dataclass
-class BrakeWeight(frozen=True):
+class BrakeWeight():
     """
     ブレーキ指標の4係数は標準化したものを使用する
     """
@@ -51,8 +51,9 @@ class BrakeWeight(frozen=True):
     c1: float = 4.286 # 4.252840
     d1: float = -13.689 # -0.003423
     
+    
 @dataclass
-class AwarenessWeight(frozen=True):
+class AwarenessWeight():
     """
     awareness modelの重み
     値は標準化されている必要あり
@@ -91,6 +92,7 @@ class AwarenessWeight(frozen=True):
         print('theta:', np.round(self.theta, 4))
         print('Nic:', np.round(self.Nic, 4))
         print('-------------------\n')
+        
         
 class PreparedData:
     """
@@ -187,6 +189,18 @@ class PreparedData:
         fig.suptitle(key)
         plt.show()
     
+    
+    @staticmethod
+    def prepare_data(num_agents, seed, remove_outliers_deltaTTCP=None):
+        sim = Simulation(num_agents=num_agents, random_seed=seed)
+        print('\nPreparing data for awareness model...\n')
+        sim.simulate()
+        sim.save_data_for_awareness(save_as='prepared_data.npz')
+        prepared_data = PreparedData(npz_file_path='prepared_data.npz', 
+                                     remove_outliers_deltaTTCP=remove_outliers_deltaTTCP)
+        
+        return prepared_data
+        
     
 # %% シミュレーションに関わるクラス
 class Simulation:
@@ -331,10 +345,13 @@ class Simulation:
             for j in range(self.num_agents):
                 theta = self.calc_theta(i, j)
                 relP = self.calc_relative_positions(i, j, theta)
-                if relP is None:
+                if relP is None or theta > 90:
                     px = py = None
+                    theta = None
                 else:
                     px, py = relP
+                # if theta is not None and theta > 90:
+                #     py = -py
                 deltaTTCP = self.calc_deltaTTCP(i, j)
                 Nic = self.calc_Nic(i, j)
                 other_vel = np.linalg.norm(self.all_agents[j]['v'])
@@ -346,8 +363,9 @@ class Simulation:
                 self.all_agents[i]['Nic'][self.current_step][j] = Nic
                 self.all_agents[i]['all_other_vel'][self.current_step][j] = other_vel
               
-                awm = self.awareness_model(i, j, awareness_weights)
-                self.all_agents[i]['awareness'][self.current_step][j] = awm
+                if self.prepared_data:
+                    awm = self.awareness_model(i, j, awareness_weights)
+                    self.all_agents[i]['awareness'][self.current_step][j] = awm
                 
     # 2 
     def set_goals(self, agent: dict[str, np.ndarray]) -> np.ndarray: # [float, float]
@@ -520,7 +538,7 @@ class Simulation:
         
         deltaTTCP = (agent['deltaTTCP'][self.current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
         if np.isnan(deltaTTCP):
-            deltaTTCP = 0
+            return 0
         Px = (agent['relPx'][self.current_step][other_num] - Px_mean) / Px_std
         Py = (agent['relPy'][self.current_step][other_num] - Py_mean) / Py_std
         Vself = (agent['all_vel'][self.current_step] - Vself_mean) / Vself_std
@@ -781,8 +799,6 @@ class Simulation:
         y2 = a4 * x2 + b4
         cp2 = np.array([x2, y2])
         relPy = np.linalg.norm(cp2 - arr2_next)
-        if theta > 90:
-            return None
         
         return (relPx, relPy)
 
