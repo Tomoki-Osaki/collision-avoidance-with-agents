@@ -26,20 +26,24 @@ ped_data.show_params()
 
 # %% debug simulation
 import classSimulation as cs
-#prepared_data = cs.PreparedData('data_for_awarenss_agt25.npz', 2)
-prepared_data = cs.PreparedData('tmp_awareness.npz', 2)
-#prepared_data = cs.PreparedData.prepare_data(num_agents=25, seed=0, remove_outliers_deltaTTCP=2)
+prepared_data = cs.PreparedData('data_for_awarenss_agt25.npz', remove_outliers=2)
+prepared_data = cs.PreparedData('tmp_awareness.npz', remove_outliers=2)
+prepared_data = cs.PreparedData.prepare_data(num_agents=50, seed=1, remove_outliers=2,
+                                             save_file_as='data_for_awareness_agt50.npz')
 prepared_data.show_params()
-prepared_data.plot_dist('all_deltaTTCP')
+prepared_data.plot_dist('Py')
 
+# %%
+w = cs.AwarenessWeight()
 steps = 500
-num_agents = 25
+num_agents = 50
 
 t = cs.Simulation(random_seed=0, 
                   num_steps=steps, 
                   num_agents=num_agents, 
                   dynamic_percent=1,
-                  prepared_data=prepared_data, 
+                  prepared_data=prepared_data,
+                  awareness_weight=w,
                   awareness=0.9)
 #t.move_agents()
 
@@ -51,113 +55,15 @@ t.simulate()
 
 # %%
 t.animate_agent_movements(save_as='tmp.mp4')
-res25 = t.return_results_as_df()
+res50 = t.return_results_as_df()
 
 # %%
-w = cs.AwarenessWeight()
 for i in range(25):
     print(i, t.awareness_model(11, i, w, debug=True))
 
-# %% adjust the delta TTCP
-agent1 = t.all_agents[13]
-agent2 = t.all_agents[18]
-# 21 14
-step = 10
-step_tminus1 = step - 1
-posx1, posy1 = agent1['all_pos'][step]
-posx1_tminus1, posy1_tminus1 = agent1['all_pos'][step_tminus1]
-posx2, posy2 = agent2['all_pos'][step]
-posx2_tminus1, posy2_tminus1 = agent2['all_pos'][step_tminus1]
-
-# line equation and slope
-# y = mx + b
-m1 = (posy1 - posy1_tminus1) / (posx1 - posx1_tminus1)
-b1 = posy1_tminus1 - m1 * posx1_tminus1
-
-m2 = (posy2 - posy2_tminus1) / (posx2 - posx2_tminus1)
-b2 = posy2_tminus1 - m2 * posx2_tminus1
-
-x1 = np.linspace(0, 5)
-x2 = np.linspace(-5, 2)
-
-# %% plot
-fig, ax = plt.subplots()
-ax.scatter(posx1, posy1, c='b')
-ax.text(posx1+0.05, posy1, s=f'[{posx1:.1f},{posy1:.1f}]')
-
-ax.scatter(posx2, posy2, c='r')
-ax.text(posx2+0.05, posy2, s=f'[{posx2:.1f},{posy2:.1f}]')
-
-ax.scatter(posx1_tminus1, posy1_tminus1, c='b', alpha=.3)
-ax.scatter(posx2_tminus1, posy2_tminus1, c='r', alpha=.3)
-
-line1_b = b1 + t.agent_size
-line2_b = b1 - t.agent_size
-line3_b = b2 + t.agent_size
-line4_b = b2 - t.agent_size
-line1_m = line2_m = m1
-line3_m = line4_m = m2
-
-# y = ax + b
-line1 = line1_m * x1 + line1_b
-line2 = line2_m * x1 + line2_b
-line3 = line3_m * x2 + line3_b
-line4 = line4_m * x2 + line4_b
-
-x13 = -( (line1_b - line3_b) / (line1_m - line3_m) )
-y13 = line1_m * x13 + line1_b
-
-x14 = -( (line1_b - line4_b) / (line1_m - line4_m) )
-y14 = line1_m * x14 + line1_b
-
-x23 = -( (line2_b - line3_b) / (line2_m - line3_m) )
-y23 = line2_m * x23 + line2_b
-
-x24 = -( (line2_b - line4_b) / (line2_m - line4_m) )
-y24 = line2_m * x24 + line2_b
-
-cps = [np.array([x13, y13]), np.array([x14, y14]), 
-       np.array([x23, y23]), np.array([x24, y24])]
-
-agent1_pos = np.array([posx1, posy1])
-agent2_pos = np.array([posx2, posy2])
-
-min_dist = None
-cp = None
-for value in cps:
-    agent1_to_cp = np.linalg.norm(agent1_pos - value)
-    agent2_to_cp = np.linalg.norm(agent2_pos - value)
-    sum_dist = agent1_to_cp + agent2_to_cp
-
-    if not min_dist or sum_dist < min_dist:
-        min_dist = sum_dist
-        cp = value
-
-    
-ax.set_xlim(-6, 6)
-ax.set_ylim(-20, 2)
-
-#ax.plot(x1, m1*x1+b1, c='b', alpha=0.3)
-ax.plot(x1, m1*x1+(b1+0.1), c='b', alpha=0.6, label='line1')
-ax.plot(x1, m1*x1+(b1-0.1), c='indigo', alpha=0.3, label='line2')
-
-#ax.plot(x2, m2*x2+b2, c='r', alpha=0.3)
-ax.plot(x2, m2*x2+(b2+0.1), c='r', alpha=0.6, label='line3')
-ax.plot(x2, m2*x2+(b2-0.1), c='brown', alpha=0.3, label='line4')
-
-ax.scatter(x13, y13, label='cp13')
-ax.scatter(x14, y14, label='cp14')
-ax.scatter(x23, y23, label='cp23')
-ax.scatter(x24, y24, label='cp24')
-
-ax.grid()
-ax.legend()
-plt.show()
-
-
 # %% animate movements
 #w.show_params()
-num = 8
+num = 10
 
 fig, ax = plt.subplots(figsize=(8, 8))
 ax.grid()
@@ -167,22 +73,22 @@ ax.set_xticks(range(0, 501, 50))
 ax.set_yticks(range(0, 501, 50))
 ax.set_xlabel('Pixel')
 ax.set_ylabel('Pixel')
-
+s = 45
 frames = []
-for step in tqdm(range(200)):
+for step in tqdm(range(500)):
     artists = []
     #artists.append(ax.set_title(f'{step}'))    
     for i in range(t.num_agents):
         color = 'green' if i == num else 'red'
         
         artists.append(ax.scatter(*(t.all_agents[i]['all_pos'][step]*50)+250,
-                                  color=color, alpha=0.6))
+                                  color=color, alpha=0.6, s=s))
         artists.append(ax.text(x=(t.all_agents[i]['all_pos'][step][0]*50)+250, 
                                y=(t.all_agents[i]['all_pos'][step][1]*50)+250, 
                                s=i, size=10))
         if not step == 0:
             tminus1_pos = (t.all_agents[i]['all_pos'][step-1]*50)+250
-            artists.append(ax.scatter(*tminus1_pos, color=color, alpha=0.2))
+            artists.append(ax.scatter(*tminus1_pos, color=color, alpha=0.2, s=s))
     
     awms = []
     for i in range(t.num_agents):
@@ -206,6 +112,6 @@ for step in tqdm(range(200)):
     frames.append(artists)
 
 anim = ArtistAnimation(fig, frames, interval=150)
-print('drawing the animation...')
-anim.save('tmp25_10.mp4')
+print('\ndrawing the animation...')
+anim.save('tmp_awareness.mp4')
 plt.close() 

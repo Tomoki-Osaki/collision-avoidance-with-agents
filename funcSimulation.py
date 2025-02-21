@@ -277,9 +277,19 @@ def show(obj):
         print(i, j)
         
         
-def remove_outliers(data, sd):
-    return data[abs(data - np.nanmean(data)) < sd * np.nanstd(data)]
-        
+def remove_outliers_and_nan(data, sd=None):
+    old_data = data
+    not_nan, = np.where(~np.isnan(old_data))
+    not_nan_data = old_data[not_nan]
+    if sd is None:
+        return not_nan_data
+    
+    new_data = not_nan_data[
+        abs(not_nan_data - np.nanmean(not_nan_data)) < sd * np.nanstd(not_nan_data)
+    ]
+    
+    return new_data
+
 
 @dataclass
 class PedData:
