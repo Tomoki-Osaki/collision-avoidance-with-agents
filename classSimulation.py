@@ -42,7 +42,7 @@ FIELD_SIZE = 5
 
 # %% クラス： BrakeWeight, AwarenessWeight, PreparedData
 @dataclass
-class BrakeWeight(frozen=True):
+class BrakeWeight():
     """
     ブレーキ指標の4係数は標準化したものを使用する
     """
@@ -51,8 +51,9 @@ class BrakeWeight(frozen=True):
     c1: float = 4.286 # 4.252840
     d1: float = -13.689 # -0.003423
     
+    
 @dataclass
-class AwarenessWeight(frozen=True):
+class AwarenessWeight():
     """
     awareness modelの重み
     値は標準化されている必要あり
@@ -92,46 +93,45 @@ class AwarenessWeight(frozen=True):
         print('Nic:', np.round(self.Nic, 4))
         print('-------------------\n')
         
+        
 class PreparedData:
     """
     Awareness modelをシミュレーションで適用する際、事前にシミュレーションを行い各説明変数の平均と標準偏差を
     求める必要がある
     その際の平均と標準偏差を格納するクラス
     """
-    def __init__(self, npz_file_path: str, remove_outliers_deltaTTCP=None):
+    def __init__(self, npz_file_path: str, remove_outliers=None):
         self.data = np.load(npz_file_path)
         
         self.deltaTTCP = np.ravel(self.data['all_deltaTTCP'])
-        if remove_outliers_deltaTTCP:
-            self.deltaTTCP = np.ravel(self.deltaTTCP)
-            not_nan, = np.where(~np.isnan(self.deltaTTCP))
-            self.deltaTTCP = self.deltaTTCP[not_nan]
-            self.deltaTTCP = fs.remove_outliers(
-                self.deltaTTCP, sd=remove_outliers_deltaTTCP
-            )
-        self.deltaTTCP_mean = np.nanmean(self.deltaTTCP)
-        self.deltaTTCP_std = np.nanstd(self.deltaTTCP)
-
-        # self.deltaTTCP_mean = np.nanmean(self.data['all_deltaTTCP'])
-        # self.deltaTTCP_std = np.nanstd(self.data['all_deltaTTCP'])
+        self.Px = np.ravel(self.data['all_Px'])
+        self.Py = np.ravel(self.data['all_Py'])
+        self.Vself = np.ravel(self.data['all_Vself'])
+        self.Vother = np.ravel(self.data['all_Vother'])
+        self.theta = np.ravel(self.data['all_theta'])
+        self.Nic = np.ravel(self.data['all_Nic'])
+                
+        self.deltaTTCP = fs.remove_outliers_and_nan(self.deltaTTCP, sd=remove_outliers)
+        self.Px = fs.remove_outliers_and_nan(self.Px, sd=remove_outliers)
+        self.Py = fs.remove_outliers_and_nan(self.Py, sd=remove_outliers)
+        self.Vself = fs.remove_outliers_and_nan(self.Vself, sd=remove_outliers)
+        self.Vother = fs.remove_outliers_and_nan(self.Vother, sd=remove_outliers)
+        self.theta = fs.remove_outliers_and_nan(self.theta, sd=remove_outliers)
+        self.Nic = fs.remove_outliers_and_nan(self.Nic, sd=remove_outliers)
+            
+        self.deltaTTCP_mean, self.deltaTTCP_std = np.mean(self.deltaTTCP), np.std(self.deltaTTCP)
         
-        self.Px_mean = np.nanmean(self.data['all_Px'])
-        self.Px_std = np.nanstd(self.data['all_Px'])
+        self.Px_mean, self.Px_std = np.mean(self.Px), np.std(self.Px)
         
-        self.Py_mean = np.nanmean(self.data['all_Py'])
-        self.Py_std = np.nanstd(self.data['all_Py'])
+        self.Py_mean, self.Py_std = np.mean(self.Py), np.std(self.Py)
         
-        self.Vself_mean = np.nanmean(self.data['all_Vself'])
-        self.Vself_std = np.nanstd(self.data['all_Vself'])
+        self.Vself_mean, self.Vself_std = np.mean(self.Vself), np.std(self.Vself)
         
-        self.Vother_mean = np.nanmean(self.data['all_Vother'])
-        self.Vother_std = np.nanstd(self.data['all_Vother'])
+        self.Vother_mean, self.Vother_std = np.mean(self.Vother), np.std(self.Vother)
         
-        self.theta_mean = np.nanmean(self.data['all_theta'])
-        self.theta_std = np.nanstd(self.data['all_theta'])
+        self.theta_mean, self.theta_std = np.mean(self.theta), np.std(self.theta)
         
-        self.Nic_mean = np.nanmean(self.data['all_Nic'])
-        self.Nic_std = np.nanstd(self.data['all_Nic'])
+        self.Nic_mean, self.Nic_std = np.mean(self.Nic), np.std(self.Nic)
     
     
     def show_files(self) -> None:
@@ -173,20 +173,34 @@ class PreparedData:
     
     
     def plot_dist(self, 
-                  key: Literal['all_deltaTTCP', 'all_Px', 'all_Py', 'all_Vself', 
-                               'all_Vother', 'all_theta', 'all_Nic']) -> None:
-        if key == 'all_deltaTTCP':
-            x = self.deltaTTCP
-        else:
-            x = np.ravel(self.data[key])
-        not_nan, = np.where(~np.isnan(x))
-        x = x[not_nan]
+                  key: Literal['deltaTTCP', 'Px', 'Py', 'Vself', 
+                               'Vother', 'theta', 'Nic']) -> None:
+        if key == 'deltaTTCP': x = self.deltaTTCP
+        elif key == 'Px': x = self.Px
+        elif key == 'Py': x = self.Py    
+        elif key == 'Vself': x = self.Vself
+        elif key == 'Vother': x = self.Vother
+        elif key == 'theta': x = self.theta
+        elif key == 'Nic': x = self.Nic
+
         fig, ax = plt.subplots(1, 2, figsize=(7, 5))
         ax[0].violinplot(x, showmeans=True)
         ax[1].boxplot(x)
         fig.suptitle(key)
         plt.show()
     
+    
+    @staticmethod
+    def prepare_data(num_agents, seed, remove_outliers=None, save_file_as='tmp.npz'):
+        sim = Simulation(num_agents=num_agents, random_seed=seed)
+        print('\nPreparing data for awareness model...')
+        sim.simulate()
+        sim.save_data_for_awareness(save_as=save_file_as)
+        print(f'\ntemporary data files is [{save_file_as}]')
+        prepared_data = PreparedData(save_file_as, remove_outliers)
+        
+        return prepared_data
+        
     
 # %% シミュレーションに関わるクラス
 class Simulation:
@@ -202,6 +216,7 @@ class Simulation:
                  simple_avoid_vec: float = 0.06, 
                  dynamic_avoid_vec: float = 0.06,
                  prepared_data: PreparedData = None,
+                 awareness_weight: AwarenessWeight = None,
                  awareness: bool or float = False,
                  random_seed: int = 0):
         
@@ -217,8 +232,9 @@ class Simulation:
         self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
         self.random_seed = random_seed
         self.prepared_data = prepared_data
+        self.awareness_weight = awareness_weight
         self.awareness = awareness
-
+        
         self.all_agents = [] # 全エージェントの座標を記録
         self.all_agents2 = [] # ゴールの計算用
         self.first_agent = [] # 初期位置記録用
@@ -298,6 +314,7 @@ class Simulation:
         self.current_step = 0
         self.update_parameters()
     
+    
     def disp_info(self) -> None:
         print('\nシミュレーションの環境情報')
         print('-----------------------------')
@@ -306,6 +323,7 @@ class Simulation:
         print('エージェントの視野角度:', self.viewing_angle)
         print('動的回避エージェントの割合:', self.dynamic_percent)
         print('単純回避の回避量:', self.simple_avoid_vec*50, 'px')
+        print('Awareness:', self.awareness)
         print('ランダムシード:', self.random_seed)
         print('-----------------------------\n')
     
@@ -323,22 +341,20 @@ class Simulation:
             self.all_agents[i]['all_pos'][self.current_step][0] = pos[0] # x
             self.all_agents[i]['all_pos'][self.current_step][1] = pos[1] # y           
             self.all_agents[i]['all_vel'][self.current_step] = vel
-            
-        awareness_weights = AwarenessWeight()    
         
         # 自分と相手の情報を基に計算するパラメータ
         for i in range(self.num_agents):
             for j in range(self.num_agents):
+                deltaTTCP = self.calc_deltaTTCP(i, j)
+                Nic = self.calc_Nic(i, j)
+                other_vel = np.linalg.norm(self.all_agents[j]['v'])
                 theta = self.calc_theta(i, j)
                 relP = self.calc_relative_positions(i, j, theta)
                 if relP is None:
                     px = py = None
                 else:
                     px, py = relP
-                deltaTTCP = self.calc_deltaTTCP(i, j)
-                Nic = self.calc_Nic(i, j)
-                other_vel = np.linalg.norm(self.all_agents[j]['v'])
-                
+                    
                 self.all_agents[i]['relPx'][self.current_step][j] = px
                 self.all_agents[i]['relPy'][self.current_step][j] = py     
                 self.all_agents[i]['theta'][self.current_step][j] = theta
@@ -346,8 +362,9 @@ class Simulation:
                 self.all_agents[i]['Nic'][self.current_step][j] = Nic
                 self.all_agents[i]['all_other_vel'][self.current_step][j] = other_vel
               
-                awm = self.awareness_model(i, j, awareness_weights)
-                self.all_agents[i]['awareness'][self.current_step][j] = awm
+                if self.prepared_data:
+                    awm = self.awareness_model(i, j, self.awareness_weight)
+                    self.all_agents[i]['awareness'][self.current_step][j] = awm
                 
     # 2 
     def set_goals(self, agent: dict[str, np.ndarray]) -> np.ndarray: # [float, float]
@@ -520,7 +537,7 @@ class Simulation:
         
         deltaTTCP = (agent['deltaTTCP'][self.current_step][other_num] - deltaTTCP_mean) / deltaTTCP_std
         if np.isnan(deltaTTCP):
-            deltaTTCP = 0
+            return 0
         Px = (agent['relPx'][self.current_step][other_num] - Px_mean) / Px_std
         Py = (agent['relPy'][self.current_step][other_num] - Py_mean) / Py_std
         Vself = (agent['all_vel'][self.current_step] - Vself_mean) / Vself_std
@@ -737,7 +754,7 @@ class Simulation:
     def calc_relative_positions(self, 
                                 num: int, 
                                 other_num: int,
-                                theta: float | None) -> tuple or None:
+                                theta: float | None) -> np.ndarray or None:
         """
         エージェントnumから見たエージェントother_numの相対位置のxy座標を返す
         """
@@ -781,10 +798,14 @@ class Simulation:
         y2 = a4 * x2 + b4
         cp2 = np.array([x2, y2])
         relPy = np.linalg.norm(cp2 - arr2_next)
-        if theta > 90:
-            return None
         
-        return (relPx, relPy)
+        # # 自分の後ろにいるエージェントに対しての距離にはペナルティをつける
+        # if theta > 90:
+        #     relPy *= 2
+            
+        relP = np.array([relPx, relPy])
+        
+        return relP
 
 
     # 11
@@ -1175,14 +1196,15 @@ class Simulation:
         ax.set_xlim(-5, 5)
         ax.set_ylim(-5, 5)
         txt_far = 0.05
+        s = 45
         for i in range(self.num_agents):
             ax.scatter(*self.all_agents[i]['all_pos'][step],
-                        color='blue', alpha=0.6)
+                        color='blue', alpha=0.6, s=s)
             ax.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
                                self.all_agents[i]['all_pos'][step][1]+txt_far))
             if not step == 0:
                 tminus1_pos = self.all_agents[i]['all_pos'][step-1]
-                ax.scatter(*tminus1_pos, color='blue', alpha=0.2)
+                ax.scatter(*tminus1_pos, color='blue', alpha=0.2, s=s)
         
         ax.grid()
         plt.show()
@@ -1196,16 +1218,17 @@ class Simulation:
         ax.set_xlim(-5, 5)
         ax.set_ylim(-5, 5)
         txt_far = 0.05
+        s = 45
         for i in range(self.num_agents):
             color = 'green' if i == num else 'blue'
             
             ax.scatter(*self.all_agents[i]['all_pos'][step],
-                        color=color, alpha=0.6)
+                        color=color, alpha=0.6, s=s)
             ax.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
                                self.all_agents[i]['all_pos'][step][1]+txt_far))
             if not step == 0:
                 tminus1_pos = self.all_agents[i]['all_pos'][step-1]
-                ax.scatter(*tminus1_pos, color=color, alpha=0.2)
+                ax.scatter(*tminus1_pos, color=color, alpha=0.2, s=s)
         
         awms = []
         for i in range(self.num_agents):
@@ -1376,13 +1399,14 @@ class Simulation:
         
         def update(frame):
             ax.cla()
+            
             for row in frame[1].iterrows():
                 # プロットする際の位置をピクセルに合わせる(*50)
                 x, y = (row[1]['Px']*50)+250, (row[1]['Py']*50)+250
 
-                color = 'red' if row[1]['Agent'] < self.num_dynamic_agent else 'blue'
+                color = 'red' if row[1]['Agent'] < self.num_dynamic_agent else 'blue'                
                 
-                ax.scatter(x, y, color=color)
+                ax.scatter(x, y, color=color, s=45)
                 ax.text(x, y, row[1]['Agent'], size=10) # エージェントを番号付きで表示
                 
             ax.set_xlim(0, 500)
@@ -1395,6 +1419,7 @@ class Simulation:
             ax.grid()
                         
         anim = FuncAnimation(fig, update, frames=data_arr.groupby(data_arr.index), interval=self.interval)
+        print('\ndrawing the animation...')
         anim.save(save_as)
         plt.close()
 

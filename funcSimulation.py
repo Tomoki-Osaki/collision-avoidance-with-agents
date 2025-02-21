@@ -68,6 +68,45 @@ def is_point_on_segment(cp: np.ndarray, pos_t: np.ndarray, extended_end: np.ndar
 
     return False
 
+# def calc_crossing_point(pos1_tminus1: np.ndarray, 
+#                         pos1: np.ndarray, 
+#                         pos2_tminus1: np.ndarray, 
+#                         pos2: np.ndarray) -> np.ndarray or None:
+    
+#     posx1_tminus1, posy1_tminus1 = pos1_tminus1
+#     posx1, posy1 = pos1
+#     posx2_tminus1, posy2_tminus1 = pos2_tminus1
+#     posx2, posy2 = pos2
+    
+#     # 傾きと切片を求める
+#     m1 = (posy1 - posy1_tminus1) / (posx1 - posx1_tminus1)
+#     b1 = posy1_tminus1 - m1 * posx1_tminus1
+    
+#     m2 = (posy2 - posy2_tminus1) / (posx2 - posx2_tminus1)
+#     b2 = posy2_tminus1 - m2 * posx2_tminus1
+    
+#     # 直線が平行な場合、交点は存在しない
+#     if m1 == m2:
+#         return None
+    
+#     # 交点の x 座標を求める
+#     x_intersect = (b2 - b1) / (m1 - m2)
+#     # 交点の y 座標を求める
+#     y_intersect = m1 * x_intersect + b1
+    
+#     crossing_point = np.array([x_intersect, y_intersect])
+    
+#     # crossing_pointが、2つのエージェントの現在値を始点として延長した線分に含まれている場合、crossing_pointを返す
+#     extended_end1 = extend_line(pos1_tminus1, pos1, length=5)
+#     is_cp_on_seg1 = is_point_on_segment(crossing_point, pos1, extended_end1)
+    
+#     extended_end2 = extend_line(pos2_tminus1, pos2, length=5)
+#     is_cp_on_seg2 = is_point_on_segment(crossing_point, pos2, extended_end2)
+
+#     if is_cp_on_seg1 and is_cp_on_seg2:    
+#         return crossing_point
+#     else:
+#         return None
 
 def calc_crossing_point(pos1_tminus1: np.ndarray, 
                         pos1: np.ndarray, 
@@ -90,12 +129,42 @@ def calc_crossing_point(pos1_tminus1: np.ndarray,
     if m1 == m2:
         return None
     
-    # 交点の x 座標を求める
-    x_intersect = (b2 - b1) / (m1 - m2)
-    # 交点の y 座標を求める
-    y_intersect = m1 * x_intersect + b1
+    agent_size = 0.1
+    line1_b = b1 + agent_size
+    line2_b = b1 - agent_size
+    line3_b = b2 + agent_size
+    line4_b = b2 - agent_size
+    line1_m = line2_m = m1
+    line3_m = line4_m = m2
     
-    crossing_point = np.array([x_intersect, y_intersect])
+    x13 = -( (line1_b - line3_b) / (line1_m - line3_m) )
+    y13 = line1_m * x13 + line1_b
+
+    x14 = -( (line1_b - line4_b) / (line1_m - line4_m) )
+    y14 = line1_m * x14 + line1_b
+
+    x23 = -( (line2_b - line3_b) / (line2_m - line3_m) )
+    y23 = line2_m * x23 + line2_b
+
+    x24 = -( (line2_b - line4_b) / (line2_m - line4_m) )
+    y24 = line2_m * x24 + line2_b
+
+    cps = [np.array([x13, y13]), np.array([x14, y14]), 
+           np.array([x23, y23]), np.array([x24, y24])]
+    
+    agent1_pos = np.array([posx1, posy1])
+    agent2_pos = np.array([posx2, posy2])
+
+    min_dist = None
+    crossing_point = None
+    for value in cps:
+        agent1_to_cp = np.linalg.norm(agent1_pos - value)
+        agent2_to_cp = np.linalg.norm(agent2_pos - value)
+        sum_dist = agent1_to_cp + agent2_to_cp
+
+        if not min_dist or sum_dist < min_dist:
+            min_dist = sum_dist
+            crossing_point = value
     
     # crossing_pointが、2つのエージェントの現在値を始点として延長した線分に含まれている場合、crossing_pointを返す
     extended_end1 = extend_line(pos1_tminus1, pos1, length=5)
@@ -107,8 +176,8 @@ def calc_crossing_point(pos1_tminus1: np.ndarray,
     if is_cp_on_seg1 and is_cp_on_seg2:    
         return crossing_point
     else:
-        return None
-    
+        return None    
+
 
 def calc_deltaTTCP(pos1: np.ndarray, vel1: np.ndarray, 
                    pos2: np.ndarray, vel2: np.ndarray) -> float or None:
@@ -208,9 +277,19 @@ def show(obj):
         print(i, j)
         
         
-def remove_outliers(data, sd):
-    return data[abs(data - np.nanmean(data)) < sd * np.nanstd(data)]
-        
+def remove_outliers_and_nan(data, sd=None):
+    old_data = data
+    not_nan, = np.where(~np.isnan(old_data))
+    not_nan_data = old_data[not_nan]
+    if sd is None:
+        return not_nan_data
+    
+    new_data = not_nan_data[
+        abs(not_nan_data - np.nanmean(not_nan_data)) < sd * np.nanstd(not_nan_data)
+    ]
+    
+    return new_data
+
 
 @dataclass
 class PedData:
