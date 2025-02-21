@@ -4,11 +4,52 @@ import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = "MS Gothic"
 plt.rcParams['font.size'] = 18
 
-
 # %%
 folder = 'シミュレーション結果_コピー/'    
 folder = 'simulation_results/'
 
+# %% angle 180
+df25_ang180 = pd.read_csv(folder + 'agt25_angle180.csv')
+df25_ang180.time.mean() # 19.33
+df25_ang180.collision.mean() # 1.61
+
+df50_ang180 = pd.read_csv(folder + 'agt50_angle180.csv')
+df50_ang180.time.mean() # 21.40
+df50_ang180.collision.mean() # 4.96
+
+
+df25_aw = pd.read_csv(folder + 'agt25_dynmic_awareness.csv')
+df25_aw.time.mean() # 17.25
+df25_aw.collision.mean() # 9.2
+
+df50_aw = pd.read_csv(folder + 'agt50_dynmic_awareness.csv')
+df50_aw.time.mean() # 17.63
+df50_aw.collision.mean() # 22.68
+
+
+df25_dyn = pd.read_csv(folder + 'agt25_avoidvec10px_dynper010.csv')
+df25_dyn.time.mean() # 18.24
+df25_dyn.collision.mean() # 1.49
+
+df50_dyn = pd.read_csv(folder + 'agt50_avoidvec10px_dynper010.csv')
+df50_dyn.time.mean() # 18.81
+df50_dyn.collision.mean() # 6.14
+
+plt.scatter(df25_ang180.time.mean(), df25_ang180.collision.mean(), label='df25_ang180')
+plt.scatter(df25_dyn.time.mean(), df25_dyn.collision.mean(), label='df25_dyn')
+plt.scatter(df25_aw.time.mean(), df25_aw.collision.mean(), label='df25_aw')
+plt.legend()
+plt.grid()
+plt.title('Agent 25')
+
+plt.scatter(df50_ang180.time.mean(), df50_ang180.collision.mean(), label='df50_ang180')
+plt.scatter(df50_dyn.time.mean(), df50_dyn.collision.mean(), label='df50_dyn')
+plt.scatter(df50_aw.time.mean(), df50_aw.collision.mean(), label='df50_aw')
+plt.legend()
+plt.grid()
+plt.title('Agent 50')
+
+# %% functions 
 def merge_result_seed_files(folder: str, agent: int, avoid_vec: float):
     """
     create one result dataframe which contains the simulation results of all different seeds.
