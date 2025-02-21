@@ -1,5 +1,5 @@
 """
-メモ (02/20)
+メモ (02/21)
 動的回避ベクトルを生成する際、近くと遠くの両方にエージェントがいると、遠くのエージェントに対して生成される回避ベクトルが小さいため、
 平均されると回避ベクトルが小さくなり、ほとんど回避できないという事態が生じる
 ΔTTCPの計算について、エージェントの大きさを考慮し、awarenessの計算時は、ΔTTCPがnanの相手はawarenessを0にする方が良いかも
@@ -8,6 +8,7 @@
 もし90度以上のΘの値も使うなら、ロジスティクス回帰計算時のPyも負の値を認める必要がある
 人としての想定なら自分の後ろ側の歩行者のデータは用いないが、360度センサ付きのロボットの想定では、後ろ側のデータも使える
 awareness_modelの引数debug=Trueにすることでロジスティクス回帰計算時の項の値が確認できる
+ケース事例を検討する
 """
 # %%
 import numpy as np
@@ -26,19 +27,19 @@ ped_data.show_params()
 
 # %% debug simulation
 import classSimulation as cs
-prepared_data = cs.PreparedData('data_for_awarenss_agt25.npz', remove_outliers=2)
-prepared_data = cs.PreparedData('tmp_awareness.npz', remove_outliers=2)
-prepared_data = cs.PreparedData.prepare_data(num_agents=50, seed=1, remove_outliers=2,
-                                             save_file_as='data_for_awareness_agt50.npz')
+num_agents = 50
+
+prepared_data = cs.PreparedData('data_for_awareness_agt50.npz', remove_outliers=2)
+prepared_data = cs.PreparedData.prepare_data(num_agents=num_agents, seed=1, remove_outliers=2,
+                                             save_file_as='data_for_awareness_agt25.npz')
 prepared_data.show_params()
-prepared_data.plot_dist('Py')
+prepared_data.plot_dist('Vother')
 
 # %%
 w = cs.AwarenessWeight()
 steps = 500
-num_agents = 50
 
-t = cs.Simulation(random_seed=0, 
+t = cs.Simulation(random_seed=1, 
                   num_steps=steps, 
                   num_agents=num_agents, 
                   dynamic_percent=1,

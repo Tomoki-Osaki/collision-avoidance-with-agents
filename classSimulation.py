@@ -183,10 +183,11 @@ class PreparedData:
         elif key == 'theta': x = self.theta
         elif key == 'Nic': x = self.Nic
 
-        fig, ax = plt.subplots(1, 2, figsize=(7, 5))
-        ax[0].violinplot(x, showmeans=True)
-        ax[1].boxplot(x)
-        fig.suptitle(key)
+        fig, ax = plt.subplots()
+        ax.violinplot(x, side='high', vert=False)
+        ax.boxplot(x, vert=False)
+        ax.set_title(key)
+        ax.grid()
         plt.show()
     
     
