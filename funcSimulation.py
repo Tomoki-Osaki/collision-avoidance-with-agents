@@ -14,7 +14,10 @@
 
 # %% import libraries
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from matplotlib import patches
 from dataclasses import dataclass
 
 # %% functions to calculate the vectors
@@ -343,6 +346,72 @@ class PedData:
         print('mean-std ratio:', np.round(self.Nic_mean/self.Nic_std, 3))
         print('-------------------------\n')
         
+        
+def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: bool = False) -> None:
+    plt.rcParams['font.family'] = "MS Gothic"
+    plt.rcParams['font.size'] = 14
+    
+    # data_arrの形を、フレームとしてアニメーションを回せるように作り変える        
+    data_arr = pd.DataFrame(columns=['Agent', 'Px', 'Py'])
+    for step in range(sim.num_steps+1):
+        for agent in range(sim.num_agents):
+            px, py = sim.all_agents[agent]['all_pos'][step]
+            tmp = pd.DataFrame({'Agent': agent, 'Px': px, 'Py': py}, index=[step])
+            data_arr = pd.concat([data_arr, tmp])
+    
+    fig, ax = plt.subplots(figsize=(8,8))
+    
+    def update(frame):
+        global tminus1
+        if frame[0] == 0:
+            tminus1 = data_arr.copy()
+            tminus1.iloc[:] = np.nan
+            
+        ax.cla()
+        for row, row_tminus1 in zip(frame[1].iterrows(), tminus1.iterrows()):
+            # プロットする際の位置をピクセルに合わせる(*50)
+            x, y = (row[1]['Px']*50)+250, (row[1]['Py']*50)+250
+
+            color = 'red' if row[1]['Agent'] < sim.num_dynamic_agent else 'blue'                
+
+            ax.text(x, y, row[1]['Agent'], size=10) # エージェントを番号付きで表示
+            ax.add_artist(patches.Circle((x, y), radius=5, color=color))
+            
+            # エージェントの視野を可視化する
+            if viz_angle:
+                assert sim.awareness == False, """Agents with Awareness model are not for 
+                visualizing viewing angles in this way."""
+                if frame[0] != 0:
+                    angle = sim.viewing_angle / 2
+                    x_tminus1 = (row_tminus1[1]['Px']*50)+250
+                    y_tminus1 = (row_tminus1[1]['Py']*50)+250
+                    
+                    # 進行方向の角度（ラジアン → 度）
+                    theta = np.arctan2(y - y_tminus1, x - x_tminus1) * 180 / np.pi  
+                    
+                    # 半円の中心（t時点の位置）
+                    radius = 50  # 視野の半径
+    
+                    # 半円（Wedge）の追加
+                    ax.add_artist(patches.Wedge((x, y), radius, theta-angle, theta+angle, 
+                                                color=color, alpha=0.1))
+                
+        tminus1 = frame[1]
+            
+        ax.set_xlim(0, 500)
+        ax.set_ylim(0, 500)
+        ax.set_xticks(range(0, 501, 50))
+        ax.set_yticks(range(0, 501, 50))
+        ax.set_xlabel('Pixel')
+        ax.set_ylabel('Pixel')
+        ax.set_title(f'Step: {row[0]}')
+        ax.grid()
+                    
+    anim = FuncAnimation(fig, update, frames=data_arr.groupby(data_arr.index), interval=sim.interval)
+    print('\ndrawing the animation...')
+    anim.save(save_as)
+    plt.close()
+
 
 # %% old version of deltaTTCP
 # def calc_cross_point(velx1: float, vely1: float, posx1: float, posy1: float, 

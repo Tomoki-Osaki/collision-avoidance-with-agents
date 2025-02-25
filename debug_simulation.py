@@ -10,7 +10,7 @@
 awareness_modelの引数debug=Trueにすることでロジスティクス回帰計算時の項の値が確認できる
 ケース事例を検討する
 """
-# %%
+# %% import libraries
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -27,22 +27,24 @@ ped_data.show_params()
 
 # %% debug simulation
 import classSimulation as cs
-num_agents = 50
+num_agents = 25
 
-prepared_data = cs.PreparedData('data_for_awareness_agt50.npz', remove_outliers=2)
-prepared_data = cs.PreparedData.prepare_data(num_agents=num_agents, seed=1, remove_outliers=2,
-                                             save_file_as='data_for_awareness_agt25.npz')
+prepared_data = cs.PreparedData('data_for_awareness_agt25.npz', remove_outliers=2)
+#prepared_data = cs.PreparedData.prepare_data(num_agents=num_agents, seed=1, remove_outliers=2,
+#                                             save_file_as='data_for_awareness_agt25.npz')
+#prepared_data = cs.PreparedData('tmp_awareness.npz', remove_outliers=2)
 prepared_data.show_params()
-prepared_data.plot_dist('Vother')
+#prepared_data.plot_dist('Py')
 
-# %%
+# %% run simulation
 w = cs.AwarenessWeight()
-steps = 500
+steps = 100
 
 t = cs.Simulation(random_seed=1, 
                   num_steps=steps, 
                   num_agents=num_agents, 
                   dynamic_percent=1,
+                  viewing_angle=360,
                   prepared_data=prepared_data,
                   awareness_weight=w,
                   awareness=0.9)
@@ -52,17 +54,20 @@ t = cs.Simulation(random_seed=1,
 
 t.simulate()
 
+tmp = t.return_results_as_df()
+print(f'\n\ntime: {tmp["time"].values[0]:.3f}')
+print(f'collision: {tmp["collision"].values[0]:.3f}')
+
 #t.save_data_for_awareness(save_as='tmp_awareness.npz')
 
-# %%
-t.animate_agent_movements(save_as='tmp.mp4')
-res50 = t.return_results_as_df()
+# %% make an animation
+fs.animate_agent_movements(sim=t, save_as='tmp.mp4', viz_angle=True)
 
-# %%
+# %% check how the awareness model was calculated
 for i in range(25):
     print(i, t.awareness_model(11, i, w, debug=True))
 
-# %% animate movements
+# %% animate movements with awareness annotations
 #w.show_params()
 num = 10
 

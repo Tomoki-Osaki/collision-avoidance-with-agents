@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib import patches
 import funcSimulation as fs
 
 # %% 
@@ -227,7 +228,7 @@ class Simulation:
         self.num_agents = num_agents # エージェント数
         self.view = view # 視野の半径(目盛り) = 50px:エージェント5体分
         self.viewing_angle = viewing_angle # 視野の角度
-        self.goal_vec = goal_vec # ゴールベクトルのs大きさ(目盛り)
+        self.goal_vec = goal_vec # ゴールベクトルの大きさ(目盛り)
         self.dynamic_percent = dynamic_percent # 動的回避を基に回避するエージェントの割合
         self.simple_avoid_vec = simple_avoid_vec # 単純回避での回避ベクトルの大きさ(目盛り)
         self.dynamic_avoid_vec = dynamic_avoid_vec # 動的回避での回避ベクトルの最大値(目盛り)
@@ -350,9 +351,12 @@ class Simulation:
                 Nic = self.calc_Nic(i, j)
                 other_vel = np.linalg.norm(self.all_agents[j]['v'])
                 theta = self.calc_theta(i, j)
+                
                 relP = self.calc_relative_positions(i, j, theta)
                 if relP is None:
                     px = py = None
+                elif theta > 90: # 相手との角度が90度以上の時、Pyは負になる
+                    px, py = relP[0], -relP[1]
                 else:
                     px, py = relP
                     
@@ -1194,61 +1198,68 @@ class Simulation:
         プロット中の薄い青色がそのstepでの位置で、濃い青色は次のstepでの位置
         """
         fig, ax = plt.subplots(figsize=(8, 8))
-        ax.set_xlim(-5, 5)
-        ax.set_ylim(-5, 5)
-        txt_far = 0.05
-        s = 45
+        
+        #s = 45
         for i in range(self.num_agents):
-            ax.scatter(*self.all_agents[i]['all_pos'][step],
-                        color='blue', alpha=0.6, s=s)
-            ax.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
-                               self.all_agents[i]['all_pos'][step][1]+txt_far))
+            pos_px = (self.all_agents[i]['all_pos'][step]*50)+250
+            ax.add_artist(patches.Circle(pos_px, radius=5, color='blue', alpha=0.6))
+            #ax.scatter(*self.all_agents[i]['all_pos'][step],
+            #            color='blue', alpha=0.6, s=s)
+            ax.annotate(i, xy=pos_px+1.5)
             if not step == 0:
-                tminus1_pos = self.all_agents[i]['all_pos'][step-1]
-                ax.scatter(*tminus1_pos, color='blue', alpha=0.2, s=s)
+                tminus1_pos = (self.all_agents[i]['all_pos'][step-1]*50)+250
+                ax.add_artist(patches.Circle(tminus1_pos, radius=5, color='blue', alpha=0.2))
+                #ax.scatter(*tminus1_pos, color='blue', alpha=0.2, s=s)
+        
+        ax.set_xlim(0, 500)
+        ax.set_ylim(0, 500)
+        ax.set_xticks(range(0, 501, 50))
+        ax.set_yticks(range(0, 501, 50))
         
         ax.grid()
         plt.show()
         
     # 18
-    def plot_positions_aware(self, num, step: int, prepared_data, awareness_weight) -> None:
+    def plot_positions_aware(self, num, step: int, awareness_weight) -> None:
         """
         各エージェントの座標を、エージェントの番号付きでプロットし、エージェント番号numのAwareness modelを計算する
         """
         fig, ax = plt.subplots(figsize=(8, 8))
-        ax.set_xlim(-5, 5)
-        ax.set_ylim(-5, 5)
-        txt_far = 0.05
-        s = 45
+        
+        #s = 45
         for i in range(self.num_agents):
             color = 'green' if i == num else 'blue'
             
-            ax.scatter(*self.all_agents[i]['all_pos'][step],
-                        color=color, alpha=0.6, s=s)
-            ax.annotate(i, xy=(self.all_agents[i]['all_pos'][step][0]+txt_far, 
-                               self.all_agents[i]['all_pos'][step][1]+txt_far))
+            pos_px = (self.all_agents[i]['all_pos'][step]*50)+250
+            ax.add_artist(patches.Circle(pos_px, radius=5, color=color, alpha=0.6))
+            # ax.scatter(*self.all_agents[i]['all_pos'][step],
+            #             color=color, alpha=0.6, s=s)
+            ax.annotate(i, xy=pos_px+1.5)
             if not step == 0:
-                tminus1_pos = self.all_agents[i]['all_pos'][step-1]
-                ax.scatter(*tminus1_pos, color=color, alpha=0.2, s=s)
+                tminus1_pos = (self.all_agents[i]['all_pos'][step-1]*50)+250
+                ax.add_artist(patches.Circle((tminus1_pos), radius=5, color=color, alpha=0.2))
+                #ax.scatter(*tminus1_pos, color=color, alpha=0.2, s=s)
         
         awms = []
         for i in range(self.num_agents):
-            awm = self.awareness_model(num, i, prepared_data, 
-                                       awareness_weight, debug=False)
+            awm = self.awareness_model(num, i, awareness_weight, debug=False)
             if awm is not None and awm >= 0.8:
                 awms.append([i, awm])
         
-        my_posx = self.all_agents[num]['all_pos'][step][0]
-        my_posy = self.all_agents[num]['all_pos'][step][1]
+        my_posx = (self.all_agents[num]['all_pos'][step][0]*50)+250
+        my_posy = (self.all_agents[num]['all_pos'][step][1]*50)+250
         
         for i in awms:
-            other_posx = self.all_agents[i[0]]['all_pos'][step][0]
-            other_posy = self.all_agents[i[0]]['all_pos'][step][1]
+            other_posx = (self.all_agents[i[0]]['all_pos'][step][0]*50)+250
+            other_posy = (self.all_agents[i[0]]['all_pos'][step][1]*50)+250
             
-            ax.arrow(x=my_posx, y=my_posy,
-                      dx=other_posx-my_posx, dy=other_posy-my_posy,
+            ax.arrow(x=my_posx, y=my_posy, dx=other_posx-my_posx, dy=other_posy-my_posy,
                       color='tab:blue', alpha=0.5)
-        
+            
+        ax.set_xlim(0, 500)
+        ax.set_ylim(0, 500)
+        ax.set_xticks(range(0, 501, 50))
+        ax.set_yticks(range(0, 501, 50))
         ax.grid()
         plt.show()    
         
@@ -1383,47 +1394,6 @@ class Simulation:
         
         return df_result
     
-    
-    def animate_agent_movements(self, save_as: str = 'simulation.mp4', debug=False) -> None:
-        plt.rcParams['font.family'] = "MS Gothic"
-        plt.rcParams['font.size'] = 14
-        
-        # data_arrの形を、フレームとしてアニメーションを回せるように作り変える        
-        data_arr = pd.DataFrame(columns=['Agent', 'Px', 'Py'])
-        for step in range(self.num_steps+1):
-            for agent in range(self.num_agents):
-                px, py = self.all_agents[agent]['all_pos'][step]
-                tmp = pd.DataFrame({'Agent': agent, 'Px': px, 'Py': py}, index=[step])
-                data_arr = pd.concat([data_arr, tmp])
-        
-        fig, ax = plt.subplots(figsize=(8,8))
-        
-        def update(frame):
-            ax.cla()
-            
-            for row in frame[1].iterrows():
-                # プロットする際の位置をピクセルに合わせる(*50)
-                x, y = (row[1]['Px']*50)+250, (row[1]['Py']*50)+250
-
-                color = 'red' if row[1]['Agent'] < self.num_dynamic_agent else 'blue'                
-                
-                ax.scatter(x, y, color=color, s=45)
-                ax.text(x, y, row[1]['Agent'], size=10) # エージェントを番号付きで表示
-                
-            ax.set_xlim(0, 500)
-            ax.set_ylim(0, 500)
-            ax.set_xticks(range(0, 501, 50))
-            ax.set_yticks(range(0, 501, 50))
-            ax.set_xlabel('Pixel')
-            ax.set_ylabel('Pixel')
-            ax.set_title(f'Step: {row[0]}')
-            ax.grid()
-                        
-        anim = FuncAnimation(fig, update, frames=data_arr.groupby(data_arr.index), interval=self.interval)
-        print('\ndrawing the animation...')
-        anim.save(save_as)
-        plt.close()
-
 
     def save_data_for_awareness(self, 
                                 save_as: str = 'data_for_awareness.npz',
