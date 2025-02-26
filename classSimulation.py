@@ -222,6 +222,9 @@ class Simulation:
                  awareness: bool or float = False,
                  random_seed: int = 0):
         
+        if awareness:
+            assert prepared_data, 'Awareness model needs the prepared data'
+            
         self.num_steps = num_steps
         self.interval = interval # 100msごとにグラフを更新してアニメーションを作成
         self.agent_size = agent_size # エージェントの半径(目盛り) = 5px
@@ -320,13 +323,13 @@ class Simulation:
     def disp_info(self) -> None:
         print('\nシミュレーションの環境情報')
         print('-----------------------------')
+        print('ランダムシード:', self.random_seed)
         print('ステップ数:', self.num_steps)
         print('エージェント数:', self.num_agents)
         print('エージェントの視野角度:', self.viewing_angle)
         print('動的回避エージェントの割合:', self.dynamic_percent)
         print('単純回避の回避量:', self.simple_avoid_vec*50, 'px')
-        print('Awareness:', self.awareness)
-        print('ランダムシード:', self.random_seed)
+        print('Awarenessモデルの閾値:', self.awareness)
         print('-----------------------------\n')
     
     
@@ -355,8 +358,8 @@ class Simulation:
                 relP = self.calc_relative_positions(i, j, theta)
                 if relP is None:
                     px = py = None
-                elif theta > 90: # 相手との角度が90度以上の時、Pyは負になる
-                    px, py = relP[0], -relP[1]
+                # elif theta > 90: # 相手との角度が90度以上の時、Pyは負になる
+                #     px, py = relP[0], -relP[1]
                 else:
                     px, py = relP
                     

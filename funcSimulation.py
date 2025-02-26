@@ -13,6 +13,7 @@
 """
 
 # %% import libraries
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -271,7 +272,7 @@ def calc_angle_two_vectors(common_pos: np.ndarray,
         return theta_rad
     return theta_deg
 
-# %%
+# %% general purposes
 def show(obj):
     """
     objの要素を、インデックス付きで表示する
@@ -294,6 +295,7 @@ def remove_outliers_and_nan(data, sd=None):
     return new_data
 
 
+# %% for simulation
 @dataclass
 class PedData:
     """
@@ -348,8 +350,18 @@ class PedData:
         
         
 def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: bool = False) -> None:
+    if os.path.exists(save_as):
+        check = input('\nSame file already exists. Continue? (y/n): ')
+        if check != 'y':
+            print('\nCanceled makeing the animation')
+            return None
+    
     plt.rcParams['font.family'] = "MS Gothic"
     plt.rcParams['font.size'] = 14
+    if viz_angle:
+        assert sim.awareness == False, """Agents with Awareness model are not for 
+        visualizing viewing angles in this way.
+        """
     
     # data_arrの形を、フレームとしてアニメーションを回せるように作り変える        
     data_arr = pd.DataFrame(columns=['Agent', 'Px', 'Py'])
@@ -358,7 +370,6 @@ def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: boo
             px, py = sim.all_agents[agent]['all_pos'][step]
             tmp = pd.DataFrame({'Agent': agent, 'Px': px, 'Py': py}, index=[step])
             data_arr = pd.concat([data_arr, tmp])
-    
     fig, ax = plt.subplots(figsize=(8,8))
     
     def update(frame):
@@ -375,12 +386,11 @@ def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: boo
             color = 'red' if row[1]['Agent'] < sim.num_dynamic_agent else 'blue'                
 
             ax.text(x, y, row[1]['Agent'], size=10) # エージェントを番号付きで表示
+            # エージェントの大きさ（半径）に合わせた円をプロットする (scatterでは正確な大きさを指定できない)
             ax.add_artist(patches.Circle((x, y), radius=5, color=color))
             
             # エージェントの視野を可視化する
             if viz_angle:
-                assert sim.awareness == False, """Agents with Awareness model are not for 
-                visualizing viewing angles in this way."""
                 if frame[0] != 0:
                     angle = sim.viewing_angle / 2
                     x_tminus1 = (row_tminus1[1]['Px']*50)+250
@@ -394,7 +404,7 @@ def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: boo
     
                     # 半円（Wedge）の追加
                     ax.add_artist(patches.Wedge((x, y), radius, theta-angle, theta+angle, 
-                                                color=color, alpha=0.1))
+                                                color=color, alpha=0.08))
                 
         tminus1 = frame[1]
             
@@ -411,6 +421,7 @@ def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: boo
     print('\ndrawing the animation...')
     anim.save(save_as)
     plt.close()
+    print('\nDone\n')
 
 
 # %% old version of deltaTTCP
