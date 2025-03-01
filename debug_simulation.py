@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import ArtistAnimation, FuncAnimation
+from matplotlib.patches import Circle
 from dataclasses import dataclass
 from funcSimulation import show
 import funcSimulation as fs
@@ -27,7 +28,7 @@ ped_data.show_params()
 
 # %% debug simulation
 import classSimulation as cs
-num_agents = 25
+num_agents = 20
 
 prepared_data = cs.PreparedData('data_for_awareness_agt25.npz', remove_outliers=2)
 #prepared_data = cs.PreparedData.prepare_data(num_agents=num_agents, seed=1, remove_outliers=2,
@@ -40,11 +41,11 @@ prepared_data.show_params()
 w = cs.AwarenessWeight()
 steps = 100
 
-t = cs.Simulation(random_seed=1, 
+t = cs.Simulation(random_seed=3, 
                   num_steps=steps, 
                   num_agents=num_agents, 
                   dynamic_percent=1,
-                  viewing_angle=360,
+                  viewing_angle=180,
                   prepared_data=prepared_data,
                   awareness_weight=w,
                   awareness=0.9)
@@ -66,58 +67,3 @@ fs.animate_agent_movements(sim=t, save_as='tmp.mp4', viz_angle=True)
 # %% check how the awareness model was calculated
 for i in range(25):
     print(i, t.awareness_model(11, i, w, debug=True))
-
-# %% animate movements with awareness annotations
-#w.show_params()
-num = 10
-
-fig, ax = plt.subplots(figsize=(8, 8))
-ax.grid()
-ax.set_xlim(0, 500)
-ax.set_ylim(0, 500)
-ax.set_xticks(range(0, 501, 50))
-ax.set_yticks(range(0, 501, 50))
-ax.set_xlabel('Pixel')
-ax.set_ylabel('Pixel')
-s = 45
-frames = []
-for step in tqdm(range(500)):
-    artists = []
-    #artists.append(ax.set_title(f'{step}'))    
-    for i in range(t.num_agents):
-        color = 'green' if i == num else 'red'
-        
-        artists.append(ax.scatter(*(t.all_agents[i]['all_pos'][step]*50)+250,
-                                  color=color, alpha=0.6, s=s))
-        artists.append(ax.text(x=(t.all_agents[i]['all_pos'][step][0]*50)+250, 
-                               y=(t.all_agents[i]['all_pos'][step][1]*50)+250, 
-                               s=i, size=10))
-        if not step == 0:
-            tminus1_pos = (t.all_agents[i]['all_pos'][step-1]*50)+250
-            artists.append(ax.scatter(*tminus1_pos, color=color, alpha=0.2, s=s))
-    
-    awms = []
-    for i in range(t.num_agents):
-        awm = t.all_agents[num]['awareness'][step][i]
-        if awm >= t.awareness:
-            awms.append([i, awm])
-                         
-    my_posx = (t.all_agents[num]['all_pos'][step][0]*50)+250
-    my_posy = (t.all_agents[num]['all_pos'][step][1]*50)+250
-    
-    for i in awms:
-        other_posx = (t.all_agents[i[0]]['all_pos'][step][0]*50)+250
-        other_posy = (t.all_agents[i[0]]['all_pos'][step][1]*50)+250
-        
-        artists.append(ax.arrow(x=my_posx, y=my_posy,
-                                dx=other_posx-my_posx, dy=other_posy-my_posy,
-                                color='tab:blue', alpha=0.5))
-        artists.append(ax.text(x=other_posx-15, y=other_posy-15, 
-                               s=np.round(i[1], 2), size=10, color='blue'))
-    
-    frames.append(artists)
-
-anim = ArtistAnimation(fig, frames, interval=150)
-print('\ndrawing the animation...')
-anim.save('tmp_awareness.mp4')
-plt.close() 

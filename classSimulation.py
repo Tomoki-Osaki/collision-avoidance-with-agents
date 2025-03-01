@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from matplotlib import patches
+from matplotlib.patches import Circle
 import funcSimulation as fs
 
 # %% 
@@ -1205,13 +1205,13 @@ class Simulation:
         #s = 45
         for i in range(self.num_agents):
             pos_px = (self.all_agents[i]['all_pos'][step]*50)+250
-            ax.add_artist(patches.Circle(pos_px, radius=5, color='blue', alpha=0.6))
+            ax.add_artist(Circle(pos_px, radius=5, color='blue', alpha=0.6))
             #ax.scatter(*self.all_agents[i]['all_pos'][step],
             #            color='blue', alpha=0.6, s=s)
             ax.annotate(i, xy=pos_px+1.5)
             if not step == 0:
                 tminus1_pos = (self.all_agents[i]['all_pos'][step-1]*50)+250
-                ax.add_artist(patches.Circle(tminus1_pos, radius=5, color='blue', alpha=0.2))
+                ax.add_artist(Circle(tminus1_pos, radius=5, color='blue', alpha=0.2))
                 #ax.scatter(*tminus1_pos, color='blue', alpha=0.2, s=s)
         
         ax.set_xlim(0, 500)
@@ -1234,13 +1234,13 @@ class Simulation:
             color = 'green' if i == num else 'blue'
             
             pos_px = (self.all_agents[i]['all_pos'][step]*50)+250
-            ax.add_artist(patches.Circle(pos_px, radius=5, color=color, alpha=0.6))
+            ax.add_artist(Circle(pos_px, radius=5, color=color, alpha=0.6))
             # ax.scatter(*self.all_agents[i]['all_pos'][step],
             #             color=color, alpha=0.6, s=s)
             ax.annotate(i, xy=pos_px+1.5)
             if not step == 0:
                 tminus1_pos = (self.all_agents[i]['all_pos'][step-1]*50)+250
-                ax.add_artist(patches.Circle((tminus1_pos), radius=5, color=color, alpha=0.2))
+                ax.add_artist(Circle((tminus1_pos), radius=5, color=color, alpha=0.2))
                 #ax.scatter(*tminus1_pos, color=color, alpha=0.2, s=s)
         
         awms = []
