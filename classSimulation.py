@@ -193,8 +193,8 @@ class PreparedData:
     
     
     @staticmethod
-    def prepare_data(num_agents, seed, remove_outliers=None, save_file_as='tmp.npz'):
-        sim = Simulation(num_agents=num_agents, random_seed=seed)
+    def prepare_data(num_agents, remove_outliers=None, save_file_as='tmp.npz'):
+        sim = Simulation(num_agents=num_agents, random_seed=100)
         print('\nPreparing data for awareness model...')
         sim.simulate()
         sim.save_data_for_awareness(save_as=save_file_as)

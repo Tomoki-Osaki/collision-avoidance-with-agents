@@ -15,33 +15,30 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import ArtistAnimation, FuncAnimation
-from matplotlib.patches import Circle
-from dataclasses import dataclass
-from funcSimulation import show
-import funcSimulation as fs
 import time 
 from gc import collect
 from tqdm import tqdm
+
+import funcSimulation as fs
 
 ped_data = fs.PedData()
 ped_data.show_params()
 
 # %% debug simulation
 import classSimulation as cs
-num_agents = 20
+num_agents = 25
 
 prepared_data = cs.PreparedData('data_for_awareness_agt25.npz', remove_outliers=2)
-#prepared_data = cs.PreparedData.prepare_data(num_agents=num_agents, seed=1, remove_outliers=2,
-#                                             save_file_as='data_for_awareness_agt25.npz')
+#prepared_data = cs.PreparedData.prepare_data(num_agents=num_agents, remove_outliers=2)
 #prepared_data = cs.PreparedData('tmp_awareness.npz', remove_outliers=2)
 prepared_data.show_params()
 #prepared_data.plot_dist('Py')
 
 # %% run simulation
 w = cs.AwarenessWeight()
-steps = 100
+steps = 500
 
-t = cs.Simulation(random_seed=3, 
+t = cs.Simulation(random_seed=0, 
                   num_steps=steps, 
                   num_agents=num_agents, 
                   dynamic_percent=1,
@@ -62,7 +59,10 @@ print(f'collision: {tmp["collision"].values[0]:.3f}')
 #t.save_data_for_awareness(save_as='tmp_awareness.npz')
 
 # %% make an animation
-fs.animate_agent_movements(sim=t, save_as='tmp.mp4', viz_angle=True)
+agt = [i for i in range(t.num_agents)]
+file = 'tmp.mp4'
+fs.animate_agent_movements(sim=t, save_as=file, viz_angle=True, 
+                           featured_agents=agt)
 
 # %% check how the awareness model was calculated
 for i in range(25):

@@ -348,9 +348,15 @@ class PedData:
         print('mean-std ratio:', np.round(self.Nic_mean/self.Nic_std, 3))
         print('-------------------------\n')
 
+class Simulation:
+    pass
 
-def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: bool = False) -> None:
-    if os.path.exists(save_as):
+def animate_agent_movements(sim: Simulation, 
+                            save_as: str = 'tmp.mp4', 
+                            viz_angle: bool = False,
+                            featured_agents: list[int] = []) -> None:
+    
+    if os.path.exists(save_as) and save_as != 'tmp.mp4':
         check = input(f'\n[{save_as}] already exists. Continue? (y/n): ')
         if check != 'y':
             print('\nCanceled makeing the animation')
@@ -365,12 +371,14 @@ def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: boo
         ax.cla()
         for i in range(sim.num_agents):
             x, y = (sim.all_agents[i]['all_pos'][frame]*50)+250
-            color = 'red' if i < sim.num_dynamic_agent else 'blue'
+            
+            color = 'green' if i in featured_agents else 'red'
             
             ax.add_artist(Circle((x,y), radius=5, color=color))
-            ax.text(x, y, i, size=10)
+            ax.text(x+1, y+1, i, size=12)
             
-            if viz_angle and frame != 0 and not sim.awareness:
+            # 視野ベースのエージェントの場合、エージェントを中心とした扇形の視野を可視化する
+            if viz_angle and frame != 0 and not sim.awareness and i in featured_agents:
                 angle = sim.viewing_angle / 2
                 x_tminus1, y_tminus1 = (sim.all_agents[i]['all_pos'][frame-1]*50)+250
                 
@@ -381,17 +389,19 @@ def animate_agent_movements(sim, save_as: str = 'simulation.mp4', viz_angle: boo
                 radius = 50  # 視野の半径
 
                 # 半円（Wedge）の追加
-                ax.add_artist(Wedge((x,y), radius, theta-angle, theta+angle, 
-                                    color=color, alpha=0.08))
+                ax.add_artist(
+                    Wedge((x,y), radius, theta-angle, theta+angle, color=color, alpha=0.08)
+                )
             
-            elif viz_angle and sim.awareness:
+            # Awarenessモデルエージェントの場合、Awarenssモデルを計算して閾値を超えた相手エージェントに対して矢印を引く
+            elif viz_angle and sim.awareness and i in featured_agents:
+                arrowprops = dict(color='red', alpha=0.3, width=0.5, shrink=0.04, headwidth=8)
                 for j in range(sim.num_agents):
                     awm = sim.all_agents[i]['awareness'][frame][j]
                     if awm >= sim.awareness:
                         other_x, other_y = (sim.all_agents[j]['all_pos'][frame]*50)+250
-                        ax.annotate('', xy=(other_x,other_y), xytext=(x,y),
-                                    arrowprops=dict(color='red', alpha=0.3,
-                                                    width=0.5, shrink=0.04, headwidth=8))
+                        ax.annotate('', xy=(other_x,other_y), xytext=(x,y), arrowprops=arrowprops)
+                        #ax.text(other_x-8, other_y-8, np.round(awm,2), size=10)
         
         ax.set_xlim(0, 500)
         ax.set_ylim(0, 500)
