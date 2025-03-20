@@ -354,7 +354,7 @@ class Simulation:
 def animate_agent_movements(sim: Simulation, 
                             save_as: str = 'tmp.mp4', 
                             viz_angle: bool = False,
-                            featured_agents: list[int] = []) -> None:
+                            featured_agents: list[int] | str = []) -> None:
     
     if os.path.exists(save_as) and save_as != 'tmp.mp4':
         check = input(f'\n[{save_as}] already exists. Continue? (y/n): ')
@@ -367,6 +367,9 @@ def animate_agent_movements(sim: Simulation,
     
     fig, ax = plt.subplots(figsize=(8,8))
     
+    if featured_agents == 'all':
+        featured_agents = [i for i in range(sim.num_agents)]
+    
     def update(frame):
         ax.cla()
         for i in range(sim.num_agents):
@@ -375,7 +378,7 @@ def animate_agent_movements(sim: Simulation,
             color = 'green' if i in featured_agents else 'red'
             
             ax.add_artist(Circle((x,y), radius=5, color=color))
-            ax.text(x+1, y+1, i, size=12)
+            #ax.text(x+1, y+1, i, size=12)
             
             # 視野ベースのエージェントの場合、エージェントを中心とした扇形の視野を可視化する
             if viz_angle and frame != 0 and not sim.awareness and i in featured_agents:

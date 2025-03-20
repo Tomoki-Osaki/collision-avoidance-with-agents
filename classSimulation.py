@@ -318,6 +318,8 @@ class Simulation:
         
         self.current_step = 0
         self.update_parameters()
+        
+        self.returned_results = False
     
     
     def disp_info(self) -> None:
@@ -615,10 +617,13 @@ class Simulation:
             if not np.isnan(d).all():
                 avoid_vec += d # ベクトルの合成
             
-        # ベクトルの平均を出す
-        ave_avoid_vec = avoid_vec / len(visible_agents)
+        # # ベクトルの平均を出す
+        # ave_avoid_vec = avoid_vec / len(visible_agents)
         
-        return ave_avoid_vec
+        # return ave_avoid_vec
+        
+        # ベクトルを平均しない
+        return avoid_vec
     
     # 6
     def dynamic_avoidance(self, num: int) -> np.ndarray:
@@ -636,8 +641,7 @@ class Simulation:
 
         if not visible_agents:
             return avoid_vec    
-        
-            
+                    
         ### the followings are dynamic vectors ###
         for i in visible_agents:
             # 視野の中心にいるエージェントの位置と速度
@@ -691,6 +695,7 @@ class Simulation:
             braking_index = (1 / (1 + np.exp(-c1 - d1 * (tcpa/4000)))) * \
                             (1 / (1 + np.exp(-b1 - a1 * (dcpa/50))))
             
+        
             # dは視界に入ったエージェントに対して反対方向のベクトル
             d = self.all_agents[num]['p'] - self.all_agents[i]['p']
             d = d / (dist_all[num][i] + 2 * self.agent_size) # ベクトルの大きさを1にする
@@ -701,10 +706,14 @@ class Simulation:
                 avoid_vec += d # ベクトルの合成
                 
                     
-        # ベクトルの平均を出す
-        ave_avoid_vec = avoid_vec / len(visible_agents)
+        # # ベクトルの平均を出す
+        # ave_avoid_vec = avoid_vec / len(visible_agents)
+
+        # return ave_avoid_vec
         
-        return ave_avoid_vec
+        # ベクトルを平均しない
+        return avoid_vec
+        
 
 
     # 7 
@@ -1360,6 +1369,9 @@ class Simulation:
         """
         1試行の記録をデータフレームにして返す
         """
+        # この関数は破壊的操作で1回目と2回目の値が変化するため、2回目以降の呼び出しを禁止する
+        assert self.returned_results == False, "Results have been already returend."
+        
         # 最後の座標から完了時間を算出
         for i in range(self.num_agents):
             last_completion_time = self.calc_remained_completion_time(i, self.num_steps)
@@ -1390,10 +1402,13 @@ class Simulation:
                        'num_steps': self.num_steps,
                        'dynamic_percent': self.dynamic_percent,
                        'simple_avoid_vec': self.simple_avoid_vec,
+                       'awareness': self.awareness,
+                       'sum_goal_count': np.sum(self.goal_count),
                        'exe_time_second': np.round(self.exe_time, 3),
                        'exe_time_min': np.round(self.exe_time/60, 3)}
         
         df_result = pd.DataFrame(dict_result, index=[f'seed_{self.random_seed}'])
+        self.returned_results = True
         
         return df_result
     
