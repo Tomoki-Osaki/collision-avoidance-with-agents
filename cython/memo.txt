@@ -1,0 +1,63 @@
+1. init
+#2. set_goals
+#3. calc_distance_all_agents
+#4. find_visible_agents
+#5. record_start_and_goal
+#6. approach_detect
+#7. record_agent_information
+#8. calc_completion_time
+#9. calc_remained_completion_time
+#10. check_if_goaled
+11. simple_avoidance
+12. move_agents
+
+
+1. init 
+    2. set_goals
+    9. record_agent_information
+        8. approach_detect
+            3. calc_distance_all_agents
+    
+2. set_goals
+    
+3. calc_distance_all_agents
+
+4. find_visible_agents
+
+5. simple_avoidance
+    3. calc_distance_all_agents
+    4. find_visible_agents
+    
+6. record_start_and_goal        
+
+7. move_agents
+    5. simple_avoidance
+        3. calc_distance_all_agents
+        4. find_visible_agents        
+    13. check_if_goaled
+        11. calc_completion_time
+            6. record_start_and_goal
+    9. record_agent_information
+        8. approach_detect
+            3. calc_distance_all_agents
+    
+8. approach_detect
+    3. calc_distance_all_agents
+    
+9. record_agent_information
+    8. approach_detect
+        3. calc_distance_all_agents
+    
+10. record_approaches # return_results_as_dfでcallされる
+    
+11. calc_completion_time
+    6. record_start_and_goal
+    
+12. calc_remained_completion_time
+    6. record_start_and_goal
+    
+13. check_if_goaled
+    11. calc_completion_time
+        6. record_start_and_goal
+        
+            
